@@ -1,5 +1,7 @@
 import { Mic, PenLine } from "lucide-react";
 
+import { CopyDesk } from "@/components/copy-desk";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -12,9 +14,11 @@ type StoryEditorProps = {
   story: string;
   onChange: (value: string) => void;
   wordCount: number;
+  /** Called when an edited version is kept, so the colophon can say so. */
+  onPolish: (value: string) => void;
 };
 
-export function StoryEditor({ story, onChange, wordCount }: StoryEditorProps) {
+export function StoryEditor({ story, onChange, wordCount, onPolish }: StoryEditorProps) {
   const over = wordCount > MAX_WORDS;
 
   return (
@@ -51,6 +55,8 @@ export function StoryEditor({ story, onChange, wordCount }: StoryEditorProps) {
               ? "Plenty to work with. Keep going if there's more."
               : `About ${(MIN_WORDS - wordCount).toLocaleString()} more words for a full feature.`}
           </p>
+
+          <CopyDesk story={story} onAccept={onPolish} />
         </TabsContent>
 
         <TabsContent value="speak" className="mt-4">

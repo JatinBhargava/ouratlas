@@ -67,6 +67,7 @@ export function IssueView({ issue, className }: { issue: Issue; className?: stri
                 page={page}
                 title={issue.title}
                 dateline={issue.dateline}
+                polished={issue.polished}
               />
             ))}
           </div>

@@ -193,7 +193,7 @@ function Blank() {
   return <div className="size-full" />;
 }
 
-function Colophon({ page, title, dateline }: { page: Page; title: string; dateline: string }) {
+function Colophon({ title, dateline, polished }: PageProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
       <span className={KICKER}>Colophon</span>
@@ -201,13 +201,15 @@ function Colophon({ page, title, dateline }: { page: Page; title: string; dateli
       <p className="text-[9px] text-stone-500">{dateline}</p>
       <div className="my-2 h-px w-16 bg-stone-300" />
       <p className="max-w-[300px] text-[9px] leading-[1.6] text-stone-500">
-        Set with Atlas. The photographs and the words were laid out in your browser and were never uploaded to us.
+        {polished
+          ? "Set with Atlas. The photographs never left your browser. The words were sent once to be copy-edited, and were not kept."
+          : "Set with Atlas. The photographs and the words were laid out in your browser and were never uploaded to us."}
       </p>
     </div>
   );
 }
 
-type PageProps = { page: Page; title: string; dateline: string };
+type PageProps = { page: Page; title: string; dateline: string; polished: boolean };
 
 const LAYOUTS: Record<TemplateId, (props: PageProps) => React.ReactNode> = {
   cover: Cover,
@@ -227,7 +229,7 @@ const LAYOUTS: Record<TemplateId, (props: PageProps) => React.ReactNode> = {
 const BLEEDS = new Set<TemplateId>(["cover", "full-plate"]);
 
 /** One page of the issue, drawn at full size. Scale it from the outside. */
-export function MagazinePage({ page, title, dateline }: PageProps) {
+export function MagazinePage({ page, title, dateline, polished }: PageProps) {
   const Layout = LAYOUTS[page.template];
   const bleeds = BLEEDS.has(page.template);
 
@@ -238,10 +240,10 @@ export function MagazinePage({ page, title, dateline }: PageProps) {
     >
       <div className="size-full" style={bleeds ? undefined : { padding: MARGIN, paddingBottom: MARGIN }}>
         {bleeds ? (
-          <Layout page={page} title={title} dateline={dateline} />
+          <Layout page={page} title={title} dateline={dateline} polished={polished} />
         ) : (
           <div style={{ height: TEXT_HEIGHT }}>
-            <Layout page={page} title={title} dateline={dateline} />
+            <Layout page={page} title={title} dateline={dateline} polished={polished} />
           </div>
         )}
       </div>

@@ -38,7 +38,7 @@ export function SiteNav({ visitors = 12480 }: SiteNavProps) {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-4 z-50 flex justify-center px-4 transition-transform duration-300 ease-out motion-reduce:transition-none",
+        "fixed inset-x-0 top-4 z-50 flex justify-center px-4 transition-transform duration-300 ease-out motion-reduce:transition-none print:hidden",
         hidden && "-translate-y-[200%]",
       )}
     >

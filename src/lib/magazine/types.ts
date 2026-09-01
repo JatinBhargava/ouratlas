@@ -28,4 +28,6 @@ export type Issue = {
   words: number;
   /** Copy that would not fit in the pages composed. Should be zero. */
   overflowWords: number;
+  /** Whether the copy went through the copy desk, which the colophon states. */
+  polished: boolean;
 };

@@ -64,7 +64,7 @@ const noise = (frequency: number, octaves: number, slope: number, intercept: num
 
 export function SceneBackground() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#eee9e0]">
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#eee9e0] print:hidden">
       <svg
         className="size-full dark:opacity-70"
         viewBox="0 0 1600 1000"

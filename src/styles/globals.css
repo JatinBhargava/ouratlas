@@ -237,3 +237,31 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Print: the issue, and nothing else.
+
+   The page box is set to the exact size the magazine is laid out at (520 x 693
+   CSS px at 96dpi), so "Save as PDF" produces pages at 1:1 with no scaling and
+   no browser margins eating the trim.
+--------------------------------------------------------------------------- */
+@page {
+  size: 5.41667in 7.21875in;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* Photographs, the cover scrim and every tint are the point of the artefact,
+     so keep them rather than letting the browser drop backgrounds. */
+  *,
+  *::before,
+  *::after {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

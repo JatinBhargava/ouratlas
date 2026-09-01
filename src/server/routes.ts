@@ -3,9 +3,13 @@
  * stays a thin entry point.
  */
 
+import { polish } from "@/server/polish";
 import type { HelloResponse } from "@/types";
 
 export const apiRoutes = {
+  /** Copy-edits the story. The only route that talks to the outside world. */
+  "/api/polish": { POST: polish },
+
   "/api/hello": {
     async GET(): Promise<Response> {
       return Response.json({ message: "Hello, world!", method: "GET" } satisfies HelloResponse);

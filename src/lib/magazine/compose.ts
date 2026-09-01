@@ -37,6 +37,8 @@ type ComposeInput = {
   photos: Photo[];
   story: string;
   when?: Date;
+  /** True if the words were edited by the copy desk. */
+  polished?: boolean;
 };
 
 /**
@@ -50,7 +52,7 @@ type ComposeInput = {
  *
  * Runs in the browser and touches nothing outside this tab.
  */
-export function composeIssue({ title, photos, story, when }: ComposeInput): Issue {
+export function composeIssue({ title, photos, story, when, polished = false }: ComposeInput): Issue {
   const paragraphs = toParagraphs(story);
   const words = wordCount(paragraphs);
 
@@ -146,5 +148,6 @@ export function composeIssue({ title, photos, story, when }: ComposeInput): Issu
     pages,
     words,
     overflowWords: remaining(paragraphs, cursor),
+    polished,
   };
 }

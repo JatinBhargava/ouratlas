@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Sparkles } from "lucide-react";
 
 import { IssueView } from "@/components/magazine/issue-view";
+import { PrintSheet } from "@/components/magazine/print-sheet";
 import { MAX_PHOTOS, PhotoPicker } from "@/components/photo-picker";
 import { MIN_WORDS, MAX_WORDS, StoryEditor } from "@/components/story-editor";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ export function Create() {
   const [story, setStory] = useState("");
   const [issue, setIssue] = useState<Issue | null>(null);
   const [composing, setComposing] = useState(false);
+  // Recorded so the colophon can say the words were sent away to be edited.
+  const [polished, setPolished] = useState(false);
 
   // Object URLs are a manual resource: release them when the page goes away.
   const photosRef = useRef<Photo[]>([]);
@@ -67,30 +70,46 @@ export function Create() {
     // arrives would fit against the fallback and re-wrap once it loads.
     await document.fonts.ready;
     await new Promise(resolve => requestAnimationFrame(resolve));
-    setIssue(composeIssue({ title, photos, story }));
+    setIssue(composeIssue({ title, photos, story, polished }));
     setComposing(false);
     window.scrollTo({ top: 0 });
   };
 
   if (issue) {
     return (
-      <div className="flex flex-col gap-6">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-3 text-[11px] font-medium tracking-[0.28em] text-white/70 uppercase drop-shadow-sm">
-              <span aria-hidden className="h-px w-6 bg-white/40" />
-              Off the press
-            </span>
-            <h1 className="font-editorial text-4xl tracking-tight text-white drop-shadow-md">{issue.title}</h1>
-          </div>
-          <Button variant="secondary" className="rounded-full" onClick={() => setIssue(null)}>
-            <ArrowLeft className="size-4" />
-            Back to the desk
-          </Button>
-        </header>
+      <>
+        <div className="flex flex-col gap-6 print:hidden">
+          <header className="flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="flex items-center gap-3 text-[11px] font-medium tracking-[0.28em] text-white/70 uppercase drop-shadow-sm">
+                <span aria-hidden className="h-px w-6 bg-white/40" />
+                Off the press
+              </span>
+              <h1 className="font-editorial text-4xl tracking-tight text-white drop-shadow-md">{issue.title}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" className="rounded-full" onClick={() => setIssue(null)}>
+                <ArrowLeft className="size-4" />
+                Back to the desk
+              </Button>
+              <Button className="rounded-full" onClick={() => window.print()}>
+                <Download className="size-4" />
+                Export
+              </Button>
+            </div>
+          </header>
 
-        <IssueView issue={issue} />
-      </div>
+          <IssueView issue={issue} />
+
+          <p className="text-center text-xs text-white/70 drop-shadow-sm">
+            Export opens your print dialog — choose <span className="font-medium text-white">Save as PDF</span>. The
+            pages are already the right size, so leave the scale at 100%.
+          </p>
+        </div>
+
+        {/* Only laid out when printing. */}
+        <PrintSheet issue={issue} />
+      </>
     );
   }
 
@@ -123,7 +142,15 @@ export function Create() {
           </div>
 
           <PhotoPicker photos={photos} onAdd={addPhotos} onRemove={removePhoto} />
-          <StoryEditor story={story} onChange={setStory} wordCount={wordCount} />
+          <StoryEditor
+            story={story}
+            onChange={setStory}
+            wordCount={wordCount}
+            onPolish={value => {
+              setStory(value);
+              setPolished(true);
+            }}
+          />
         </CardContent>
       </Card>
 
