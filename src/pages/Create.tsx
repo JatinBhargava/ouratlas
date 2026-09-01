@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
+import { IssueView } from "@/components/magazine/issue-view";
 import { MAX_PHOTOS, PhotoPicker } from "@/components/photo-picker";
 import { MIN_WORDS, MAX_WORDS, StoryEditor } from "@/components/story-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { composeIssue } from "@/lib/magazine/compose";
+import { disposeMeasurer } from "@/lib/magazine/fit";
+import type { Issue } from "@/lib/magazine/types";
 import type { Photo } from "@/types";
 
 const countWords = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
@@ -15,11 +19,19 @@ export function Create() {
   const [title, setTitle] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [story, setStory] = useState("");
+  const [issue, setIssue] = useState<Issue | null>(null);
+  const [composing, setComposing] = useState(false);
 
   // Object URLs are a manual resource: release them when the page goes away.
   const photosRef = useRef<Photo[]>([]);
   photosRef.current = photos;
-  useEffect(() => () => photosRef.current.forEach(photo => URL.revokeObjectURL(photo.url)), []);
+  useEffect(
+    () => () => {
+      photosRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
+      disposeMeasurer();
+    },
+    [],
+  );
 
   const wordCount = useMemo(() => countWords(story), [story]);
 
@@ -48,6 +60,39 @@ export function Create() {
         : wordCount > MAX_WORDS
           ? "Trim the story to 10,000 words"
           : null;
+
+  const sendToPress = async () => {
+    setComposing(true);
+    // Copy is fitted by measuring real type. Measuring before the webfont
+    // arrives would fit against the fallback and re-wrap once it loads.
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    setIssue(composeIssue({ title, photos, story }));
+    setComposing(false);
+    window.scrollTo({ top: 0 });
+  };
+
+  if (issue) {
+    return (
+      <div className="flex flex-col gap-6">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="flex items-center gap-3 text-[11px] font-medium tracking-[0.28em] text-white/70 uppercase drop-shadow-sm">
+              <span aria-hidden className="h-px w-6 bg-white/40" />
+              Off the press
+            </span>
+            <h1 className="font-editorial text-4xl tracking-tight text-white drop-shadow-md">{issue.title}</h1>
+          </div>
+          <Button variant="secondary" className="rounded-full" onClick={() => setIssue(null)}>
+            <ArrowLeft className="size-4" />
+            Back to the desk
+          </Button>
+        </header>
+
+        <IssueView issue={issue} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -85,11 +130,14 @@ export function Create() {
       <div className="sticky bottom-6 flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/50 bg-white/85 py-3 pr-3 pl-6 shadow-lg shadow-black/10 backdrop-blur-md">
         <p className="text-sm text-stone-600">
           {blocker ?? "Ready for press."}
-          <span className="text-stone-400"> · {photos.length} photos · {wordCount.toLocaleString()} words</span>
+          <span className="text-stone-400">
+            {" "}
+            · {photos.length} photos · {wordCount.toLocaleString()} words
+          </span>
         </p>
-        <Button className="rounded-full" disabled={blocker !== null}>
-          <Sparkles className="size-4" />
-          Send to press
+        <Button className="rounded-full" disabled={blocker !== null || composing} onClick={sendToPress}>
+          {composing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {composing ? "Setting the type" : "Send to press"}
         </Button>
       </div>
     </div>
