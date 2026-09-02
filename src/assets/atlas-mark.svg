@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Atlas</title>
+  <!--
+    The same mark as the AtlasMark component: a capital A cut out of a near-black
+    tile. Drawn as a path rather than <text> so it does not depend on a webfont
+    that a favicon has no chance to load, and so it stays crisp at 16px.
+    Colour is stone-950, matching bg-stone-950 in the component.
+  -->
+  <rect width="64" height="64" rx="14" fill="#0c0a09"/>
+  <path
+    fill="#ffffff"
+    fill-rule="evenodd"
+    d="M32 12.5 47.8 51.5 40.4 51.5 37.2 43.2 26.8 43.2 23.6 51.5 16.2 51.5 Z
+       M32 24.6 28.4 37.4 35.6 37.4 Z"
+  />
+</svg>
