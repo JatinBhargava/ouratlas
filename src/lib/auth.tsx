@@ -70,34 +70,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!supabase) return;
+    const client = supabase;
 
-    // Supabase redirects failures back as query parameters rather than
-    // throwing, so an unreadable one would otherwise vanish silently.
-    const params = new URLSearchParams(window.location.search);
-    const oauthError = params.get("error_description") ?? params.get("error");
-    if (oauthError) {
-      console.error("[auth] provider returned an error:", oauthError);
-      setSignInError(oauthError);
-    }
+    /** Takes `code`/`state` off the URL once they are spent, leaving a clean address. */
+    const tidyUrl = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("state");
+      url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    };
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      // With detectSessionInUrl on, the `?code=` exchange happens inside this
-      // call. A failure here is the case that looks like nothing happening:
-      // the code sits in the address bar and the app still reads as signed
-      // out. The usual cause is a missing PKCE verifier — sign-in begun in a
-      // different browser, profile, or origin than the one it returned to.
-      if (error) {
-        console.error("[auth] could not establish a session:", error.message);
-        setSignInError(error.message);
-      } else if (params.has("code") && !data.session) {
-        const message = "Sign-in did not complete. Start it again in this browser.";
-        console.error(`[auth] ${message} (code present but no session was created)`);
-        setSignInError(message);
+    const start = async () => {
+      const params = new URLSearchParams(window.location.search);
+
+      // Google and Supabase report refusals as query parameters rather than by
+      // failing the redirect, so this is the only place they exist.
+      const refused = params.get("error_description") ?? params.get("error");
+      if (refused) {
+        console.error("[auth] provider refused:", refused);
+        setSignInError(refused);
+        tidyUrl();
       }
 
+      const code = params.get("code");
+      if (code) {
+        // Done here rather than by `detectSessionInUrl` so the error is a value
+        // we can read. The common failure is a missing PKCE verifier: it is
+        // written to this browser's storage when sign-in begins, so returning
+        // to a different browser, profile or origin leaves nothing to pair the
+        // code with.
+        const { data, error } = await client.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          console.error("[auth] code exchange failed:", error.message);
+          setSignInError(
+            /flow.state|verifier/i.test(error.message)
+              ? "Sign-in could not be completed in this browser. Clear site data and start again from this site."
+              : error.message,
+          );
+        } else {
+          setSession(data.session);
+        }
+
+        tidyUrl();
+        setReady(true);
+        return;
+      }
+
+      const { data, error } = await client.auth.getSession();
+      if (error) {
+        console.error("[auth] could not read the stored session:", error.message);
+        setSignInError(error.message);
+      }
       setSession(data.session);
       setReady(true);
-    });
+    };
+
+    void start();
 
     // Fires on sign-in, sign-out, token refresh, and on the redirect back
     // from Google once the code in the URL has been exchanged.

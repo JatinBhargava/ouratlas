@@ -31,9 +31,12 @@ export const supabase: SupabaseClient | null = authConfigured
         // background, so a reload does not sign anyone out.
         persistSession: true,
         autoRefreshToken: true,
-        // Google sends people back with the authorisation code in the URL;
-        // this is what exchanges it for a session and tidies the address bar.
-        detectSessionInUrl: true,
+        // Off on purpose. Left on, the library exchanges the `?code=` during
+        // its own initialisation and reports a failure nowhere in particular —
+        // the symptom is a code sitting in the address bar and an app that
+        // still reads as signed out. `AuthProvider` does the exchange itself so
+        // the error has somewhere to go.
+        detectSessionInUrl: false,
         flowType: "pkce",
       },
     })
