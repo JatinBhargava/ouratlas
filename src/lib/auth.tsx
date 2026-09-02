@@ -177,7 +177,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: new URL(returnTo, window.location.origin).toString() },
+      options: {
+        redirectTo: new URL(returnTo, window.location.origin).toString(),
+        // Google signs someone straight in when it recognises exactly one
+        // active session, which is wrong for a keepsake tied to a particular
+        // account — plenty of people have a personal address and a work one,
+        // and the trip belongs to one of them. `select_account` always asks.
+        queryParams: { prompt: "select_account" },
+      },
     });
 
     if (error) throw new Error(error.message);
