@@ -53,3 +53,9 @@ export type RedirectResponse = { url: string };
 
 /** `POST /api/waitlist` */
 export type WaitlistResponse = { ok: true; alreadySubscribed: boolean };
+
+/** `GET /api/visits` — Vercel Web Analytics totals for the whole project. */
+export type VisitsResponse = {
+  visitors: number;
+  pageviews: number;
+};

@@ -1,19 +1,15 @@
 import { Fragment } from "react";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { AtlasMark } from "@/components/atlas-mark";
 import { AuthMenu } from "@/components/auth-menu";
+import { MastheadNote } from "@/components/masthead-note";
 import { Button } from "@/components/ui/button";
 import { useActiveSection } from "@/hooks/use-active-section";
 import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
 import { useScrollProgress } from "@/hooks/use-scroll-progress";
 import { cn } from "@/lib/utils";
-
-type SiteNavProps = {
-  /** Visitors to date. Placeholder until a counter is wired up. */
-  visitors?: number;
-};
 
 /** Sections on the route, in the order you walk them. */
 const STOPS = [
@@ -24,13 +20,12 @@ const STOPS = [
 ] as const;
 
 const STOP_IDS = STOPS.map(stop => stop.id);
-const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 
 /**
  * Floating navigation shaped like a trail: a compass mark, then each section as
  * a waypoint on a dashed route that lights up as the reader passes it.
  */
-export function SiteNav({ visitors = 12480 }: SiteNavProps) {
+export function SiteNav() {
   const hidden = useHideOnScroll();
   const progress = useScrollProgress();
   const active = useActiveSection([...STOP_IDS]);
@@ -98,17 +93,9 @@ export function SiteNav({ visitors = 12480 }: SiteNavProps) {
             </Link>
           )}
 
-          <span
-            className={cn(
-              "hidden items-center gap-1.5 rounded-full px-2 text-sm text-stone-600 xl:flex",
-              !isLanding && "xl:hidden",
-            )}
-            title="Travellers who have passed through"
-          >
-            <Users className="size-3.5" />
-            <span className="font-medium text-stone-800 tabular-nums">{compact.format(visitors)}</span>
-            visited
-          </span>
+          {/* Shown from `lg` rather than `xl`: it is now short enough to fit,
+              and it was invisible on most laptops before. */}
+          <MastheadNote className={cn("hidden lg:flex", !isLanding && "lg:hidden")} />
 
           <AuthMenu />
 

@@ -233,6 +233,31 @@ A failed ping is logged and the schedule continues. The timer is unref'd, so it
 never holds the process open during shutdown. The boot log names the jobs that
 started — a cron that silently is not running would be worse than none.
 
+### The masthead line
+
+The small capitalised line in the navigation is where a magazine prints its
+circulation and edition, and it behaves like one.
+
+When the visitor count is known it is stated as **circulation**, which is what a
+readership figure is called in print. When it is not — analytics off, API
+unreachable, a fresh deployment — it falls back to the **edition**, named by the
+reader's own clock: Morning, Afternoon, Evening, Late. That needs no data at
+all, so the slot is never empty and the nav keeps reading as a periodical rather
+than an app chrome bar.
+
+The count itself comes from `GET /api/visits`, which asks Vercel's Web Analytics
+API and returns only `{ visitors, pageviews }`. It goes through the server
+because the Vercel token reaches the whole account — far too much to hand a
+browser for a decorative number — and the response is deliberately thin for the
+same reason: no paths, no referrers, no countries.
+
+That call is cached for ten minutes. The figure moves slowly and nobody watches
+it change, so a request per page load would spend the rate limit on nothing. A
+failed refresh serves the stale value rather than blanking the line.
+
+The nav previously showed a hardcoded `12,480`. On a site about keeping an
+honest record of a trip, an invented readership was the wrong default.
+
 ### Versioning
 
 `versions.json` is the only place a version number is written:

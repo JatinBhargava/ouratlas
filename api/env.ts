@@ -83,6 +83,21 @@ export const supabase = {
   anonKey: process.env.SUPABASE_ANON_KEY ?? process.env.BUN_PUBLIC_SUPABASE_ANON_KEY,
 } as const;
 
+/**
+ * Vercel Web Analytics, read server-side for the visitor counter in the nav.
+ *
+ * The token is a full-access Vercel credential, so it never goes near the
+ * browser — the API queries Vercel and hands the frontend only a number.
+ */
+export const vercel = {
+  token: process.env.VERCEL_API_TOKEN,
+  projectId: process.env.VERCEL_PROJECT_ID,
+  /** Omitted for projects owned by a personal account rather than a team. */
+  teamId: process.env.VERCEL_TEAM_ID,
+} as const;
+
+export const analyticsConfigured = Boolean(vercel.token && vercel.projectId);
+
 export const stripe = {
   secretKey: process.env.STRIPE_SECRET_KEY,
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
@@ -115,5 +130,6 @@ export function describe(): string {
     `   billing   ${state(billingConfigured, "STRIPE_SECRET_KEY, STRIPE_PRICE_*")}`,
     `   webhook   ${state(webhookConfigured, "STRIPE_WEBHOOK_SECRET")}`,
     `   copy desk ${state(Boolean(process.env.ANTHROPIC_API_KEY), "ANTHROPIC_API_KEY")}`,
+    `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");
 }

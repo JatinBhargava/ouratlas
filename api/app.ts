@@ -14,6 +14,7 @@ import { errorHandler, notFound } from "@api/http";
 import { authRoutes } from "@api/routes/auth";
 import { billingRoutes } from "@api/routes/billing";
 import { polishRoutes } from "@api/routes/polish";
+import { visitsRoutes } from "@api/routes/visits";
 import { waitlistRoutes } from "@api/routes/waitlist";
 import { webhookRoutes } from "@api/routes/webhook";
 
@@ -46,6 +47,7 @@ export function createApp(): Express {
   });
 
   app.use("/api", authRoutes);
+  app.use("/api", visitsRoutes);
   app.use("/api", waitlistRoutes);
   app.use("/api", polishRoutes);
   app.use("/api", webhookRoutes);
