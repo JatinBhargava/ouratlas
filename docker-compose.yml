@@ -1,0 +1,54 @@
+# Two containers, one origin.
+#
+# Only `web` publishes a port. The API is reachable at http://api:3000 on the
+# compose network and nowhere else, so the service-role key and the Stripe
+# secret are never a request away from the internet.
+#
+#   docker compose up --build      -> http://localhost:3000
+#
+# The frontend's Supabase settings are compiled in, so changing them means
+# rebuilding `web`, not restarting it.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: ghcr.io/jatinbhargava/ouratlas-api:latest
+    restart: unless-stopped
+    # Read at run time, so a key can change without a rebuild. Every variable
+    # is optional: a missing one switches its feature off and says so on boot.
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      SERVE_STATIC: "false"
+      PORT: "3000"
+      # Where the browser reaches the site, which is nginx — not this service.
+      # Stripe's return URLs are built from it, so it must be the public origin.
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        # Build-time only. These end up inside the JavaScript bundle.
+        BUN_PUBLIC_SUPABASE_URL: ${BUN_PUBLIC_SUPABASE_URL}
+        BUN_PUBLIC_SUPABASE_ANON_KEY: ${BUN_PUBLIC_SUPABASE_ANON_KEY}
+    image: ghcr.io/jatinbhargava/ouratlas-web:latest
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:80"
+    depends_on:
+      api:
+        # nginx resolves `api` when it starts a proxied request, so a slow API
+        # is survivable — but waiting avoids a burst of 502s on first boot.
+        condition: service_healthy

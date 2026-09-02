@@ -1,8 +1,9 @@
 import { Fragment } from "react";
-import { ArrowLeft, LogIn, Users } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { AtlasMark } from "@/components/atlas-mark";
+import { AuthMenu } from "@/components/auth-menu";
 import { Button } from "@/components/ui/button";
 import { useActiveSection } from "@/hooks/use-active-section";
 import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
@@ -109,10 +110,7 @@ export function SiteNav({ visitors = 12480 }: SiteNavProps) {
             visited
           </span>
 
-          <Button variant="ghost" size="sm" className="rounded-full text-stone-700" aria-label="Log in">
-            <LogIn className="size-4" />
-            <span className="hidden sm:inline">Log in</span>
-          </Button>
+          <AuthMenu />
 
           {isLanding && (
             <Button size="sm" className="rounded-full" asChild>

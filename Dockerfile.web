@@ -1,0 +1,46 @@
+# The frontend: Bun builds it, nginx serves it and proxies /api to the API
+# container.
+#
+# IMPORTANT — the Supabase settings are baked in at BUILD time, not run time.
+# Bun inlines every BUN_PUBLIC_* variable into the bundle (see bunfig.toml and
+# build.ts), so they arrive as build arguments. Passing them as environment
+# variables to the running container would do nothing at all: by then the
+# JavaScript is already written.
+#
+# Only public values belong here. Anything secret stays in the API image, which
+# reads its configuration from the environment at run time.
+
+FROM oven/bun:1.4.0-alpine AS build
+WORKDIR /app
+
+COPY package.json bun.lock ./
+# Not --production: the build needs tailwindcss and bun-plugin-tailwind, both
+# of which are devDependencies.
+RUN bun install --frozen-lockfile
+
+ARG BUN_PUBLIC_SUPABASE_URL
+ARG BUN_PUBLIC_SUPABASE_ANON_KEY
+ENV BUN_PUBLIC_SUPABASE_URL=$BUN_PUBLIC_SUPABASE_URL \
+    BUN_PUBLIC_SUPABASE_ANON_KEY=$BUN_PUBLIC_SUPABASE_ANON_KEY
+
+COPY . .
+RUN bun run build
+
+# Built without Supabase keys the site still runs, but nobody can sign in — a
+# failure that only shows up in a browser. Fail the build instead.
+RUN test -n "$BUN_PUBLIC_SUPABASE_URL" \
+ || (echo "BUN_PUBLIC_SUPABASE_URL was not passed as a build arg; sign-in would be dead in this image" && exit 1)
+
+
+FROM nginx:1.29-alpine AS runtime
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+# 127.0.0.1, not localhost: inside the container `localhost` resolves to [::1]
+# first, and a probe that depends on which stack resolves first is a probe that
+# fails for reasons unrelated to the server being up.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://127.0.0.1/index.html >/dev/null 2>&1 || exit 1

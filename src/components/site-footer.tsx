@@ -1,6 +1,7 @@
 import { Mail } from "lucide-react";
 
 import { AtlasMark } from "@/components/atlas-mark";
+import { NewsletterForm } from "@/components/newsletter-form";
 import { Separator } from "@/components/ui/separator";
 
 type LinkGroup = { heading: string; links: { label: string; href: string }[] };
@@ -70,6 +71,20 @@ export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-white/40 bg-white/85 backdrop-blur-md print:hidden">
       <div className="mx-auto w-full max-w-5xl px-6 py-14">
+        {/* The waitlist sits above the link groups: it is the one thing here
+            anyone is actually asked to do. */}
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex max-w-sm flex-col gap-1">
+            <h3 className="font-editorial text-2xl tracking-tight text-stone-900">Letters from the road</h3>
+            <p className="text-sm text-stone-600">
+              New layouts, printing notes, and the occasional issue worth stealing an idea from.
+            </p>
+          </div>
+          <NewsletterForm source="footer" className="w-full sm:max-w-xs" />
+        </div>
+
+        <Separator className="my-10 bg-stone-300" />
+
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="flex flex-col gap-4">
             <a

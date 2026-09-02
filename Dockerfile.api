@@ -1,0 +1,44 @@
+# The Express API, on Bun.
+#
+# Nothing under api/ uses a Bun-specific API — Bun is here to run TypeScript
+# with the tsconfig path aliases directly, which is what saves this image a
+# compile step.
+#
+# This image contains no frontend assets. nginx serves those in the web image,
+# so SERVE_STATIC is off and the SPA fallback in api/app.ts stays dormant.
+
+FROM oven/bun:1.4.0-alpine AS deps
+WORKDIR /app
+
+# Copied on their own so a change to source code does not invalidate the
+# dependency layer.
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
+
+
+FROM oven/bun:1.4.0-alpine AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    SERVE_STATIC=false \
+    PORT=3000
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock tsconfig.json ./
+COPY api ./api
+# Only for the `@/types` alias. Every such import in api/ is `import type`, so
+# it is erased before runtime, but keeping it here means the image can also be
+# type-checked as-is.
+COPY src/types ./src/types
+
+# The oven/bun images ship an unprivileged `bun` user; nothing here needs root.
+USER bun
+
+EXPOSE 3000
+
+# Same endpoint the compose healthcheck uses. Cheap, and it touches no
+# integration, so it stays green when Stripe or Supabase are unconfigured.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD bun -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["bun", "api/index.ts"]

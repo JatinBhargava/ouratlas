@@ -14,6 +14,9 @@ const result = await Bun.build({
   minify: true,
   target: "browser",
   sourcemap: "linked",
+  // Same prefix bunfig.toml gives the dev server, so a production bundle and a
+  // hot-reloaded one see the same Supabase settings.
+  env: "BUN_PUBLIC_*",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },

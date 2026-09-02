@@ -7,12 +7,14 @@
  * logging, no database, no file. Photographs are never sent.
  *
  * The API key lives on the server and is never handed to the browser.
+ *
+ * This module is the engine; `routes/polish.ts` is the endpoint.
  */
 
 const MODEL = "claude-sonnet-5";
 
 /** Longest story we will accept, well above the 10,000-word editor cap. */
-const MAX_CHARS = 80_000;
+export const MAX_CHARS = 80_000;
 
 /**
  * Words per request. The whole story in one call risks running past the output
@@ -134,7 +136,7 @@ export function explain(status: number, detail?: string): string {
 }
 
 /** An upstream failure, carrying the status so the route can mirror it. */
-class UpstreamError extends Error {
+export class UpstreamError extends Error {
   constructor(
     readonly status: number,
     detail?: string,
@@ -145,7 +147,7 @@ class UpstreamError extends Error {
 }
 
 /** Streams one pass, forwarding just the text deltas. */
-async function* editPass(text: string, key: string): AsyncGenerator<string> {
+export async function* editPass(text: string, key: string): AsyncGenerator<string> {
   // Identity-linked keys must name the workspace the request acts in. Ordinary
   // keys do not, and reject the header, so only send it when it is configured.
   const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
@@ -202,71 +204,4 @@ async function* editPass(text: string, key: string): AsyncGenerator<string> {
       if (event.type === "error") throw new Error(event.error?.message ?? "stream error");
     }
   }
-}
-
-export async function polish(request: Request): Promise<Response> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    return Response.json(
-      { error: "Polishing is switched off: this server has no ANTHROPIC_API_KEY set." },
-      { status: 503 },
-    );
-  }
-
-  let story: unknown;
-  try {
-    ({ story } = (await request.json()) as { story?: unknown });
-  } catch {
-    return Response.json({ error: "Expected JSON." }, { status: 400 });
-  }
-
-  if (typeof story !== "string" || story.trim().length === 0) {
-    return Response.json({ error: "Nothing to edit." }, { status: 400 });
-  }
-  if (story.length > MAX_CHARS) {
-    return Response.json({ error: "That story is too long to edit in one go." }, { status: 413 });
-  }
-
-  const passes = toPasses(story);
-  const encoder = new TextEncoder();
-
-  // Run the first pass far enough to know it works. A bad key or a rate limit
-  // discovered after the response has started can only break the stream; found
-  // here it is still an ordinary error with a status and a readable message.
-  const opening = editPass(passes[0]!.text, key);
-  let head: IteratorResult<string>;
-  try {
-    head = await opening.next();
-  } catch (error) {
-    const upstream = error instanceof UpstreamError;
-    return Response.json(
-      { error: upstream ? error.message : "The copy desk could not be reached." },
-      { status: upstream ? (error as UpstreamError).status === 429 ? 429 : 502 : 502 },
-    );
-  }
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        if (!head.done) controller.enqueue(encoder.encode(head.value));
-        for await (const delta of opening) controller.enqueue(encoder.encode(delta));
-
-        for (const pass of passes.slice(1)) {
-          controller.enqueue(encoder.encode(pass.separator));
-          for await (const delta of editPass(pass.text, key)) {
-            controller.enqueue(encoder.encode(delta));
-          }
-        }
-        controller.close();
-      } catch (error) {
-        // The response has already begun, so the only signal left is to break
-        // the stream; the client treats a broken read as a failed edit.
-        controller.error(error);
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
-  });
 }

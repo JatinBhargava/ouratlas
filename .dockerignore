@@ -1,0 +1,23 @@
+# Build outputs and dependencies are produced inside the image, never copied in.
+node_modules
+dist
+out
+
+# Secrets. The API reads its configuration from the environment at run time;
+# baking .env into a layer would ship the service-role key inside the image.
+.env
+.env.*
+!.env.example
+
+.git
+.github
+.DS_Store
+*.log
+coverage
+*.tsbuildinfo
+README.md
+LICENSE
+
+# Development-only entry points. The containers run `api/index.ts` and nginx;
+# neither needs the hot-reload servers.
+dev.ts
