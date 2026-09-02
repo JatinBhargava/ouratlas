@@ -1,0 +1,9 @@
+# Everything here is public except the pages that only mean something to the
+# person signed in. Nothing a crawler could reach exposes anyone's photographs
+# or writing — those never leave the browser they were opened in.
+
+User-agent: *
+Allow: /
+Disallow: /account
+
+Sitemap: https://ouratlas.co.in/sitemap.xml

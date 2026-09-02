@@ -49,3 +49,11 @@ declare module "*.webp" {
   const path: `${string}.webp`;
   export = path;
 }
+
+declare module "*.avif" {
+  /**
+   * A path to the AVIF file
+   */
+  const path: `${string}.avif`;
+  export = path;
+}

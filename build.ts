@@ -26,10 +26,15 @@ const result = await Bun.build({
   },
 });
 
-// Copied rather than bundled, and deliberately not hashed: this address is
-// pasted into other people's caches when a link is shared, so it has to stay
-// exactly where the meta tags in index.html say it is.
-await Bun.write(path.join(outdir, "og.jpg"), Bun.file("src/assets/og.jpg"));
+// Everything in src/static is copied through verbatim and unhashed, because
+// each of these files is addressed from outside the bundle: robots.txt and
+// sitemap.xml by crawlers, favicon.ico by browsers, og.jpg by whatever cached
+// it when somebody shared a link, and the font by a stylesheet that names it.
+// Hashing any of them would move an address something else has written down.
+for (const name of new Bun.Glob("*").scanSync({ cwd: "src/static" })) {
+  await Bun.write(path.join(outdir, name), Bun.file(path.join("src/static", name)));
+  console.log(` ${path.join("dist", name)}  ${(Bun.file(path.join("src/static", name)).size / 1024).toFixed(1)} KB`);
+}
 
 for (const output of result.outputs) {
   console.log(` ${path.relative(process.cwd(), output.path)}  ${(output.size / 1024).toFixed(1)} KB`);

@@ -7,6 +7,7 @@ import { RootLayout } from "@/layouts/RootLayout";
 import { Account } from "@/pages/Account";
 import { Create } from "@/pages/Create";
 import { Home } from "@/pages/Home";
+import { NotFound } from "@/pages/NotFound";
 import "@/styles/globals.css";
 
 export function App() {
@@ -19,6 +20,10 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/create" element={<Create />} />
             <Route path="/account" element={<Account />} />
+            {/* Last, and matching anything left: the server hands the shell
+                back for every path, so an address that is not a page has to be
+                caught here or it renders as an empty layout. */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </RootLayout>
 

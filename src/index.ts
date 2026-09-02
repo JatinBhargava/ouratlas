@@ -12,6 +12,14 @@ import { serve } from "bun";
 import index from "./index.html";
 
 const WEB_PORT = Number(process.env.WEB_PORT ?? 3000);
+
+/** Files served verbatim at the root: robots, sitemap, favicon, card, font. */
+const staticRoutes = Object.fromEntries(
+  [...new Bun.Glob("*").scanSync({ cwd: "src/static" })].map(name => [
+    `/${name}`,
+    () => new Response(Bun.file(`src/static/${name}`)),
+  ]),
+);
 const API_ORIGIN = process.env.API_ORIGIN ?? "http://localhost:3001";
 
 /**
@@ -46,9 +54,9 @@ const server = serve({
   routes: {
     "/api/*": proxy,
 
-    // Served here too, so a share card can be checked before it is deployed.
-    // In production `build.ts` copies it to the same address.
-    "/og.jpg": () => new Response(Bun.file("src/assets/og.jpg")),
+    // The same files `build.ts` copies into dist, at the same addresses, so a
+    // share card or a sitemap can be checked before it is deployed.
+    ...staticRoutes,
 
     // Serve index.html for all unmatched routes.
     "/*": index,

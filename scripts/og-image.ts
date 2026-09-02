@@ -38,7 +38,7 @@ import path from "node:path";
 const CARD = { width: 1200, height: 630 };
 
 const ROOT = path.join(import.meta.dir, "..");
-const OUT = path.join(ROOT, "src/assets/og.jpg");
+const OUT = path.join(ROOT, "src/static/og.jpg");
 
 /** Quality: a photograph forgives more than flat art with type on it does. */
 const QUALITY = { picture: 82, drawn: 92 };

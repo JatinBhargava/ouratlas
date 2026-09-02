@@ -1,6 +1,7 @@
+import { Picture } from "@/components/picture";
 import { cn } from "@/lib/utils";
 import { PHOTO_SWATCHES } from "@/lib/palette";
-import { SAMPLE_PHOTOS } from "@/lib/sample-photos";
+import { SAMPLE_PHOTOS, type SamplePhoto } from "@/lib/sample-photos";
 
 /**
  * Body copy on the mock page. Set small and justified so it reads as a column
@@ -25,9 +26,14 @@ function Column({ children, dropCap = false }: { children: string; dropCap?: boo
  * A photograph in the mock spread. The swatch sits behind as a coloured
  * placeholder so the layout never flashes white while the file loads.
  */
-function Plate({ src, swatch, className }: { src: string; swatch: string; className?: string }) {
+function Plate({ src, swatch, className }: { src: SamplePhoto; swatch: string; className?: string }) {
   return (
-    <img src={src} alt="" decoding="async" className={cn("w-full bg-linear-to-br object-cover", swatch, className)} />
+    <Picture
+      photo={src}
+      alt=""
+      decoding="async"
+      className={cn("w-full bg-linear-to-br object-cover", swatch, className)}
+    />
   );
 }
 

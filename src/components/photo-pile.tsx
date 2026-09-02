@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SectionHeading } from "@/components/section-heading";
 import { cn } from "@/lib/utils";
 
+import { Picture } from "@/components/picture";
 import { SAMPLE_PHOTOS } from "@/lib/sample-photos";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -116,7 +117,7 @@ export function PhotoPile() {
       <div ref={table} className="relative mx-auto h-110 w-full max-w-3xl sm:h-120">
         {PILE.map((photo, i) => (
           <figure
-            key={photo.src}
+            key={photo.alt}
             style={{ zIndex: photo.z }}
             onMouseEnter={event => lift(event.currentTarget, i, true)}
             onMouseLeave={event => lift(event.currentTarget, i, false)}
@@ -125,8 +126,8 @@ export function PhotoPile() {
               photo.place,
             )}
           >
-            <img
-              src={photo.src}
+            <Picture
+              photo={photo.src}
               alt={photo.alt}
               loading="lazy"
               decoding="async"

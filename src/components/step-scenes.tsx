@@ -2,15 +2,16 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Download } from "lucide-react";
 
+import { Picture } from "@/components/picture";
 import { cn } from "@/lib/utils";
 import { PHOTO_SWATCHES } from "@/lib/palette";
-import { SAMPLE_PHOTOS } from "@/lib/sample-photos";
+import { SAMPLE_PHOTOS, type SamplePhoto } from "@/lib/sample-photos";
 
 /** A photograph, over a coloured swatch that shows while the file loads. */
-function Shot({ src, swatch, className }: { src: string; swatch: string; className?: string }) {
+function Shot({ src, swatch, className }: { src: SamplePhoto; swatch: string; className?: string }) {
   return (
-    <img
-      src={src}
+    <Picture
+      photo={src}
       alt=""
       loading="lazy"
       decoding="async"

@@ -47,15 +47,88 @@
       content="Ten photographs and up to ten thousand words in; a paginated issue out, ready to export. The photographs never leave your browser."
     />
     <meta name="twitter:image" content="https://ouratlas.co.in/og.jpg" />
+    <!--
+      The headline face, served from this deployment rather than from Google.
+
+      It used to arrive via a stylesheet <link> to fonts.googleapis.com: a
+      render-blocking request to a third party before anything can be painted —
+      DNS, TLS and a round trip for the CSS, then a second journey to
+      fonts.gstatic.com for the file. Declared here instead, the browser starts
+      fetching the font while the real stylesheet is still in flight, from an
+      origin it is already talking to.
+
+      Inline rather than in globals.css because the CSS bundler will not leave
+      the URL alone: given a relative path it inlines the whole 62 KB face as
+      base64 into the render-blocking stylesheet, and given an absolute one it
+      fails to resolve it. Neither is what a font wants.
+
+      `swap` so the words are readable in the fallback while the file arrives.
+      Instrument Serif is published by Rosetta under the SIL Open Font
+      License 1.1.
+    -->
+    <style>
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("/instrument-serif.ttf") format("truetype");
+      }
+    </style>
+
+    <!--
+      No <link> for favicon.ico on purpose: it is served from the root, which
+      is where every browser and crawler looks for it without being told. The
+      SVG below is the one that needs announcing, being the better icon where
+      it is understood.
+    -->
     <link rel="icon" type="image/svg+xml" href="./assets/atlas-mark.svg" />
     <link rel="apple-touch-icon" href="./assets/atlas-mark.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
-      rel="stylesheet"
-    />
     <title>Atlas — your trip, set as a magazine</title>
+
+    <!--
+      Structured data. Deliberately modest: what the thing is, who publishes it
+      and what it costs to start. No ratings, no review counts and no prices for
+      the paid plans — those would be claims, and an invented one is worse than
+      an absent one.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://ouratlas.co.in/#website",
+            "url": "https://ouratlas.co.in/",
+            "name": "Atlas",
+            "description": "Trip photos and your own words, set as a magazine you can keep.",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://ouratlas.co.in/#app",
+            "name": "Atlas",
+            "url": "https://ouratlas.co.in/",
+            "applicationCategory": "DesignApplication",
+            "operatingSystem": "Any modern web browser",
+            "browserRequirements": "Requires JavaScript",
+            "isPartOf": { "@id": "https://ouratlas.co.in/#website" },
+            "description": "Ten photographs and up to ten thousand words in; a paginated magazine issue out, ready to export as a PDF. The photographs and the writing are laid out in the browser and are never uploaded.",
+            "featureList": [
+              "Automatic magazine layout with cover, contents, spreads and folios",
+              "Export to PDF at print size",
+              "Photographs never leave the browser"
+            ],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "INR",
+              "description": "Free to compose and export."
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
