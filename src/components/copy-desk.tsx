@@ -119,7 +119,7 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
       <TooltipContent>
         The copy desk is the one page of the magazine you cannot set yourself. It comes with{" "}
         <span className="font-medium">Traveller</span> and <span className="font-medium">Cartographer</span> — your
-        photographs, your pages and the export stay yours on Wanderer.{" "}
+        photographs, your pages and the export stay yours on all plans.{" "}
         <Link to="/#pricing" className="underline underline-offset-2">
           See the plans
         </Link>
