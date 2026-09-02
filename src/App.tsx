@@ -1,3 +1,5 @@
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { BrowserRouter, Route, Routes } from "react-router";
 
 import { AuthProvider } from "@/lib/auth";
@@ -19,6 +21,21 @@ export function App() {
             <Route path="/account" element={<Account />} />
           </Routes>
         </RootLayout>
+
+        {/*
+          Vercel's own instrumentation: page views and Core Web Vitals for the
+          frontend only — the API is on Render and is not covered.
+
+          Both are cookieless and collect no personal data, which matters here:
+          photographs and story text never leave the browser, and nothing about
+          them is measured. Both scripts are served from the deployment, so they
+          are inert anywhere other than Vercel, development included.
+
+          Inside the router on purpose — that is what lets them attribute views
+          to /create and /account rather than recording every visit as "/".
+        */}
+        <Analytics />
+        <SpeedInsights />
       </AuthProvider>
     </BrowserRouter>
   );
