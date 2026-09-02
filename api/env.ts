@@ -33,6 +33,29 @@ export const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
  */
 export const serveStatic = (process.env.SERVE_STATIC ?? String(process.env.NODE_ENV === "production")) === "true";
 
+/**
+ * How often the keep-alive job pings this service. Ten minutes sits inside the
+ * fifteen-minute idle window hosts like Render use, with room for one ping to
+ * fail without the service being allowed to sleep.
+ */
+export const KEEPALIVE_INTERVAL_MS = Number(process.env.KEEPALIVE_INTERVAL_MINUTES ?? 10) * 60_000;
+
+/**
+ * The public address this service answers on, or null when there is nothing to
+ * keep awake.
+ *
+ * Render injects RENDER_EXTERNAL_URL, so on Render this needs no configuration
+ * at all. KEEPALIVE_URL overrides it for anywhere else. Development is excluded
+ * on purpose: pinging localhost every ten minutes achieves nothing but noise in
+ * the log.
+ */
+export function keepAliveUrl(): string | null {
+  if (process.env.NODE_ENV !== "production") return null;
+  if (process.env.KEEPALIVE === "false") return null;
+
+  return process.env.KEEPALIVE_URL ?? process.env.RENDER_EXTERNAL_URL ?? null;
+}
+
 export const supabase = {
   url: process.env.SUPABASE_URL,
   /**

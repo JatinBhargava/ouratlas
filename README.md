@@ -209,6 +209,30 @@ cannot sign anybody in.
 Everything else — Supabase service-role key, Stripe keys, `APP_URL` — is read by
 the API at run time and can change without a rebuild.
 
+### Keeping the API awake
+
+`api/cron.ts` runs one scheduled job: every ten minutes it fetches its own
+`/api/health`.
+
+Free hosting idles a service out after a quiet spell — around fifteen minutes on
+Render — and a cold start is several seconds of someone staring at a blank
+sign-in. Ten minutes leaves room for one ping to fail without the idle window
+being reached.
+
+It has to be the **public** URL rather than localhost. Hosts count inbound
+requests through their own proxy, so a loopback request would keep the event
+loop busy and let the service sleep anyway. On Render this is automatic —
+`RENDER_EXTERNAL_URL` is injected — and `KEEPALIVE_URL` covers anywhere else.
+
+Two things it deliberately does not do. It cannot wake a service that has
+already stopped, because the process holding the timer stopped with it; it only
+prevents the idle window from being reached. And it never runs in development,
+where pinging localhost would achieve nothing but noise.
+
+A failed ping is logged and the schedule continues. The timer is unref'd, so it
+never holds the process open during shutdown. The boot log names the jobs that
+started — a cron that silently is not running would be worse than none.
+
 ### CI
 
 `.github/workflows/ci.yml`. Every push and pull request runs `check`: install
