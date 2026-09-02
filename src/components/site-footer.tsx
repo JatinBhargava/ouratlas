@@ -3,6 +3,7 @@ import { Mail } from "lucide-react";
 import { AtlasMark } from "@/components/atlas-mark";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Separator } from "@/components/ui/separator";
+import { APP_VERSION } from "@/lib/version";
 
 type LinkGroup = { heading: string; links: { label: string; href: string }[] };
 
@@ -139,7 +140,12 @@ export function SiteFooter() {
         <Separator className="my-10 bg-stone-300" />
 
         <div className="flex flex-col items-center justify-between gap-3 text-sm text-stone-500 sm:flex-row">
-          <p>© {new Date().getFullYear()} OurAtlas. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} OurAtlas. All rights reserved.{" "}
+            {/* Small, but it is the only way to tell from a browser which
+                build is actually being served. */}
+            <span className="text-stone-400 tabular-nums">v{APP_VERSION}</span>
+          </p>
           <p>Made for people who take the long way home.</p>
         </div>
       </div>

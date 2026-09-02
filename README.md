@@ -233,6 +233,46 @@ A failed ping is logged and the schedule continues. The timer is unref'd, so it
 never holds the process open during shutdown. The boot log names the jobs that
 started — a cron that silently is not running would be worse than none.
 
+### Versioning
+
+`versions.json` is the only place a version number is written:
+
+```json
+{ "api": "0.1.0", "ui": "0.1.0" }
+```
+
+The two are separate because they ship separately — a frontend change should not
+claim the API moved. Everything else reads that file through
+`scripts/versions.ts`, which is the single reader so nothing else needs to know
+the file's shape:
+
+| Reads it | For |
+| --- | --- |
+| `.github/workflows/ci.yml` | image tags `v0.1.0`, alongside `latest` and the SHA |
+| `docker-compose.yml` | the same tags locally, via `bun run docker:build` |
+| `Dockerfile.api` / `.web` | `APP_VERSION` build arg, stamped into the image |
+| `api/env.ts` | what `/api/health` and the boot log report |
+| `build.ts` | inlined into the bundle, shown in the footer |
+
+Bumping a version is editing that one file. Nothing else needs touching.
+
+Both halves report what they are actually running, which is how a rollout gets
+confirmed from outside:
+
+```bash
+curl https://api.ouratlas.co.in/api/health
+# {"ok":true,"service":"api","version":"0.1.0"}
+```
+
+The frontend's equivalent is the `v0.1.0` in the footer.
+
+An image carries the version it was **built** from, stamped in as `APP_VERSION`,
+rather than reading `versions.json` at run time — so a container keeps reporting
+what it is, even after the file moves on. Locally, `docker compose` on its own
+cannot read JSON, so `bun run docker:build` injects the versions for it; called
+directly, compose falls back to `:dev`, which is a truthful label for an
+unversioned build.
+
 ### CI
 
 `.github/workflows/ci.yml`. Every push and pull request runs `check`: install

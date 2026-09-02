@@ -9,7 +9,10 @@
     "dev:web": "bun --hot src/index.ts",
     "build": "bun run build.ts",
     "start": "NODE_ENV=production bun api/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "version": "bun scripts/versions.ts",
+    "docker:build": "bun scripts/versions.ts exec docker compose build",
+    "docker:up": "bun scripts/versions.ts exec docker compose up -d"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.3",

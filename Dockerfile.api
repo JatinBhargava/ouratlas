@@ -19,13 +19,20 @@ RUN bun install --frozen-lockfile --production
 FROM oven/bun:1.4.0-alpine AS runtime
 WORKDIR /app
 
+# Stamped in at build time so a running container reports the version it was
+# built from, not whatever versions.json happens to say later.
+ARG APP_VERSION=dev
+
 ENV NODE_ENV=production \
     SERVE_STATIC=false \
-    PORT=3000
+    PORT=3000 \
+    APP_VERSION=$APP_VERSION
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock tsconfig.json ./
 COPY api ./api
+COPY scripts ./scripts
+COPY versions.json ./versions.json
 # Only for the `@/types` alias. Every such import in api/ is `import type`, so
 # it is erased before runtime, but keeping it here means the image can also be
 # type-checked as-is.

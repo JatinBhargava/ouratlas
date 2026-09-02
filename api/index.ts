@@ -9,13 +9,13 @@
 
 import { createApp } from "@api/app";
 import { startCron } from "@api/cron";
-import { describe, PORT, serveStatic } from "@api/env";
+import { APP_VERSION, describe, PORT, serveStatic } from "@api/env";
 
 const app = createApp();
 
 app.listen(PORT, () => {
   const role = serveStatic ? "site and API" : "API only — run `bun dev` for the frontend";
-  console.log(`\n  Atlas ${role}\n  http://localhost:${PORT}\n`);
+  console.log(`\n  Atlas ${role}  v${APP_VERSION}\n  http://localhost:${PORT}\n`);
   console.log(describe());
 
   // Started after the server is listening, so the first keep-alive ping cannot

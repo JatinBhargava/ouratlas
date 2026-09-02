@@ -8,6 +8,21 @@
  * and what `describe()` prints on boot so a half-set-up server says so.
  */
 
+import { versionOf } from "../scripts/versions";
+
+/**
+ * The version this process is running.
+ *
+ * In an image it comes from APP_VERSION, stamped in at build time by the
+ * Dockerfile, so a container reports what it was actually built from rather
+ * than whatever the working tree says now. Outside one it falls back to
+ * versions.json, which is the same number for a freshly built image and the
+ * right answer during development.
+ */
+// `||`, not `??`: APP_VERSION set to an empty string is a misconfiguration,
+// not a deliberate empty version, and should fall back rather than report "".
+export const APP_VERSION = process.env.APP_VERSION || versionOf("api");
+
 /**
  * Port the Express API listens on.
  *

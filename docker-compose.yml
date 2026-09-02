@@ -4,7 +4,13 @@
 # compose network and nowhere else, so the service-role key and the Stripe
 # secret are never a request away from the internet.
 #
-#   docker compose up --build      -> http://localhost:3000
+#   bun run docker:build           -> builds, tagged from versions.json
+#   bun run docker:up              -> http://localhost:3000
+#
+# Use those rather than `docker compose` directly: they inject API_VERSION and
+# WEB_VERSION from versions.json, which compose cannot read on its own. Called
+# without them the images fall back to :dev, which is a truthful label for an
+# unversioned local build.
 #
 # The frontend's Supabase settings are compiled in, so changing them means
 # rebuilding `web`, not restarting it.
@@ -14,7 +20,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: ghcr.io/jatinbhargava/ouratlas-api:latest
+      args:
+        APP_VERSION: ${API_VERSION:-dev}
+    image: ghcr.io/jatinbhargava/ouratlas-api:${API_VERSION:+v}${API_VERSION:-dev}
     restart: unless-stopped
     # Read at run time, so a key can change without a rebuild. Every variable
     # is optional: a missing one switches its feature off and says so on boot.
@@ -43,7 +51,8 @@ services:
         # Build-time only. These end up inside the JavaScript bundle.
         BUN_PUBLIC_SUPABASE_URL: ${BUN_PUBLIC_SUPABASE_URL}
         BUN_PUBLIC_SUPABASE_ANON_KEY: ${BUN_PUBLIC_SUPABASE_ANON_KEY}
-    image: ghcr.io/jatinbhargava/ouratlas-web:latest
+        APP_VERSION: ${WEB_VERSION:-dev}
+    image: ghcr.io/jatinbhargava/ouratlas-web:${WEB_VERSION:+v}${WEB_VERSION:-dev}
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:80"

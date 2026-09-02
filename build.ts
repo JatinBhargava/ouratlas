@@ -1,4 +1,5 @@
 import tailwind from "bun-plugin-tailwind";
+import { versionOf } from "./scripts/versions";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
@@ -19,6 +20,9 @@ const result = await Bun.build({
   env: "BUN_PUBLIC_*",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
+    // Baked in like the Supabase settings, and for the same reason: the
+    // bundle has to carry it, there is no run time to read it at.
+    "process.env.BUN_PUBLIC_APP_VERSION": JSON.stringify(process.env.BUN_PUBLIC_APP_VERSION ?? versionOf("ui")),
   },
 });
 

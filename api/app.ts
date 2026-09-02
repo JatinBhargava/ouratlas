@@ -9,7 +9,7 @@
 import express, { type Express } from "express";
 import path from "node:path";
 
-import { serveStatic } from "@api/env";
+import { APP_VERSION, serveStatic } from "@api/env";
 import { errorHandler, notFound } from "@api/http";
 import { authRoutes } from "@api/routes/auth";
 import { billingRoutes } from "@api/routes/billing";
@@ -39,8 +39,10 @@ export function createApp(): Express {
   // Generous enough for a 10,000-word story going to the copy desk.
   app.use(express.json({ limit: "1mb" }));
 
+  // Carries the version so a deploy can be confirmed from outside — comparing
+  // this against versions.json is how you tell whether the rollout landed.
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, service: "api", version: APP_VERSION });
   });
 
   app.use("/api", authRoutes);
