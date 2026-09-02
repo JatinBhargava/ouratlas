@@ -12,8 +12,17 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url = process.env.BUN_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.BUN_PUBLIC_SUPABASE_ANON_KEY;
+// Guarded for the same reason as in `version.ts`: an unset BUN_PUBLIC_ variable
+// is not inlined, so `process` would be read in the browser and throw. Without
+// the guard a clone with no .env takes the whole page down instead of quietly
+// reporting sign-in as switched off, which is the behaviour this file is built
+// around.
+// The full `process.env.BUN_PUBLIC_…` expression must appear verbatim — that
+// exact text is what the bundler substitutes. Hoisting `process.env` into a
+// variable first reads naturally and silently defeats the substitution, leaving
+// a bundle with no Supabase configuration at all.
+const url = typeof process !== "undefined" ? process.env.BUN_PUBLIC_SUPABASE_URL : undefined;
+const anonKey = typeof process !== "undefined" ? process.env.BUN_PUBLIC_SUPABASE_ANON_KEY : undefined;
 
 /**
  * Whether this build can sign anyone in.

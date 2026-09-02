@@ -7,12 +7,24 @@
  * makes sure neither outlives the other.
  */
 
+import { versionOf } from "./scripts/versions";
+
 const WEB_PORT = process.env.WEB_PORT ?? "3000";
 const API_PORT = process.env.PORT ?? "3001";
 
 const shared: Parameters<typeof Bun.spawn>[1] = {
   stdio: ["inherit", "inherit", "inherit"],
-  env: { ...process.env, WEB_PORT, PORT: API_PORT, API_ORIGIN: `http://localhost:${API_PORT}` },
+  env: {
+    ...process.env,
+    WEB_PORT,
+    PORT: API_PORT,
+    API_ORIGIN: `http://localhost:${API_PORT}`,
+    // Bun's dev server inlines BUN_PUBLIC_* variables that exist in the
+    // environment, and this one lives in versions.json rather than .env. Set
+    // here so a development build reports the same version a released one
+    // would, instead of falling back to "dev".
+    BUN_PUBLIC_APP_VERSION: versionOf("ui"),
+  },
 };
 
 const api = Bun.spawn(["bun", "--hot", "api/index.ts"], shared);
