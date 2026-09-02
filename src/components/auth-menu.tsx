@@ -1,4 +1,4 @@
-import { LogIn } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -71,8 +71,14 @@ export function AuthMenu({ className }: { className?: string }) {
         });
       }}
     >
-      <LogIn className="size-4" />
-      <span className="hidden sm:inline">{busy ? "Taking you to Google…" : "Log in"}</span>
+      {/*
+        The label stays "Log in" while the redirect is in flight, and only the
+        icon changes. A longer word here grows the button, and the nav pill
+        clips its overflow — so a busier message pushed "Start a story" out of
+        sight, which read as the page breaking rather than as progress.
+      */}
+      {busy ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
+      <span className="hidden sm:inline">Log in</span>
     </Button>
   );
 }

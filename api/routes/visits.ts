@@ -28,8 +28,30 @@ const TTL_MS = 10 * 60 * 1000;
 
 let cached: { value: VisitsResponse; at: number } | null = null;
 
+/**
+ * How far back the readership figure reaches.
+ *
+ * Thirty days, for two reasons. Left to itself the count endpoint reports
+ * *today only*, so circulation would reset every midnight — a figure that falls
+ * to nothing overnight is worse than none. And the hobby plan refuses any range
+ * older than 31 days, so a lifetime total is not on offer regardless. A rolling
+ * month is also what a periodical would quote.
+ */
+const WINDOW_DAYS = 30;
+
+/** Vercel wants plain calendar dates here, not timestamps. */
+function isoDate(offsetDays = 0): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
 async function fetchCounts(): Promise<VisitsResponse> {
-  const params = new URLSearchParams({ projectId: vercel.projectId! });
+  const params = new URLSearchParams({
+    projectId: vercel.projectId!,
+    since: isoDate(-WINDOW_DAYS),
+    until: isoDate(1),
+  });
   // Only teams take this; sending it for a personal project is an error.
   if (vercel.teamId) params.set("teamId", vercel.teamId);
 
