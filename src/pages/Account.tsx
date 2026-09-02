@@ -22,7 +22,8 @@ const date = new Intl.DateTimeFormat("en", { day: "numeric", month: "long", year
 const POLL_DELAYS_MS = [800, 1_200, 2_000, 3_000, 5_000, 8_000, 10_000];
 
 export function Account() {
-  const { ready, configured, user, billing, loadingBilling, signInWithGoogle, signOut, refreshBilling } = useAuth();
+  const { ready, configured, user, billing, loadingBilling, signInError, signInWithGoogle, signOut, refreshBilling } =
+    useAuth();
   const [params, setParams] = useSearchParams();
   const [portalError, setPortalError] = useState<string | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
@@ -109,6 +110,14 @@ export function Account() {
         <Button className="rounded-full" onClick={() => void signInWithGoogle("/account")}>
           Continue with Google
         </Button>
+
+        {/* A failed return from Google leaves the code in the address bar and
+            no session. Saying so beats an unexplained signed-out page. */}
+        {signInError && (
+          <p className="text-sm text-red-600" role="alert">
+            {signInError}
+          </p>
+        )}
       </Card>
     );
   }

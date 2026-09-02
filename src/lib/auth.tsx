@@ -26,6 +26,14 @@ type AuthValue = {
   billing: Billing;
   /** True while `/api/me` is in flight. */
   loadingBilling: boolean;
+  /**
+   * Why the last sign-in attempt failed, or null.
+   *
+   * Returning from Google can fail after the redirect has already succeeded —
+   * the code arrives but cannot be exchanged. Without this the app would sit
+   * on `/?code=…` looking signed out with nothing said about why.
+   */
+  signInError: string | null;
   signInWithGoogle: (returnTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Re-reads the plan — used after returning from Stripe. */
@@ -54,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(!authConfigured);
   const [billing, setBilling] = useState<Billing>(FREE);
   const [loadingBilling, setLoadingBilling] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   // Lets a slow `/api/me` that resolves after sign-out be discarded rather
   // than write a stale plan over the signed-out state.
@@ -62,7 +71,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.auth.getSession().then(({ data }) => {
+    // Supabase redirects failures back as query parameters rather than
+    // throwing, so an unreadable one would otherwise vanish silently.
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error_description") ?? params.get("error");
+    if (oauthError) {
+      console.error("[auth] provider returned an error:", oauthError);
+      setSignInError(oauthError);
+    }
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      // With detectSessionInUrl on, the `?code=` exchange happens inside this
+      // call. A failure here is the case that looks like nothing happening:
+      // the code sits in the address bar and the app still reads as signed
+      // out. The usual cause is a missing PKCE verifier — sign-in begun in a
+      // different browser, profile, or origin than the one it returned to.
+      if (error) {
+        console.error("[auth] could not establish a session:", error.message);
+        setSignInError(error.message);
+      } else if (params.has("code") && !data.session) {
+        const message = "Sign-in did not complete. Start it again in this browser.";
+        console.error(`[auth] ${message} (code present but no session was created)`);
+        setSignInError(message);
+      }
+
       setSession(data.session);
       setReady(true);
     });
@@ -70,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fires on sign-in, sign-out, token refresh, and on the redirect back
     // from Google once the code in the URL has been exchanged.
     const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (next) setSignInError(null);
       setSession(next);
       setReady(true);
     });
@@ -109,6 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async (returnTo = "/account") => {
     if (!supabase) throw new Error("Sign-in is switched off: this build has no Supabase keys.");
 
+    setSignInError(null);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: new URL(returnTo, window.location.origin).toString() },
@@ -131,11 +166,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session ? toSessionUser(session) : null,
       billing,
       loadingBilling,
+      signInError,
       signInWithGoogle,
       signOut,
       refreshBilling,
     }),
-    [ready, session, billing, loadingBilling, signInWithGoogle, signOut, refreshBilling],
+    [ready, session, billing, loadingBilling, signInError, signInWithGoogle, signOut, refreshBilling],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;
