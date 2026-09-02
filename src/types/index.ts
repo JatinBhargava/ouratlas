@@ -5,11 +5,31 @@ export type ApiError = {
   message: string;
 };
 
+/**
+ * Where in a photograph the interesting part is, as percentages.
+ *
+ * These are `object-position` percentages: 0 is the left or top edge, 100 the
+ * right or bottom.
+ */
+export type Focus = { x: number; y: number };
+
+export const CENTRED: Focus = { x: 50, y: 50 };
+
 /** An image chosen for an album. `url` is an object URL local to the tab. */
 export type Photo = {
   id: string;
   file: File;
   url: string;
+  /**
+   * Where the picture sits inside its frame, or absent for auto.
+   *
+   * Absent is the default and means the plate places the photograph itself:
+   * it fills the frame and the middle is kept, which is a guess but usually
+   * the right one. Present means someone has taken the placing over, and the
+   * picture stays exactly where they put it. Handing it back to auto clears
+   * this rather than remembering a position nobody is using.
+   */
+  focus?: Focus;
 };
 
 // --- Accounts and billing ------------------------------------------------

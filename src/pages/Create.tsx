@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { composeIssue } from "@/lib/magazine/compose";
 import { disposeMeasurer } from "@/lib/magazine/fit";
+import type { Axis, PlateBox } from "@/lib/magazine/templates";
 import type { Issue } from "@/lib/magazine/types";
-import type { Photo } from "@/types";
+import type { Focus, Photo } from "@/types";
 
 const countWords = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
 
@@ -24,6 +25,23 @@ export function Create() {
   const [composing, setComposing] = useState(false);
   // Recorded so the colophon can say the words were sent away to be edited.
   const [polished, setPolished] = useState(false);
+  /**
+   * Plate sizes the reader has pulled, by page index and axis.
+   *
+   * Kept here rather than on the issue because the issue is rebuilt from
+   * scratch every time anything changes; these are the decisions that have to
+   * survive that.
+   */
+  const [plateSizes, setPlateSizes] = useState<Record<number, Partial<PlateBox>>>({});
+  /**
+   * Decides the riddle on the blank leaf, drawn afresh each time the issue is
+   * sent to press and then held for that issue's lifetime.
+   *
+   * Every recomposition below hands the same seed back, so moving a plate
+   * about cannot change the riddle underneath you — but pressing again gives a
+   * new one.
+   */
+  const [seed, setSeed] = useState("");
 
   // Object URLs are a manual resource: release them when the page goes away.
   const photosRef = useRef<Photo[]>([]);
@@ -48,6 +66,77 @@ export function Create() {
       })),
     ]);
 
+  /** Moves one photograph into another's place, carrying the rest along. */
+  const reorderPhotos = (from: string, to: string) =>
+    setPhotos(current => {
+      const fromIndex = current.findIndex(photo => photo.id === from);
+      const toIndex = current.findIndex(photo => photo.id === to);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return current;
+
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved!);
+      return next;
+    });
+
+  /**
+   * Exchanges the two photographs a pair of plates is drawn from, and sets the
+   * issue again.
+   *
+   * The composer deals photographs out by position, so swapping two entries
+   * swaps exactly those two plates and leaves every other page as it was.
+   * Recomposing is cheap here and safe to do synchronously: the fonts were
+   * already waited for when the issue was first set.
+   */
+  const swapPlates = (from: string, to: string) => {
+    const fromIndex = photos.findIndex(photo => photo.id === from);
+    const toIndex = photos.findIndex(photo => photo.id === to);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+    const next = [...photos];
+    next[fromIndex] = photos[toIndex]!;
+    next[toIndex] = photos[fromIndex]!;
+
+    setPhotos(next);
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed }));
+  };
+
+  /**
+   * Sets one axis of one page's plate and lays the issue out again.
+   *
+   * The whole issue is recomposed, not just that page: a bigger plate leaves
+   * less room for copy, so everything after it moves. Pages before it, and the
+   * page itself, stay where they were — which is why an index is a stable
+   * enough address to record the choice against.
+   *
+   * The two axes are merged rather than replaced, so setting a width does not
+   * quietly undo a depth set a moment earlier.
+   */
+  const resizePlate = (index: number, axis: Axis, value: number) => {
+    const next = { ...plateSizes, [index]: { ...plateSizes[index], [axis]: value } };
+    setPlateSizes(next);
+    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed }));
+  };
+
+  /**
+   * Places a photograph inside its frame, or hands the placing back to the
+   * plate when `focus` is null.
+   *
+   * Kept on the photograph rather than on the page: it is a fact about the
+   * picture, not about where the picture happens to be sitting, so it follows
+   * the photograph when two plates are swapped. Nothing re-flows — how a
+   * picture sits in its frame does not change how much room the copy has — but
+   * the issue holds its own references to these objects, so it has to be built
+   * again to see the new one.
+   */
+  const panPhoto = (id: string, focus: Focus | null) => {
+    const next = photos.map(photo =>
+      photo.id === id ? { ...photo, focus: focus ?? undefined } : photo,
+    );
+    setPhotos(next);
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed }));
+  };
+
   const removePhoto = (id: string) =>
     setPhotos(current => {
       const gone = current.find(photo => photo.id === id);
@@ -70,7 +159,12 @@ export function Create() {
     // arrives would fit against the fallback and re-wrap once it loads.
     await document.fonts.ready;
     await new Promise(resolve => requestAnimationFrame(resolve));
-    setIssue(composeIssue({ title, photos, story, polished }));
+    // A fresh seed per press, used for this composition and kept in state for
+    // every recomposition the reader's dragging causes afterwards.
+    const pressing = crypto.randomUUID();
+    setSeed(pressing);
+
+    setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing }));
     setComposing(false);
     window.scrollTo({ top: 0 });
   };
@@ -99,7 +193,17 @@ export function Create() {
             </div>
           </header>
 
-          <IssueView issue={issue} />
+          <IssueView issue={issue} onSwapPlates={swapPlates} onResizePlate={resizePlate} onPanPhoto={panPhoto} />
+
+          <p className="text-center text-xs text-white/70 drop-shadow-sm">
+            Every picture is placed for you until you say otherwise: hover one and press{" "}
+            <span className="font-medium text-white">Auto</span> to take the placing over, then drag the picture to
+            choose what shows. Press <span className="font-medium text-white">Move</span> to hand it back. The grips on
+            a plate's edges set how much of the page it takes — <span className="font-medium text-white">depth</span> on
+            the horizontal one, <span className="font-medium text-white">width</span> on the vertical — and the story
+            re-flows around whatever you leave it. To swap two photographs, drag one by the{" "}
+            <span className="font-medium text-white">Swap</span> badge in its corner and drop it on the other.
+          </p>
 
           <p className="text-center text-xs text-white/70 drop-shadow-sm">
             Export opens your print dialog — choose <span className="font-medium text-white">Save as PDF</span>. The
@@ -141,7 +245,7 @@ export function Create() {
             />
           </div>
 
-          <PhotoPicker photos={photos} onAdd={addPhotos} onRemove={removePhoto} />
+          <PhotoPicker photos={photos} onAdd={addPhotos} onRemove={removePhoto} onReorder={reorderPhotos} />
           <StoryEditor
             story={story}
             onChange={setStory}

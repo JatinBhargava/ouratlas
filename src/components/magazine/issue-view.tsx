@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { MagazinePage } from "@/components/magazine/pages";
+import { MagazinePage, PlateEditProvider } from "@/components/magazine/pages";
 import { Button } from "@/components/ui/button";
 import { PAGE } from "@/lib/magazine/geometry";
+import type { Axis } from "@/lib/magazine/templates";
+import type { Focus } from "@/types";
 import type { Issue, Page } from "@/lib/magazine/types";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +20,21 @@ function toSpreads(pages: Page[]): Page[][] {
   return spreads;
 }
 
-export function IssueView({ issue, className }: { issue: Issue; className?: string }) {
+type IssueViewProps = {
+  issue: Issue;
+  className?: string;
+  /**
+   * Swaps the two photographs when one plate is dropped on another. Omitting
+   * it leaves every plate fixed, which is what the printed sheet wants.
+   */
+  onSwapPlates?: (from: string, to: string) => void;
+  /** Sets one axis of the plate on one page, by page index. */
+  onResizePlate?: (index: number, axis: Axis, value: number) => void;
+  /** Places a photograph inside its frame, or hands the placing back with null. */
+  onPanPhoto?: (photoId: string, focus: Focus | null) => void;
+};
+
+export function IssueView({ issue, className, onSwapPlates, onResizePlate, onPanPhoto }: IssueViewProps) {
   const spreads = useMemo(() => toSpreads(issue.pages), [issue.pages]);
   const [index, setIndex] = useState(0);
   const stage = useRef<HTMLDivElement>(null);
@@ -50,6 +66,34 @@ export function IssueView({ issue, className }: { issue: Issue; className?: stri
     return () => window.removeEventListener("keydown", onKey);
   }, [spreads.length]);
 
+  const leaves = (
+    <div
+      style={{ width, height: PAGE.height, scale: `${scale}`, transformOrigin: "top left" }}
+      className={cn("flex shadow-2xl shadow-black/25", spread.length === 1 && "mx-auto")}
+    >
+      {spread.map(page => (
+        <MagazinePage
+          key={page.id}
+          page={page}
+          title={issue.title}
+          dateline={issue.dateline}
+          polished={issue.polished}
+        />
+      ))}
+    </div>
+  );
+
+  // Mounted only when there is something for it to do, so a read-only viewer
+  // draws plates that cannot be picked up, pulled or moved.
+  const editable =
+    onSwapPlates || onResizePlate || onPanPhoto ? (
+      <PlateEditProvider scale={scale} onSwap={onSwapPlates} onResize={onResizePlate} onPan={onPanPhoto}>
+        {leaves}
+      </PlateEditProvider>
+    ) : (
+      leaves
+    );
+
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div ref={stage} className="flex justify-center">
@@ -57,20 +101,7 @@ export function IssueView({ issue, className }: { issue: Issue; className?: stri
           style={{ width: width * scale, height: PAGE.height * scale }}
           className="relative"
         >
-          <div
-            style={{ width, height: PAGE.height, scale: `${scale}`, transformOrigin: "top left" }}
-            className={cn("flex shadow-2xl shadow-black/25", spread.length === 1 && "mx-auto")}
-          >
-            {spread.map(page => (
-              <MagazinePage
-                key={page.id}
-                page={page}
-                title={issue.title}
-                dateline={issue.dateline}
-                polished={issue.polished}
-              />
-            ))}
-          </div>
+          {editable}
         </div>
       </div>
 

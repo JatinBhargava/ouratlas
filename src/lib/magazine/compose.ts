@@ -1,6 +1,15 @@
+import { riddleFor } from "@/lib/magazine/diversions";
 import { fitBox } from "@/lib/magazine/fit";
 import { isSpent, remaining, START, toParagraphs, wordCount, type Cursor, type Slice } from "@/lib/magazine/copy";
-import { BODY_CYCLE, TEMPLATES, type Template, type TemplateId } from "@/lib/magazine/templates";
+import {
+  boxesFor,
+  PLAIN,
+  PLATE_CYCLE,
+  plateSize,
+  TEMPLATES,
+  type PlateBox,
+  type Template,
+} from "@/lib/magazine/templates";
 import type { Issue, Page, Plate } from "@/lib/magazine/types";
 import type { Photo } from "@/types";
 
@@ -39,6 +48,25 @@ type ComposeInput = {
   when?: Date;
   /** True if the words were edited by the copy desk. */
   polished?: boolean;
+  /**
+   * Plate sizes the reader has set, by page index. An axis left out takes the
+   * layout's default, and anything out of range is clamped to what the layout
+   * can take.
+   *
+   * Keyed by index because that is what survives a recomposition: a bigger
+   * plate holds less copy, so every page after it re-flows, but the resized
+   * page and everything before it stay where they were.
+   */
+  plateSizes?: Record<number, Partial<PlateBox>>;
+  /**
+   * Decides the riddle on the blank leaf.
+   *
+   * Chosen once when the issue is sent to press and handed back unchanged on
+   * every recomposition afterwards, so the riddle is new each time you press
+   * but holds still while you are moving plates around. Absent, it falls back
+   * to the title, which keeps a composition made without one repeatable.
+   */
+  seed?: string;
 };
 
 /**
@@ -46,13 +74,27 @@ type ComposeInput = {
  *
  * Copy is poured through the layouts in order, each box measured against real
  * type before it is committed, so no page overflows and none is left half
- * empty. Photographs are dealt out as the layouts call for them and never
- * repeat; once they run out the issue settles into plain columns, and any that
- * the copy did not reach are printed as plates at the back.
+ * empty.
+ *
+ * Photographs are spread across the whole issue rather than spent as fast as
+ * the layouts will take them. Before each page the composer asks how far
+ * through the story it has got and how many plates it has printed; a page that
+ * has fallen behind takes a photograph, one that is ahead takes plain columns.
+ * With enough photographs every page is illustrated, and with few they arrive
+ * at an even interval to the last page instead of stopping a third of the way
+ * in. No photograph is ever printed twice.
  *
  * Runs in the browser and touches nothing outside this tab.
  */
-export function composeIssue({ title, photos, story, when, polished = false }: ComposeInput): Issue {
+export function composeIssue({
+  title,
+  photos,
+  story,
+  when,
+  polished = false,
+  plateSizes,
+  seed,
+}: ComposeInput): Issue {
   const paragraphs = toParagraphs(story);
   const words = wordCount(paragraphs);
 
@@ -61,17 +103,21 @@ export function composeIssue({ title, photos, story, when, polished = false }: C
   const pool = [...(photos.length > 1 ? photos.slice(1) : photos)];
   let plateNumber = 0;
 
+  // Fixed before anything is dealt: the pacing below measures progress against
+  // the whole supply, and a shrinking denominator would make it accelerate.
+  const supply = pool.length;
+
   const nextPlates = (count: number): Plate[] =>
     pool.splice(0, count).map(photo => ({ photo, label: `Plate ${roman(++plateNumber)}` }));
 
   let cursor: Cursor = START;
   const pages: Page[] = [];
 
-  /** Fills a template's boxes from where the copy has got to. */
-  const fill = (template: Template, dropCap = false): { slices: Slice[]; took: number } => {
+  /** Fills a set of boxes from where the copy has got to. */
+  const fill = (boxes: { width: number; height: number }[], dropCap = false): { slices: Slice[]; took: number } => {
     const slices: Slice[] = [];
     let took = 0;
-    for (const [index, box] of template.boxes.entries()) {
+    for (const [index, box] of boxes.entries()) {
       const fitted = fitBox(paragraphs, cursor, box.width, box.height, {
         dropCap: dropCap && index === 0,
       });
@@ -83,11 +129,19 @@ export function composeIssue({ title, photos, story, when, polished = false }: C
   };
 
   const add = (template: Template, options: { plates?: Plate[]; dropCap?: boolean } = {}) => {
-    const { slices } = fill(template, options.dropCap);
+    const index = pages.length;
+
+    // The plate is settled before the copy is poured, because on these layouts
+    // the plate is what decides how much room the copy has.
+    const plate = plateSize(template.id, plateSizes?.[index]);
+    const { slices } = fill(boxesFor(template.id, plate), options.dropCap);
+
     pages.push({
-      id: `${template.id}-${pages.length}`,
+      id: `${template.id}-${index}`,
+      index,
       template: template.id,
       plates: options.plates ?? nextPlates(template.plates),
+      plate,
       slices,
       folio: null,
       dropCap: options.dropCap,
@@ -101,18 +155,17 @@ export function composeIssue({ title, photos, story, when, polished = false }: C
   // The body: keep laying pages down until the copy is spent.
   let cycle = 0;
   while (!isSpent(paragraphs, cursor) && pages.length < MAX_PAGES) {
-    let chosen: Template | null = null;
-    for (let step = 0; step < BODY_CYCLE.length; step++) {
-      const candidate = TEMPLATES[BODY_CYCLE[(cycle + step) % BODY_CYCLE.length]!];
-      // Skip any layout wanting more photographs than are left, rather than
-      // printing one twice.
-      if (candidate.plates > pool.length) continue;
-      cycle = (cycle + step + 1) % BODY_CYCLE.length;
-      chosen = candidate;
-      break;
-    }
+    // How far through the story this page begins, against how much of the
+    // supply has been printed. `plateNumber <= progress * supply` is behind or
+    // level; at the start both sides are zero, so the first page is always
+    // illustrated, and when there are more photographs than pages the test
+    // never fails and every page gets one.
+    const progress = words > 0 ? (words - remaining(paragraphs, cursor)) / words : 1;
+    const due = pool.length > 0 && plateNumber <= progress * supply;
 
-    const template = chosen ?? TEMPLATES["two-column"];
+    const template = due ? TEMPLATES[PLATE_CYCLE[cycle % PLATE_CYCLE.length]!] : TEMPLATES[PLAIN];
+    if (due) cycle += 1;
+
     const before = remaining(paragraphs, cursor);
     add(template);
 
@@ -128,7 +181,10 @@ export function composeIssue({ title, photos, story, when, polished = false }: C
   // The cover stands alone, so the rest must be even for every spread to be
   // whole. Pad before the colophon rather than after it, so the issue closes
   // on a right-hand page the way a printed one does.
-  if (pages.length % 2 !== 0) add(TEMPLATES.blank);
+  if (pages.length % 2 !== 0) {
+    add(TEMPLATES.blank);
+    pages[pages.length - 1]!.riddle = riddleFor(seed ?? title);
+  }
   add(TEMPLATES.colophon);
 
   pages.forEach((page, index) => {
