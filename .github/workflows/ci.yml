@@ -79,6 +79,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Both values are read from Variables *or* Secrets, because which tab
+      # they were typed into is not something the build should care about.
+      # Checking here means a missing one fails in seconds with a message that
+      # says where to put it, rather than deep inside the web image build.
+      - name: Check the frontend build args are present
+        env:
+          URL: ${{ vars.BUN_PUBLIC_SUPABASE_URL || secrets.BUN_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.BUN_PUBLIC_SUPABASE_ANON_KEY || vars.BUN_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          missing=""
+          [ -n "$URL" ]  || missing="$missing BUN_PUBLIC_SUPABASE_URL"
+          [ -n "$ANON" ] || missing="$missing BUN_PUBLIC_SUPABASE_ANON_KEY"
+
+          if [ -n "$missing" ]; then
+            echo "::error::Missing:$missing"
+            echo "Set them under Settings -> Secrets and variables -> Actions."
+            echo "Either tab works. Repository level, not Environment level —"
+            echo "an Environment-scoped value needs an 'environment:' key on the job."
+            exit 1
+          fi
+
+          # Never print the values; confirm only that they arrived.
+          echo "Both build args present (URL is ${#URL} chars, anon key ${#ANON} chars)."
+
       - name: Build and push API
         uses: docker/build-push-action@v6
         with:
@@ -105,8 +129,8 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-web:latest
             ${{ env.IMAGE_PREFIX }}-web:${{ github.sha }}
           build-args: |
-            BUN_PUBLIC_SUPABASE_URL=${{ vars.BUN_PUBLIC_SUPABASE_URL }}
-            BUN_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.BUN_PUBLIC_SUPABASE_ANON_KEY }}
+            BUN_PUBLIC_SUPABASE_URL=${{ vars.BUN_PUBLIC_SUPABASE_URL || secrets.BUN_PUBLIC_SUPABASE_URL }}
+            BUN_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.BUN_PUBLIC_SUPABASE_ANON_KEY || vars.BUN_PUBLIC_SUPABASE_ANON_KEY }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
 
