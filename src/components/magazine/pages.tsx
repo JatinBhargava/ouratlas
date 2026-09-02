@@ -432,7 +432,7 @@ function PlateFigure({ plate, width, height }: { plate: Plate | undefined; width
       <div className="relative overflow-hidden rounded-[2px]" style={{ height: height - CAPTION }} {...handle.target}>
         <img
           src={plate.photo.url}
-          alt=""
+          alt={plate.label}
           {...pan.handlers}
           style={focusStyle(pan.focus)}
           className={cn("size-full bg-stone-200 object-cover", pan.pannable && "cursor-move", handle.over && OVER)}
@@ -461,7 +461,7 @@ function Cover({ page, title, dateline }: { page: Page; title: string; dateline:
         <div className="group/plate absolute inset-0" {...handle.target}>
           <img
             src={plate.photo.url}
-            alt=""
+            alt={plate.label}
             {...pan.handlers}
             style={focusStyle(pan.focus)}
             className={cn(
@@ -641,7 +641,7 @@ function FullPlate({ page }: { page: Page }) {
     <div className="group/plate relative size-full overflow-hidden bg-stone-200" {...handle.target}>
       <img
         src={plate.photo.url}
-        alt=""
+        alt={plate.label}
         {...pan.handlers}
         style={focusStyle(pan.focus)}
         className={cn(

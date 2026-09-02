@@ -12,7 +12,6 @@ function Shot({ src, swatch, className }: { src: SamplePhoto; swatch: string; cl
   return (
     <Picture
       photo={src}
-      alt=""
       loading="lazy"
       decoding="async"
       className={cn("bg-linear-to-br object-cover", swatch, className)}

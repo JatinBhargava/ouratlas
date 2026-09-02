@@ -21,7 +21,19 @@ import rooftopsJpg from "@/assets/slideshow/pexels-efeliiz-282933088-29846135.jp
  * JPEG stays as what any browser can fall back to. `<Picture>` offers both and
  * lets the browser choose.
  */
-export type SamplePhoto = { avif: string; jpg: string };
+export type SamplePhoto = {
+  avif: string;
+  jpg: string;
+  /**
+   * What the photograph shows.
+   *
+   * Written from the pictures themselves, and deliberately not naming places:
+   * these are stock photographs and the location is not ours to assert. Kept
+   * beside the file rather than at each use, so the same picture is described
+   * the same way wherever it appears.
+   */
+  alt: string;
+};
 
 /**
  * Stand-in photographs for the mock spreads and step scenes. One import site
@@ -30,11 +42,39 @@ export type SamplePhoto = { avif: string; jpg: string };
  * Regenerate the AVIF files with `bun scripts/avif.ts` after changing a JPEG.
  */
 export const SAMPLE_PHOTOS = {
-  cafeTerrace: { avif: cafeTerraceAvif, jpg: cafeTerraceJpg },
-  cityFromHill: { avif: cityFromHillAvif, jpg: cityFromHillJpg },
-  daisies: { avif: daisiesAvif, jpg: daisiesJpg },
-  farmhouse: { avif: farmhouseAvif, jpg: farmhouseJpg },
-  gull: { avif: gullAvif, jpg: gullJpg },
-  palms: { avif: palmsAvif, jpg: palmsJpg },
-  rooftops: { avif: rooftopsAvif, jpg: rooftopsJpg },
+  cafeTerrace: {
+    avif: cafeTerraceAvif,
+    jpg: cafeTerraceJpg,
+    alt: "Café tables laid with white cloths and orange cushions along a narrow street, under an awning between ochre and terracotta buildings with green shutters.",
+  },
+  cityFromHill: {
+    avif: cityFromHillAvif,
+    jpg: cityFromHillJpg,
+    alt: "A city seen from above in low sun, a large domed cathedral standing among close-packed rooftops that run away to distant hills.",
+  },
+  daisies: {
+    avif: daisiesAvif,
+    jpg: daisiesJpg,
+    alt: "A person in a pale hooded top carrying a huge armful of daisies over one shoulder, crossing a meadow under a clear blue sky.",
+  },
+  farmhouse: {
+    avif: farmhouseAvif,
+    jpg: farmhouseJpg,
+    alt: "A stone and brick farmhouse with shuttered windows, its courtyard crowded with potted palms, red geraniums and terracotta urns.",
+  },
+  gull: {
+    avif: gullAvif,
+    jpg: gullJpg,
+    alt: "A person in a wetsuit standing in a small boat on calm sea, one arm raised to a gull hovering just above their hand.",
+  },
+  palms: {
+    avif: palmsAvif,
+    jpg: palmsJpg,
+    alt: "Tall palms against a cloudless blue sky, rising above pastel apartment buildings with green louvred shutters.",
+  },
+  rooftops: {
+    avif: rooftopsAvif,
+    jpg: rooftopsJpg,
+    alt: "Close-packed terracotta rooftops of a hillside town, balconies and awnings stepping down the slope.",
+  },
 } as const satisfies Record<string, SamplePhoto>;

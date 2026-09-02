@@ -30,7 +30,6 @@ function Plate({ src, swatch, className }: { src: SamplePhoto; swatch: string; c
   return (
     <Picture
       photo={src}
-      alt=""
       decoding="async"
       className={cn("w-full bg-linear-to-br object-cover", swatch, className)}
     />

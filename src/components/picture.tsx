@@ -2,10 +2,13 @@ import type { ImgHTMLAttributes } from "react";
 
 import type { SamplePhoto } from "@/lib/sample-photos";
 
-type PictureProps = ImgHTMLAttributes<HTMLImageElement> & {
+type PictureProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"> & {
   photo: SamplePhoto;
-  /** Empty for a decorative image, which is most of them here. */
-  alt: string;
+  /**
+   * Overrides the photograph's own description — pass "" where the picture is
+   * purely decorative and a screen reader should skip it.
+   */
+  alt?: string;
 };
 
 /**
@@ -17,7 +20,7 @@ type PictureProps = ImgHTMLAttributes<HTMLImageElement> & {
  * loading hint and the styling, because that is the element that ends up
  * being displayed either way.
  */
-export function Picture({ photo, alt, ...rest }: PictureProps) {
+export function Picture({ photo, alt = photo.alt, ...rest }: PictureProps) {
   return (
     <picture>
       <source srcSet={photo.avif} type="image/avif" />

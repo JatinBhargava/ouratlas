@@ -136,8 +136,20 @@ export function PhotoPicker({ photos, onAdd, onRemove, onReorder }: PhotoPickerP
               <button
                 type="button"
                 onClick={() => onRemove(photo.id)}
+                // The tile itself is draggable, and a press anywhere inside it
+                // starts that drag — including on this button, which would eat
+                // the click. Cancelling the drag here keeps the two apart.
+                onDragStart={event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onPointerDown={event => event.stopPropagation()}
                 aria-label={`Remove ${photo.file.name}`}
-                className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                title="Remove this photo"
+                // Visible at rest, not only on hover. A control that appears
+                // solely under the pointer is one nobody knows to look for —
+                // and this tile already reads as something to drag.
+                className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-black/55 text-white/80 transition-colors hover:bg-black/80 hover:text-white focus-visible:bg-black/80 focus-visible:text-white"
               >
                 <X className="size-3.5" />
               </button>
