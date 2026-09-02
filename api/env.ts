@@ -89,6 +89,50 @@ export const supabase = {
  * The token is a full-access Vercel credential, so it never goes near the
  * browser — the API queries Vercel and hands the frontend only a number.
  */
+/**
+ * The copy desk can run on either provider. Whichever is configured, the story
+ * goes out and the edited text comes back — nothing is written down on the way
+ * through and photographs are never sent, so the choice is about cost and
+ * availability rather than about what happens to anyone's writing.
+ */
+export const polish = {
+  /** "openai" | "anthropic". Unset means: whichever has a key. */
+  preference: process.env.POLISH_PROVIDER?.toLowerCase(),
+
+  openai: {
+    key: process.env.OPENAI_API_KEY,
+    /** Overridable, because model names move faster than this file does. */
+    model: process.env.OPENAI_MODEL ?? "gpt-4.1",
+  },
+
+  anthropic: {
+    key: process.env.ANTHROPIC_API_KEY,
+    /** Identity-linked keys must name a workspace; ordinary keys reject it. */
+    workspace: process.env.ANTHROPIC_WORKSPACE_ID,
+    model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
+  },
+} as const;
+
+export type PolishProviderName = "openai" | "anthropic";
+
+/**
+ * Which provider the copy desk will actually use, or null when neither is
+ * configured and the feature is off.
+ *
+ * With no preference set it takes whichever has a key, OpenAI first — that is
+ * the one with credit on it. Naming a provider explicitly is honoured even if
+ * the other is also configured, and a named provider with no key is off rather
+ * than quietly falling back to the one you did not ask for.
+ */
+export function polishProvider(): PolishProviderName | null {
+  if (polish.preference === "openai") return polish.openai.key ? "openai" : null;
+  if (polish.preference === "anthropic") return polish.anthropic.key ? "anthropic" : null;
+
+  if (polish.openai.key) return "openai";
+  if (polish.anthropic.key) return "anthropic";
+  return null;
+}
+
 export const vercel = {
   token: process.env.VERCEL_API_TOKEN,
   projectId: process.env.VERCEL_PROJECT_ID,
@@ -121,6 +165,15 @@ export const billingConfigured = Boolean(
 /** The webhook can be verified independently of checkout being usable. */
 export const webhookConfigured = Boolean(stripe.secretKey && stripe.webhookSecret && supabaseConfigured);
 
+/** Names the provider as well as the state — which one is running matters. */
+function copyDesk(): string {
+  const chosen = polishProvider();
+  if (!chosen) return "off (set OPENAI_API_KEY or ANTHROPIC_API_KEY)";
+
+  const model = chosen === "openai" ? polish.openai.model : polish.anthropic.model;
+  return `on (${chosen}, ${model})`;
+}
+
 /** One line per integration at boot, so a missing key is obvious. */
 export function describe(): string {
   const state = (on: boolean, missing: string) => (on ? "on" : `off (set ${missing})`);
@@ -129,7 +182,7 @@ export function describe(): string {
     `   accounts  ${state(supabaseConfigured, "SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY")}`,
     `   billing   ${state(billingConfigured, "STRIPE_SECRET_KEY, STRIPE_PRICE_*")}`,
     `   webhook   ${state(webhookConfigured, "STRIPE_WEBHOOK_SECRET")}`,
-    `   copy desk ${state(Boolean(process.env.ANTHROPIC_API_KEY), "ANTHROPIC_API_KEY")}`,
+    `   copy desk ${copyDesk()}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");
 }

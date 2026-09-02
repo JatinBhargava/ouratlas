@@ -23,6 +23,20 @@ export type PaidPlan = "traveller" | "cartographer";
 /** Every account is on one of these; "free" is the absence of a subscription. */
 export type Plan = "free" | PaidPlan;
 
+/**
+ * Plans that include the copy desk.
+ *
+ * The one entitlement both halves of the app have to agree on, so it lives
+ * here rather than being spelt out twice. The server enforces it in
+ * `api/routes/polish.ts`; the browser uses it only to decide what to show,
+ * because a check made in the browser is a check the browser could skip.
+ */
+export const COPY_DESK_PLANS: readonly Plan[] = ["traveller", "cartographer"];
+
+export function hasCopyDesk(plan: Plan): boolean {
+  return COPY_DESK_PLANS.includes(plan);
+}
+
 /** What the signed-in person is entitled to, as the server sees it. */
 export type Billing = {
   plan: Plan;

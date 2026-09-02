@@ -332,27 +332,49 @@ address after checkout.
 
 ## The copy desk (optional)
 
-`POST /api/polish` streams the story through Anthropic for a copy-editing pass.
-It is off unless the server has a key:
+`POST /api/polish` streams the story through a model for a copy-editing pass.
+**Either OpenAI or Anthropic** will do — set one key:
 
 ```bash
+OPENAI_API_KEY=sk-... bun dev
+# or
 ANTHROPIC_API_KEY=sk-ant-... bun dev
 ```
 
-An identity-linked key also needs the workspace it acts in, or the API answers
-400:
+With both configured OpenAI is used, since that is usually the one with credit
+on it. `POLISH_PROVIDER=anthropic` overrides that. Naming a provider whose key
+is missing switches the copy desk **off** rather than quietly falling back to
+the one you did not ask for — a fallback there would send the story somewhere
+the operator did not choose.
 
-```bash
-ANTHROPIC_WORKSPACE_ID=wrkspc_...
+The boot log names what is actually running, because "on" is not enough to
+debug a wrong-model error:
+
+```
+   copy desk on (openai, gpt-4.1)
 ```
 
-Ordinary keys reject that header, so it is only sent when it is set.
+Models are overridable with `OPENAI_MODEL` and `ANTHROPIC_MODEL`; names move
+faster than this repository does. An Anthropic key that is identity-linked also
+needs `ANTHROPIC_WORKSPACE_ID`, and ordinary keys reject that header, so it is
+only sent when set.
 
-Without one the endpoint returns 503 and the UI says so. The key stays on the
-server and is never sent to the browser. The story is split into passes of about
-1,200 words so a long trip cannot run past the model's output limit, and the
-passes are rejoined so paragraph structure survives the round trip. Nothing is
-logged or stored on the way through. Photographs are never sent.
+Without any key the endpoint returns 503 and the UI says so. The key stays on
+the server and is never sent to the browser. The story is split into passes of
+about 1,200 words so a long trip cannot run past the model's output limit, and
+the passes are rejoined so paragraph structure survives the round trip. Nothing
+is logged or stored on the way through. Photographs are never sent.
+
+The two providers differ only in the shape of the request and in which field of
+the stream carries the text — both speak server-sent events and both report
+failures as `{ error: { message } }` — so `api/polish.ts` describes each as a
+handful of lines and shares everything else.
+
+One asymmetry worth knowing: the Anthropic request caps output at 8,000 tokens,
+the OpenAI one sets no cap. Newer OpenAI models renamed `max_tokens` to
+`max_completion_tokens` and reject the old spelling, and the default limit is far
+above a 1,200-word pass, so asking for one would buy a compatibility problem and
+nothing else.
 
 ## How the magazine is composed
 

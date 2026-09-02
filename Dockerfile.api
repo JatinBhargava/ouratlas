@@ -33,9 +33,9 @@ COPY package.json bun.lock tsconfig.json ./
 COPY api ./api
 COPY scripts ./scripts
 COPY versions.json ./versions.json
-# Only for the `@/types` alias. Every such import in api/ is `import type`, so
-# it is erased before runtime, but keeping it here means the image can also be
-# type-checked as-is.
+# For the `@/types` alias. Mostly `import type`, which is erased before
+# runtime — but `hasCopyDesk` is a real function the polish route calls, so
+# this directory has to be in the image, not merely available to tsc.
 COPY src/types ./src/types
 
 # The oven/bun images ship an unprivileged `bun` user; nothing here needs root.
