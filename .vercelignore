@@ -1,0 +1,23 @@
+# Vercel builds the frontend only.
+#
+# The critical entry here is api/. Vercel treats a top-level `api/` directory
+# as serverless functions by convention, so without this it tries to compile
+# all twelve Express modules into lambdas — which is where the
+# "TS2688: Cannot find type definition file for 'bun'" errors come from. They
+# are not frontend build errors; they are Vercel failing to build an API that
+# was never meant to run there.
+#
+# The Express API runs as its own container. Nothing in src/ imports from
+# api/, so excluding it does not affect the bundle.
+api
+
+# Server- and container-only tooling.
+docker
+Dockerfile.api
+Dockerfile.web
+docker-compose.yml
+dev.ts
+
+.github
+README.md
+LICENSE
