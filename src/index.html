@@ -8,6 +8,45 @@
       content="Trip photos and your own words, set as a magazine you can keep. Ten photographs and up to ten thousand words in; a paginated issue out, ready to export."
     />
     <meta name="theme-color" content="#0c0a09" />
+
+    <!--
+      The share card.
+
+      Absolute URLs throughout: a crawler resolves these against nothing, so a
+      relative path is simply dropped and the link unfurls bare. The image is
+      copied to /og.jpg verbatim by build.ts rather than bundled, because this
+      address is pasted into other people's caches and must not move when the
+      file changes.
+
+      A JPEG rather than a PNG: the same card as a PNG is near a megabyte, and
+      WhatsApp declines to show a thumbnail much over 300 KB. Run
+      `bun scripts/og-image.ts scripts/og/hero.png` to rebuild it.
+    -->
+    <link rel="canonical" href="https://ouratlas.co.in/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Atlas" />
+    <meta property="og:url" content="https://ouratlas.co.in/" />
+    <meta property="og:title" content="Atlas — your trip, set as a magazine" />
+    <meta
+      property="og:description"
+      content="Ten photographs and up to ten thousand words in; a paginated issue out, ready to export. The photographs never leave your browser."
+    />
+    <meta property="og:image" content="https://ouratlas.co.in/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Atlas home page: the headline 'The trip is over. The story isn't.' over an illustrated sky, with a magazine spread beginning below it."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Atlas — your trip, set as a magazine" />
+    <meta
+      name="twitter:description"
+      content="Ten photographs and up to ten thousand words in; a paginated issue out, ready to export. The photographs never leave your browser."
+    />
+    <meta name="twitter:image" content="https://ouratlas.co.in/og.jpg" />
     <link rel="icon" type="image/svg+xml" href="./assets/atlas-mark.svg" />
     <link rel="apple-touch-icon" href="./assets/atlas-mark.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,7 +55,7 @@
       href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
-    <title>Atlas</title>
+    <title>Atlas — your trip, set as a magazine</title>
   </head>
   <body>
     <div id="root"></div>

@@ -46,6 +46,10 @@ const server = serve({
   routes: {
     "/api/*": proxy,
 
+    // Served here too, so a share card can be checked before it is deployed.
+    // In production `build.ts` copies it to the same address.
+    "/og.jpg": () => new Response(Bun.file("src/assets/og.jpg")),
+
     // Serve index.html for all unmatched routes.
     "/*": index,
   },

@@ -26,6 +26,11 @@ const result = await Bun.build({
   },
 });
 
+// Copied rather than bundled, and deliberately not hashed: this address is
+// pasted into other people's caches when a link is shared, so it has to stay
+// exactly where the meta tags in index.html say it is.
+await Bun.write(path.join(outdir, "og.jpg"), Bun.file("src/assets/og.jpg"));
+
 for (const output of result.outputs) {
   console.log(` ${path.relative(process.cwd(), output.path)}  ${(output.size / 1024).toFixed(1)} KB`);
 }
