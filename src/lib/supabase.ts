@@ -17,12 +17,30 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // the guard a clone with no .env takes the whole page down instead of quietly
 // reporting sign-in as switched off, which is the behaviour this file is built
 // around.
-// The full `process.env.BUN_PUBLIC_…` expression must appear verbatim — that
-// exact text is what the bundler substitutes. Hoisting `process.env` into a
-// variable first reads naturally and silently defeats the substitution, leaving
-// a bundle with no Supabase configuration at all.
-const url = typeof process !== "undefined" ? process.env.BUN_PUBLIC_SUPABASE_URL : undefined;
-const anonKey = typeof process !== "undefined" ? process.env.BUN_PUBLIC_SUPABASE_ANON_KEY : undefined;
+/**
+ * Reads a build-time value without assuming `process` exists.
+ *
+ * Two constraints pull against each other here. The full
+ * `process.env.BUN_PUBLIC_…` expression must survive verbatim into the source,
+ * because that exact text is what the bundler swaps for a literal — hoisting
+ * `process.env` into a variable defeats it. But a variable that was never set
+ * is left un-substituted and then reads `process` in a browser, which throws.
+ *
+ * A `typeof process` guard looks like the answer and is not: the bundler
+ * replaces the value but not the guard, so the check still runs in the browser,
+ * finds no `process`, and throws the inlined value away. Catching the
+ * ReferenceError instead leaves the substitution untouched.
+ */
+function publicEnv(read: () => string | undefined): string | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
+const url = publicEnv(() => process.env.BUN_PUBLIC_SUPABASE_URL);
+const anonKey = publicEnv(() => process.env.BUN_PUBLIC_SUPABASE_ANON_KEY);
 
 /**
  * Whether this build can sign anyone in.

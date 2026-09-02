@@ -9,10 +9,15 @@
  * two are versioned separately on purpose, so a frontend deploy does not have
  * to claim the backend changed.
  */
-// The literal `process.env.BUN_PUBLIC_…` has to survive into the source for the
-// bundler to substitute it, but Bun only inlines variables that actually exist
-// in the environment. One that does not is left as-is and reaches the browser,
-// where `process` is undefined and reading it throws. The typeof guard is what
-// makes a missing value fall back instead of breaking the page.
-export const APP_VERSION =
-  (typeof process !== "undefined" ? process.env.BUN_PUBLIC_APP_VERSION : undefined) || "dev";
+// Caught rather than guarded with `typeof process`, for the reason spelled out
+// in `supabase.ts`: the bundler substitutes the value but not the guard, so a
+// runtime check would discard the very thing it was meant to protect.
+function buildVersion(): string | undefined {
+  try {
+    return process.env.BUN_PUBLIC_APP_VERSION;
+  } catch {
+    return undefined;
+  }
+}
+
+export const APP_VERSION = buildVersion() || "dev";
