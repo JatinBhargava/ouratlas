@@ -215,3 +215,35 @@ alter table public.waitlist enable row level security;
 -- No policies at all is the point: the list is writable only through the
 -- server's service-role key, and readable by nobody holding the anon key.
 -- Anyone who scrapes the public key still cannot enumerate the mailing list.
+
+-- ---------------------------------------------------------------------------
+-- exports: one row per issue sent out as a PDF
+-- ---------------------------------------------------------------------------
+--
+-- The only reason this table exists is to count. Nothing about the magazine
+-- itself is recorded — not the title, not the story, not a photograph, not
+-- even how many pages it ran to. A row means "this account exported something
+-- at this time", which is the least that can answer "how many this month".
+--
+-- Kept server-side because the browser cannot be asked to police a limit it
+-- benefits from ignoring. The count is the entitlement; the client is only
+-- ever told the answer.
+
+create table if not exists public.exports (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+-- The only query this table serves: this account, this month, newest first.
+create index if not exists exports_user_created_idx on public.exports (user_id, created_at desc);
+
+alter table public.exports enable row level security;
+
+-- Readable by its owner so an account page could show a tally; written only
+-- through the service-role key, because a row here is what spends an
+-- allowance and the browser must not be able to forge or withhold one.
+drop policy if exists "exports: read own" on public.exports;
+create policy "exports: read own"
+  on public.exports for select
+  using (auth.uid() = user_id);
