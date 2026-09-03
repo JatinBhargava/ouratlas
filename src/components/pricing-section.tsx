@@ -70,15 +70,39 @@ const PLANS: Plan[] = [
 ];
 
 /**
- * Whether to say, in the plans, that a card will not go through yet.
+ * Whether checkout is open, decided when the bundle is built.
  *
- * Dodo has not enabled payment processing on the account, so checkout fails at
- * the processor with "Payment mode not enabled for this merchant" before the
- * card is ever tried. Someone who reaches that unwarned concludes the site is
- * broken; saying so here costs a sentence. Flip to false the day the account
- * is approved — nothing else reads it.
+ * Read through a catch rather than a `typeof process` guard, for the reason
+ * set out at length in `lib/supabase.ts`: an unset BUN_PUBLIC_ variable is
+ * never substituted, so the expression survives into the browser and reading
+ * `process` there throws — and a guard would be evaluated at runtime and
+ * throw the inlined value away.
  */
-const SUBSCRIPTIONS_AT_PROOF = true;
+function checkoutOpen(): boolean {
+  try {
+    return process.env.BUN_PUBLIC_CHECKOUT === "on";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether the plans are still at proof: the notice shows and the paid buttons
+ * are dead.
+ *
+ * On unless told otherwise, which is the honest state. Dodo has not enabled
+ * payment processing on the account, so checkout fails at the processor with
+ * "Payment mode not enabled for this merchant" before the card is ever tried.
+ * Offering a button that always fails is worse than offering none.
+ *
+ * `BUN_PUBLIC_CHECKOUT=on` opens it, which is how checkout is exercised
+ * against Dodo's test mode locally without shipping a live paywall. It is a
+ * property of the build, not a setting a visitor can reach.
+ *
+ * Delete this, the notice and the `locked` branch below on the day the
+ * account is approved.
+ */
+const SUBSCRIPTIONS_AT_PROOF = !checkoutOpen();
 
 export function PricingSection() {
   const { user, billing, configured, signInWithGoogle } = useAuth();
@@ -137,8 +161,8 @@ export function PricingSection() {
           <Stamp className="mt-0.5 size-4 shrink-0 text-stone-400" />
           <p className="text-sm text-stone-700">
             <span className="font-medium text-stone-900">Subscriptions are at proof.</span> The plans below are settled,
-            but our payments partner is still checking our masthead, so a card will not go through yet. Wanderer is free
-            and works in full today — start a story, and we will have the presses running shortly.
+            but our payments partner is still checking our masthead, so the paid plans are closed for the moment.
+            Wanderer is free and works in full today — start a story, and we will have the presses running shortly.
           </p>
         </div>
       )}
@@ -147,6 +171,9 @@ export function PricingSection() {
         {PLANS.map(plan => {
           const current = billing.plan === plan.id && plan.id !== "free";
           const busy = pending === plan.id;
+          // Managing an existing plan stays open: someone already subscribed
+          // must still be able to reach the portal and cancel.
+          const locked = SUBSCRIPTIONS_AT_PROOF && plan.id !== "free" && !current;
 
           return (
             <Card
@@ -219,7 +246,7 @@ export function PricingSection() {
               <Button
                 asChild={plan.id === "free" || current}
                 variant={plan.featured ? "secondary" : "outline"}
-                disabled={busy}
+                disabled={busy || locked}
                 onClick={plan.id === "free" || current ? undefined : () => void choose(plan.id as PaidPlan)}
                 className={cn(
                   "mt-8 w-full rounded-full",
