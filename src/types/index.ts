@@ -60,7 +60,7 @@ export function hasCopyDesk(plan: Plan): boolean {
 /** What the signed-in person is entitled to, as the server sees it. */
 export type Billing = {
   plan: Plan;
-  /** Stripe's subscription status, or null on a free account. */
+  /** The processor's subscription status, or null on a free account. */
   status: string | null;
   /** ISO date the current period ends, or null on a free account. */
   currentPeriodEnd: string | null;

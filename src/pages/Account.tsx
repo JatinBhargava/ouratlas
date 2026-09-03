@@ -164,7 +164,7 @@ export function Account() {
         {billing.plan === "free" ? (
           <p className="mt-4 text-sm text-stone-600">
             {settling
-              ? "Stripe has taken the payment; we are waiting for it to reach us. This page will update itself."
+              ? "The payment has gone through; we are waiting for it to reach us. This page will update itself."
               : "One story at a time, up to 5,000 words, exported from the browser."}
           </p>
         ) : (
@@ -181,7 +181,7 @@ export function Account() {
         <div className="mt-7 flex flex-wrap items-center gap-2">
           {billing.plan === "free" ? (
             <Button asChild className="rounded-full">
-              <Link to="/#pricing">
+              <Link to="/pricing">
                 See the plans <ArrowRight className="size-4" />
               </Link>
             </Button>

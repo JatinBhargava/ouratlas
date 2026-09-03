@@ -17,8 +17,11 @@ create table if not exists public.profiles (
   full_name          text,
   avatar_url         text,
   -- Set the first time someone reaches checkout, then reused so a person
-  -- never ends up with two customer records in Stripe.
+  -- never ends up with two customer records at the processor. One column per
+  -- provider: the ids are not interchangeable, and keeping both means a
+  -- switch does not orphan the history on the other side.
   stripe_customer_id text unique,
+  dodo_customer_id   text unique,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -74,12 +77,21 @@ create trigger on_auth_user_created
 -- not have to call the Stripe API, and is only ever written by the webhook.
 
 create table if not exists public.subscriptions (
-  -- The Stripe subscription id, so a replayed webhook overwrites in place
-  -- rather than inserting a duplicate.
+  -- The processor's subscription id, so a replayed webhook overwrites in
+  -- place rather than inserting a duplicate.
   id                   text primary key,
   user_id              uuid not null references auth.users (id) on delete cascade,
+  -- Which processor this row came from. Defaulted for rows written before
+  -- Dodo existed, all of which were Stripe's.
+  provider             text not null default 'stripe' check (provider in ('stripe', 'dodo')),
+  -- Stripe's own vocabulary plus Dodo's: active, trialing, past_due,
+  -- on_hold, paused, cancelled, expired, failed, pending. Deliberately not a
+  -- check constraint — a processor adding a state should not start rejecting
+  -- webhooks, and `getActiveSubscription` decides which of them entitle.
   status               text not null,
   plan                 text not null check (plan in ('traveller', 'cartographer')),
+  -- A Stripe price id, or a Dodo product id. Dodo has no separate price
+  -- object: the product carries its own price.
   price_id             text,
   current_period_end   timestamptz,
   cancel_at_period_end boolean not null default false,
@@ -117,6 +129,7 @@ create table if not exists public.payments (
   -- the same invoice updates this row rather than adding another.
   id                 text primary key,
   user_id            uuid not null references auth.users (id) on delete cascade,
+  provider           text not null default 'stripe' check (provider in ('stripe', 'dodo')),
 
   -- Deliberately NOT a foreign key to public.subscriptions.
   --
@@ -163,6 +176,22 @@ drop policy if exists "payments: read own" on public.payments;
 create policy "payments: read own"
   on public.payments for select
   using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Migrations for databases created before Dodo Payments
+-- ---------------------------------------------------------------------------
+--
+-- `create table if not exists` above does nothing to a table that already
+-- exists, so the new columns are added here as well. Both forms are safe to
+-- re-run, which is the rule this file is written to.
+
+alter table public.profiles      add column if not exists dodo_customer_id text unique;
+alter table public.subscriptions add column if not exists provider text not null default 'stripe';
+alter table public.payments      add column if not exists provider text not null default 'stripe';
+
+-- An older database has the status check constraint; Dodo's vocabulary is
+-- wider, so it goes.
+alter table public.subscriptions drop constraint if exists subscriptions_status_check;
 
 -- ---------------------------------------------------------------------------
 -- waitlist: the newsletter sign-up
