@@ -31,7 +31,10 @@ const PLANS: Plan[] = [
     price: "Free",
     cadence: "one story at a time",
     description: "A keepsake from a single trip.",
-    features: ["10 photos per story", "Up to 5,000 words", "Web export", "Two layout themes"],
+    // "Three" must match EXPORT_LIMIT_FREE on the API. The server owns the
+    // count; this line only reports it, and a page that promises a different
+    // number from the one enforced is worse than no number at all.
+    features: ["10 photos per story", "Up to 5,000 words", "Three exports a month", "Two layout themes"],
     cta: "Start your first story",
   },
   {
