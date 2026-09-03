@@ -1,16 +1,33 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useLocation } from "react-router";
 
 import { SceneBackground } from "@/components/scene-background";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 
+/** The site's own origin, which the canonical link must be absolute against. */
+const SITE = "https://ouratlas.co.in";
+
 /**
  * App shell. The marketing footer belongs to the landing page; the album
  * workspace stays clear of it.
  */
 export function RootLayout({ children }: { children: ReactNode }) {
-  const isLanding = useLocation().pathname === "/";
+  const { pathname } = useLocation();
+  const isLanding = pathname === "/";
+
+  /**
+   * Keeps the canonical link pointing at the page actually being shown.
+   *
+   * `index.html` is one file serving every route, so its canonical is written
+   * for the home page. Left alone it would tell a crawler that /pricing and
+   * /create are duplicates of / — the opposite of what a canonical is for, and
+   * enough to keep them out of the index entirely.
+   */
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (link) link.href = new URL(pathname, SITE).toString();
+  }, [pathname]);
 
   return (
     <div className="relative flex min-h-screen flex-col">

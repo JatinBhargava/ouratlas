@@ -92,7 +92,7 @@ export function PricingSection() {
 
     if (!user) {
       try {
-        await signInWithGoogle("/#pricing");
+        await signInWithGoogle("/pricing");
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Could not open Google sign-in.");
       }

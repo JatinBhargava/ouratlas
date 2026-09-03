@@ -8,6 +8,12 @@ import { Account } from "@/pages/Account";
 import { Create } from "@/pages/Create";
 import { Home } from "@/pages/Home";
 import { NotFound } from "@/pages/NotFound";
+import { Pricing } from "@/pages/Pricing";
+import { About } from "@/pages/legal/About";
+import { Contact } from "@/pages/legal/Contact";
+import { Privacy } from "@/pages/legal/Privacy";
+import { Refunds } from "@/pages/legal/Refunds";
+import { Terms } from "@/pages/legal/Terms";
 import "@/styles/globals.css";
 
 export function App() {
@@ -19,7 +25,16 @@ export function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/create" element={<Create />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/account" element={<Account />} />
+
+            {/* Real pages, not placeholders: a merchant of record checks that
+                these exist and are reachable before it will process payments. */}
+            <Route path="/about" element={<About />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/refunds" element={<Refunds />} />
+            <Route path="/contact" element={<Contact />} />
             {/* Last, and matching anything left: the server hands the shell
                 back for every path, so an address that is not a page has to be
                 caught here or it renders as an empty layout. */}

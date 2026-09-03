@@ -84,6 +84,24 @@ export const supabase = {
 } as const;
 
 /**
+ * Dodo Payments: the merchant of record.
+ *
+ * Dodo sells on our behalf and settles to us, which is what makes it usable
+ * from India where a direct Stripe account cannot charge. It has no notion of
+ * a price id — a product *is* the price — so the plan mapping names products.
+ */
+export const dodo = {
+  apiKey: process.env.DODO_API_KEY,
+  webhookKey: process.env.DODO_WEBHOOK_KEY,
+  /** "test_mode" until a live key is in hand; Dodo has separate hosts for each. */
+  mode: process.env.DODO_MODE === "live" ? ("live_mode" as const) : ("test_mode" as const),
+  products: {
+    traveller: process.env.DODO_PRODUCT_TRAVELLER,
+    cartographer: process.env.DODO_PRODUCT_CARTOGRAPHER,
+  },
+} as const;
+
+/**
  * Vercel Web Analytics, read server-side for the visitor counter in the nav.
  *
  * The token is a full-access Vercel credential, so it never goes near the
@@ -97,7 +115,9 @@ export const supabase = {
  */
 export const polish = {
   /** "openai" | "anthropic". Unset means: whichever has a key. */
-  preference: process.env.POLISH_PROVIDER?.toLowerCase(),
+  // Trimmed: a trailing space in a dashboard env field is invisible, and an
+  // unmatched name falls back silently rather than complaining.
+  preference: process.env.POLISH_PROVIDER?.trim().toLowerCase(),
 
   openai: {
     key: process.env.OPENAI_API_KEY,
@@ -155,15 +175,62 @@ export const stripe = {
 export const supabaseConfigured = Boolean(supabase.url && supabase.serviceRoleKey);
 
 /**
- * Billing needs Stripe *and* Supabase: a subscription is worth nothing if
- * there is no account to attach it to.
+ * Billing needs a payment provider *and* Supabase: a subscription is worth
+ * nothing if there is no account to attach it to.
  */
-export const billingConfigured = Boolean(
-  supabaseConfigured && stripe.secretKey && stripe.prices.traveller && stripe.prices.cartographer,
-);
+const stripeConfigured = Boolean(stripe.secretKey && stripe.prices.traveller && stripe.prices.cartographer);
+const dodoConfigured = Boolean(dodo.apiKey && dodo.products.traveller && dodo.products.cartographer);
 
-/** The webhook can be verified independently of checkout being usable. */
-export const webhookConfigured = Boolean(stripe.secretKey && stripe.webhookSecret && supabaseConfigured);
+export const billingConfigured = supabaseConfigured && (stripeConfigured || dodoConfigured);
+
+export type BillingProvider = "stripe" | "dodo";
+
+/**
+ * Which provider takes the money, or null when neither is set up.
+ *
+ * The same bargain the copy desk makes: name one explicitly and it is honoured
+ * even if the other is also configured, and a named provider without keys is
+ * off rather than quietly falling through to the one you did not ask for.
+ * With no preference, Dodo wins — it is the one that can actually charge from
+ * here, and Stripe is kept only against the day that changes.
+ *
+ * Only one may be live at a time. Two checkout buttons taking money through
+ * different processors is not a feature; it is two ledgers to reconcile.
+ */
+export function billingProvider(): BillingProvider | null {
+  // Trimmed for the same reason as the copy desk: naming "stripe" and
+  // getting Dodo because of an invisible trailing space is a bad afternoon.
+  const named = process.env.BILLING_PROVIDER?.trim().toLowerCase();
+  if (named === "stripe") return stripeConfigured ? "stripe" : null;
+  if (named === "dodo") return dodoConfigured ? "dodo" : null;
+
+  if (dodoConfigured) return "dodo";
+  if (stripeConfigured) return "stripe";
+  return null;
+}
+
+/**
+ * The webhook can be verified independently of checkout being usable, and each
+ * provider signs its own. Both endpoints stay mounted so a provider switch does
+ * not silently drop events still in flight from the old one.
+ */
+export const stripeWebhookConfigured = Boolean(stripe.secretKey && stripe.webhookSecret && supabaseConfigured);
+export const dodoWebhookConfigured = Boolean(dodo.apiKey && dodo.webhookKey && supabaseConfigured);
+export const webhookConfigured = stripeWebhookConfigured || dodoWebhookConfigured;
+
+/** Names the provider and the mode: charging real cards by accident is easy. */
+function billing(): string {
+  const chosen = billingProvider();
+  if (!chosen) return "off (set DODO_API_KEY and DODO_PRODUCT_*, or the STRIPE_* equivalents)";
+  if (!supabaseConfigured) return "off (needs Supabase — a subscription has nothing to attach to)";
+  return chosen === "dodo" ? `on (dodo, ${dodo.mode.replace("_mode", "")})` : "on (stripe)";
+}
+
+/** Both endpoints report separately: a switch leaves the old one taking events. */
+function webhooks(): string {
+  const on = [stripeWebhookConfigured && "stripe", dodoWebhookConfigured && "dodo"].filter(Boolean);
+  return on.length > 0 ? `on (${on.join(", ")})` : "off (set DODO_WEBHOOK_KEY or STRIPE_WEBHOOK_SECRET)";
+}
 
 /** Names the provider as well as the state — which one is running matters. */
 function copyDesk(): string {
@@ -180,8 +247,8 @@ export function describe(): string {
 
   return [
     `   accounts  ${state(supabaseConfigured, "SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY")}`,
-    `   billing   ${state(billingConfigured, "STRIPE_SECRET_KEY, STRIPE_PRICE_*")}`,
-    `   webhook   ${state(webhookConfigured, "STRIPE_WEBHOOK_SECRET")}`,
+    `   billing   ${billing()}`,
+    `   webhook   ${webhooks()}`,
     `   copy desk ${copyDesk()}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");

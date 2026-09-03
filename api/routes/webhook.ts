@@ -19,7 +19,7 @@
 import { Router } from "express";
 import type Stripe from "stripe";
 
-import { stripe as config, webhookConfigured } from "@api/env";
+import { stripe as config, stripeWebhookConfigured } from "@api/env";
 import { asyncRoute, HttpError } from "@api/http";
 import { planForPrice, stripe } from "@api/stripe";
 import { admin } from "@api/supabase";
@@ -105,6 +105,7 @@ async function recordPayment(invoice: Stripe.Invoice, failed: boolean): Promise<
     {
       id: invoice.id,
       user_id: userId,
+      provider: "stripe",
       subscription_id: subscriptionId,
       status: invoice.status ?? "open",
       last_attempt_failed: failed,
@@ -158,6 +159,7 @@ async function mirror(subscription: Stripe.Subscription): Promise<void> {
     {
       id: subscription.id,
       user_id: userId,
+      provider: "stripe",
       status: subscription.status,
       plan,
       price_id: priceId,
@@ -174,7 +176,7 @@ async function mirror(subscription: Stripe.Subscription): Promise<void> {
 webhookRoutes.post(
   "/stripe/webhook",
   asyncRoute(async (req, res) => {
-    if (!webhookConfigured) {
+    if (!stripeWebhookConfigured) {
       throw new HttpError(503, "Billing webhooks are switched off: this server has no STRIPE_WEBHOOK_SECRET set.");
     }
 

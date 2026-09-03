@@ -11,7 +11,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { RequestHandler } from "express";
 
-import { supabase as config, supabaseConfigured } from "@api/env";
+import { supabase as config, supabaseConfigured, type BillingProvider } from "@api/env";
 import { HttpError, unconfigured } from "@api/http";
 
 let client: SupabaseClient | null = null;
@@ -63,13 +63,21 @@ export type Profile = {
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  /** One per processor. The ids are not interchangeable. */
   stripe_customer_id: string | null;
+  dodo_customer_id: string | null;
 };
+
+/** The profile column holding a given processor's customer id. */
+export const CUSTOMER_COLUMN = {
+  stripe: "stripe_customer_id",
+  dodo: "dodo_customer_id",
+} as const satisfies Record<BillingProvider, keyof Profile>;
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await admin()
     .from("profiles")
-    .select("id, email, full_name, avatar_url, stripe_customer_id")
+    .select("id, email, full_name, avatar_url, stripe_customer_id, dodo_customer_id")
     .eq("id", userId)
     .maybeSingle();
 
@@ -81,6 +89,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 export type Subscription = {
   id: string;
   user_id: string;
+  provider: BillingProvider;
   status: string;
   plan: "traveller" | "cartographer";
   price_id: string | null;
@@ -88,8 +97,19 @@ export type Subscription = {
   cancel_at_period_end: boolean;
 };
 
-/** Statuses that should unlock paid features. */
-const LIVE = new Set(["active", "trialing", "past_due"]);
+/**
+ * Statuses that should unlock paid features, across both processors.
+ *
+ * Stripe says `trialing` and `past_due`; Dodo says `on_hold` for the same
+ * "paid before, renewal is failing" state. All of them keep the plan on:
+ * cutting someone off the moment a card is retried is a worse error than
+ * carrying them for a few days.
+ *
+ * Everything else is off, and the two easy mistakes are here on purpose:
+ * Dodo's `paused` is a deliberate suspension, and its `pending` is a mandate
+ * that has not been confirmed — neither has been paid for.
+ */
+const LIVE = new Set(["active", "trialing", "past_due", "on_hold"]);
 
 /**
  * The subscription that decides what someone can do, or null for a free
@@ -102,7 +122,7 @@ const LIVE = new Set(["active", "trialing", "past_due"]);
 export async function getActiveSubscription(userId: string): Promise<Subscription | null> {
   const { data, error } = await admin()
     .from("subscriptions")
-    .select("id, user_id, status, plan, price_id, current_period_end, cancel_at_period_end")
+    .select("id, user_id, provider, status, plan, price_id, current_period_end, cancel_at_period_end")
     .eq("user_id", userId)
     .in("status", [...LIVE])
     .order("created_at", { ascending: false })

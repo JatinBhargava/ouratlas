@@ -13,6 +13,7 @@ import { APP_VERSION, serveStatic } from "@api/env";
 import { errorHandler, notFound } from "@api/http";
 import { authRoutes } from "@api/routes/auth";
 import { billingRoutes } from "@api/routes/billing";
+import { dodoWebhookRoutes } from "@api/routes/dodo-webhook";
 import { polishRoutes } from "@api/routes/polish";
 import { visitsRoutes } from "@api/routes/visits";
 import { waitlistRoutes } from "@api/routes/waitlist";
@@ -32,10 +33,11 @@ export function createApp(): Express {
   // telling the internet which framework this is.
   app.disable("x-powered-by");
 
-  // The webhook must see the bytes Stripe signed, so its raw parser is
-  // mounted before the JSON one. body-parser marks a request as read, so the
-  // JSON parser below leaves this path alone.
+  // Both webhooks must see the bytes their processor signed, so their raw
+  // parsers are mounted before the JSON one. body-parser marks a request as
+  // read, so the JSON parser below leaves these paths alone.
   app.use("/api/stripe/webhook", express.raw({ type: "application/json", limit: "1mb" }));
+  app.use("/api/dodo/webhook", express.raw({ type: "application/json", limit: "1mb" }));
 
   // Generous enough for a 10,000-word story going to the copy desk.
   app.use(express.json({ limit: "1mb" }));
@@ -51,6 +53,7 @@ export function createApp(): Express {
   app.use("/api", waitlistRoutes);
   app.use("/api", polishRoutes);
   app.use("/api", webhookRoutes);
+  app.use("/api", dodoWebhookRoutes);
   app.use("/api/billing", billingRoutes);
 
   // A mistyped endpoint should say so in JSON rather than fall through to the
