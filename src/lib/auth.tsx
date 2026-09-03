@@ -57,6 +57,24 @@ function toSessionUser(session: Session): SessionUser {
   };
 }
 
+/**
+ * Whether this page load is the return leg of a sign-in.
+ *
+ * Synchronous on purpose. A page that must not show its ordinary state while
+ * someone is coming back from Google has to know that before it paints, which
+ * rules out waiting for the session — by the time `ready` is true the wrong
+ * thing has already been on screen. The `code` parameter is put there by the
+ * provider and taken off again once it is spent, so its presence is the one
+ * fact available at the first render.
+ */
+export function isSignInReturn(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).has("code");
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!authConfigured);

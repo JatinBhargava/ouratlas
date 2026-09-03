@@ -171,6 +171,23 @@ export const stripe = {
   },
 } as const;
 
+/**
+ * How many issues a free account may export in a calendar month.
+ *
+ * Off unless set. An unset or unparseable value means no limit at all, which
+ * is deliberate: a limit that appears because someone typo'd an environment
+ * variable would turn paying readers away, and the failure is silent. Turning
+ * it on is a decision somebody has to make on purpose.
+ *
+ * Paid plans are never counted. The whole point of the plan is not to be.
+ */
+const freeExports = Number.parseInt(process.env.EXPORT_LIMIT_FREE ?? "", 10);
+
+export const exportLimit = {
+  /** Exports a free account gets each month, or null when unlimited. */
+  free: Number.isFinite(freeExports) && freeExports > 0 ? freeExports : null,
+} as const;
+
 /** Accounts, sign-in and the waitlist all need Supabase. */
 export const supabaseConfigured = Boolean(supabase.url && supabase.serviceRoleKey);
 
@@ -232,6 +249,13 @@ function webhooks(): string {
   return on.length > 0 ? `on (${on.join(", ")})` : "off (set DODO_WEBHOOK_KEY or STRIPE_WEBHOOK_SECRET)";
 }
 
+/** Off is the normal state, so the log says so rather than staying silent. */
+function exportCap(): string {
+  return exportLimit.free === null
+    ? "off (set EXPORT_LIMIT_FREE to cap the free plan)"
+    : `on (${exportLimit.free} a month on Wanderer)`;
+}
+
 /** Names the provider as well as the state — which one is running matters. */
 function copyDesk(): string {
   const chosen = polishProvider();
@@ -250,6 +274,7 @@ export function describe(): string {
     `   billing   ${billing()}`,
     `   webhook   ${webhooks()}`,
     `   copy desk ${copyDesk()}`,
+    `   exports   ${exportCap()}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");
 }

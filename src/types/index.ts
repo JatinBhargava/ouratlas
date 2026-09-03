@@ -85,6 +85,19 @@ export type MeResponse = {
 /** `POST /api/billing/checkout` and `/api/billing/portal` both answer with a URL to visit. */
 export type RedirectResponse = { url: string };
 
+/**
+ * `GET /api/exports` and `POST /api/exports`.
+ *
+ * `limit` is null when this account is not counted at all — either the limit
+ * is switched off on the server, or the plan is a paid one. In that case
+ * `remaining` is null too, and nothing about an allowance should be shown.
+ */
+export type ExportAllowance = {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+};
+
 /** `POST /api/waitlist` */
 export type WaitlistResponse = { ok: true; alreadySubscribed: boolean };
 

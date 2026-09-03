@@ -14,6 +14,7 @@ import { errorHandler, notFound } from "@api/http";
 import { authRoutes } from "@api/routes/auth";
 import { billingRoutes } from "@api/routes/billing";
 import { dodoWebhookRoutes } from "@api/routes/dodo-webhook";
+import { exportRoutes } from "@api/routes/exports";
 import { polishRoutes } from "@api/routes/polish";
 import { visitsRoutes } from "@api/routes/visits";
 import { waitlistRoutes } from "@api/routes/waitlist";
@@ -52,6 +53,7 @@ export function createApp(): Express {
   app.use("/api", visitsRoutes);
   app.use("/api", waitlistRoutes);
   app.use("/api", polishRoutes);
+  app.use("/api", exportRoutes);
   app.use("/api", webhookRoutes);
   app.use("/api", dodoWebhookRoutes);
   app.use("/api/billing", billingRoutes);
