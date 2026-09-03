@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useLocation } from "react-router";
 
+import { BetaNotice } from "@/components/beta-notice";
 import { SceneBackground } from "@/components/scene-background";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
@@ -33,7 +34,10 @@ export function RootLayout({ children }: { children: ReactNode }) {
     <div className="relative flex min-h-screen flex-col">
       <SceneBackground />
       <SiteNav />
-      <main className="mx-auto w-full max-w-5xl grow px-4 pt-24 pb-12 sm:px-6 sm:pt-32 sm:pb-20 print:max-w-none print:p-0">{children}</main>
+      <main className="mx-auto w-full max-w-5xl grow px-4 pt-24 pb-12 sm:px-6 sm:pt-32 sm:pb-20 print:max-w-none print:p-0">
+        <BetaNotice />
+        {children}
+      </main>
       {isLanding && <SiteFooter />}
     </div>
   );
