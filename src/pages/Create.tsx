@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Eye, Loader2, LogIn, Sparkles } from "lucide-react
 
 import { IssueView } from "@/components/magazine/issue-view";
 import { PrintSheet } from "@/components/magazine/print-sheet";
+import { FEED_MS, PressFeed } from "@/components/press-feed";
 import { PressInterlude } from "@/components/press-interlude";
 import { MAX_PHOTOS, PhotoPicker } from "@/components/photo-picker";
 import { MIN_WORDS, MAX_WORDS, StoryEditor } from "@/components/story-editor";
@@ -108,6 +109,8 @@ export function Create() {
    */
   const [allowance, setAllowance] = useState<ExportAllowance | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  /** The press-feed overlay, up from the click until the print dialog closes. */
+  const [exporting, setExporting] = useState(false);
   /**
    * Set only when an export is actually refused, never merely when the last
    * one is spent.
@@ -284,6 +287,10 @@ export function Create() {
    */
   const exportIssue = async () => {
     setExportError(null);
+    setExporting(true);
+    const started = Date.now();
+
+    try {
 
     /*
      * Claimed before anything is printed. A print dialog gives no reliable
@@ -295,29 +302,40 @@ export function Create() {
      * through: the limit exists to hold back people who have had their share,
      * not to make the export depend on a second service being reachable.
      */
-    if (allowance === null || allowance.limit !== null) {
-      try {
-        setAllowance(await claimExport());
-      } catch (cause) {
-        if (cause instanceof HttpError && cause.status === 402) {
-          setExportError(cause.message);
-          setBlocked(true);
-          return;
+      if (allowance === null || allowance.limit !== null) {
+        try {
+          setAllowance(await claimExport());
+        } catch (cause) {
+          if (cause instanceof HttpError && cause.status === 402) {
+            setExportError(cause.message);
+            setBlocked(true);
+            return;
+          }
         }
       }
+
+      await Promise.all(
+        photos.map(async photo => {
+          const image = new Image();
+          image.src = photo.url;
+          // A picture that will not decode is one the page will render as best
+          // it can. It must not hold up the export.
+          await image.decode().catch(() => undefined);
+        }),
+      );
+
+      // One whole cycle of the sheet at least, so it is never caught halfway
+      // when the print dialog takes the screen. Everything above is already
+      // done by now; this is the only part that is a wait for its own sake.
+      const held = Date.now() - started;
+      if (held < FEED_MS) await new Promise(resolve => setTimeout(resolve, FEED_MS - held));
+
+      window.print();
+    } finally {
+      // Reached when the dialog closes, and on the refusal above. Chrome and
+      // Safari both return from `print()` once it is dismissed.
+      setExporting(false);
     }
-
-    await Promise.all(
-      photos.map(async photo => {
-        const image = new Image();
-        image.src = photo.url;
-        // A picture that will not decode is one the page will render as best
-        // it can. It must not hold up the export.
-        await image.decode().catch(() => undefined);
-      }),
-    );
-
-    window.print();
   };
 
   /**
@@ -489,7 +507,7 @@ export function Create() {
                   <Link to="/pricing">See the plans</Link>
                 </Button>
               ) : (
-                <Button className="rounded-full" onClick={exportIssue}>
+                <Button className="rounded-full" disabled={exporting} onClick={exportIssue}>
                   <Download className="size-4" />
                   Export
                 </Button>
@@ -553,6 +571,8 @@ export function Create() {
           sheet out of the document is what stops Ctrl+P walking straight past
           the press button; hiding the button alone would not.
         */}
+        {exporting && <PressFeed />}
+
         {!proofing && !blocked && <PrintSheet issue={issue} />}
       </>
     );

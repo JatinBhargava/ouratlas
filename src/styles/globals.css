@@ -266,3 +266,28 @@
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* A sheet drawn into the press, for the moment an issue is exported. */
+@keyframes feed {
+  0% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(46px);
+    opacity: 1;
+  }
+}
+
+@utility animate-feed {
+  animation: feed 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-feed {
+    animation: none;
+  }
+}
