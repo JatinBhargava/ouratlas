@@ -153,6 +153,33 @@ export function Create() {
           ? "Trim the story to 10,000 words"
           : null;
 
+  /**
+   * Opens the print dialog, but not before every photograph has decoded.
+   *
+   * The print sheet is `display: none` until the print stylesheet applies, so
+   * nothing in it has ever been painted and its images may not be decoded when
+   * the browser takes its snapshot — and the browser does not wait. What prints
+   * instead is whatever sits behind the picture, which on the cover is a
+   * near-black panel under a dark scrim, kept by `print-color-adjust: exact`.
+   * That is the black first page.
+   *
+   * Decoding here is cheap: these are object URLs already in memory, and any
+   * the reader has looked at are decoded already.
+   */
+  const exportIssue = async () => {
+    await Promise.all(
+      photos.map(async photo => {
+        const image = new Image();
+        image.src = photo.url;
+        // A picture that will not decode is one the page will render as best
+        // it can. It must not hold up the export.
+        await image.decode().catch(() => undefined);
+      }),
+    );
+
+    window.print();
+  };
+
   const sendToPress = async () => {
     setComposing(true);
     // Copy is fitted by measuring real type. Measuring before the webfont
@@ -186,7 +213,7 @@ export function Create() {
                 <ArrowLeft className="size-4" />
                 Back to the desk
               </Button>
-              <Button className="rounded-full" onClick={() => window.print()}>
+              <Button className="rounded-full" onClick={exportIssue}>
                 <Download className="size-4" />
                 Export
               </Button>

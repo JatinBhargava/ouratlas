@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
  */
 export function NotFound() {
   return (
-    <div className="flex flex-col items-center gap-6 py-16 text-center">
+    <div className="flex flex-col items-center gap-6 py-8 text-center sm:py-16">
       <span className="flex items-center gap-3 text-[11px] font-medium tracking-[0.28em] text-white/70 uppercase drop-shadow-sm">
         <span aria-hidden className="h-px w-6 bg-white/40" />
         Error 404
