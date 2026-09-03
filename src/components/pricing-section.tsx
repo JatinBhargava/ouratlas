@@ -1,4 +1,4 @@
-import { Check, Compass, Loader2, Map, Tent } from "lucide-react";
+import { Check, Compass, Loader2, Map, Stamp, Tent } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
@@ -69,6 +69,17 @@ const PLANS: Plan[] = [
   },
 ];
 
+/**
+ * Whether to say, in the plans, that a card will not go through yet.
+ *
+ * Dodo has not enabled payment processing on the account, so checkout fails at
+ * the processor with "Payment mode not enabled for this merchant" before the
+ * card is ever tried. Someone who reaches that unwarned concludes the site is
+ * broken; saying so here costs a sentence. Flip to false the day the account
+ * is approved — nothing else reads it.
+ */
+const SUBSCRIPTIONS_AT_PROOF = true;
+
 export function PricingSection() {
   const { user, billing, configured, signInWithGoogle } = useAuth();
   const [pending, setPending] = useState<PaidPlan | null>(null);
@@ -117,6 +128,20 @@ export function PricingSection() {
         title="Keep the whole journey"
         description="Your photos and words never touch our database — every plan sends the finished magazine straight to you."
       />
+
+      {SUBSCRIPTIONS_AT_PROOF && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-white/60 bg-white/85 px-5 py-4 backdrop-blur-md"
+        >
+          <Stamp className="mt-0.5 size-4 shrink-0 text-stone-400" />
+          <p className="text-sm text-stone-700">
+            <span className="font-medium text-stone-900">Subscriptions are at proof.</span> The plans below are settled,
+            but our payments partner is still checking our masthead, so a card will not go through yet. Wanderer is free
+            and works in full today — start a story, and we will have the presses running shortly.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {PLANS.map(plan => {
