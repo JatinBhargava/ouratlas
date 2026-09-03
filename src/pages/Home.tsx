@@ -35,7 +35,7 @@ export function Home() {
   const line = reduce ? undefined : LINE;
 
   return (
-    <div className="flex flex-col gap-28">
+    <div className="flex flex-col gap-16 sm:gap-24 lg:gap-28">
       <section className="flex flex-col items-center gap-10 text-center">
         <motion.div
           className="flex flex-col items-center gap-5"

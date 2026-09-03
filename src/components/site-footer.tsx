@@ -70,7 +70,7 @@ const SOCIALS = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-white/40 bg-white/85 backdrop-blur-md print:hidden">
+    <footer className="mt-16 sm:mt-24 border-t border-white/40 bg-white/85 backdrop-blur-md print:hidden">
       <div className="mx-auto w-full max-w-5xl px-6 py-14">
         {/* The waitlist sits above the link groups: it is the one thing here
             anyone is actually asked to do. */}
