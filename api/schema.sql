@@ -217,33 +217,96 @@ alter table public.waitlist enable row level security;
 -- Anyone who scrapes the public key still cannot enumerate the mailing list.
 
 -- ---------------------------------------------------------------------------
--- exports: one row per issue sent out as a PDF
+-- exports: one row per account, counting the issues it has sent out
 -- ---------------------------------------------------------------------------
 --
--- The only reason this table exists is to count. Nothing about the magazine
--- itself is recorded — not the title, not the story, not a photograph, not
--- even how many pages it ran to. A row means "this account exported something
--- at this time", which is the least that can answer "how many this month".
+-- A counter rather than a ledger. Nothing here is ever read back as history —
+-- the only question asked of this table is "how many this month" — so a row
+-- per export would be a growing pile of rows to answer a question one integer
+-- answers.
 --
--- Kept server-side because the browser cannot be asked to police a limit it
--- benefits from ignoring. The count is the entitlement; the client is only
--- ever told the answer.
+-- The period is stored beside the count because the allowance is monthly and
+-- an integer alone cannot say which month it belongs to. Rather than sweep the
+-- table on the first of every month, a count from a spent month is simply
+-- treated as zero and overwritten by the next export.
+--
+-- Nothing about a magazine is recorded: an account, a number and a date.
+
+-- The old shape was a ledger with an `id` per export. Detected by that column
+-- so this runs once and does nothing ever after; the file has to stay safe to
+-- re-run.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'exports' and column_name = 'id'
+  ) then
+    drop table public.exports;
+  end if;
+end $$;
 
 create table if not exists public.exports (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users (id) on delete cascade,
-  created_at timestamptz not null default now()
+  user_id      uuid primary key references auth.users (id) on delete cascade,
+  -- Issues exported inside `period_start`'s month, not since the beginning.
+  times        integer not null default 0,
+  -- First of the month the count belongs to, UTC.
+  period_start date not null,
+  updated_at   timestamptz not null default now()
 );
-
--- The only query this table serves: this account, this month, newest first.
-create index if not exists exports_user_created_idx on public.exports (user_id, created_at desc);
 
 alter table public.exports enable row level security;
 
 -- Readable by its owner so an account page could show a tally; written only
--- through the service-role key, because a row here is what spends an
--- allowance and the browser must not be able to forge or withhold one.
+-- through the function below, because a row here is what spends an allowance
+-- and the browser must not be able to forge or withhold one.
 drop policy if exists "exports: read own" on public.exports;
 create policy "exports: read own"
   on public.exports for select
   using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- claim_export: spend one, or refuse
+-- ---------------------------------------------------------------------------
+--
+-- The check and the increment are one statement so two clicks cannot both read
+-- "two spent" and both write "three". Doing it in the API would mean a read,
+-- a decision and a write with a gap in the middle, and the gap is exactly
+-- where a double-click lands.
+--
+-- The limit is passed in rather than stored: it belongs to the server's
+-- configuration (`EXPORT_LIMIT_FREE`), and a plan can change between one
+-- export and the next.
+create or replace function public.claim_export(p_user uuid, p_limit integer)
+returns table (used integer, granted boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  month_start date := date_trunc('month', now() at time zone 'utc')::date;
+  spent integer;
+begin
+  select e.times into spent
+    from public.exports e
+   where e.user_id = p_user and e.period_start = month_start;
+
+  spent := coalesce(spent, 0);
+
+  -- At the limit: report the count and change nothing, so a refused attempt
+  -- does not quietly cost the reader an export.
+  if spent >= p_limit then
+    return query select spent, false;
+    return;
+  end if;
+
+  insert into public.exports as e (user_id, times, period_start, updated_at)
+  values (p_user, 1, month_start, now())
+  on conflict (user_id) do update
+     set times = case when e.period_start = month_start then e.times + 1 else 1 end,
+         period_start = month_start,
+         updated_at = now()
+  returning e.times into spent;
+
+  return query select spent, true;
+end;
+$$;

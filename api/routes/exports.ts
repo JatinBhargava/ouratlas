@@ -7,7 +7,8 @@
  * the client asks before rendering it, and a refusal means the sheet is never
  * put into the document at all.
  *
- * Nothing about a magazine is recorded. A row is an account and a timestamp.
+ * Nothing about a magazine is recorded. A row is an account, a number and
+ * the month that number belongs to.
  */
 
 import { Router } from "express";
@@ -19,10 +20,22 @@ import type { ExportAllowance } from "@/types";
 
 export const exportRoutes = Router();
 
-/** Midnight UTC on the first of the current month. */
+/** The first of the current month, UTC, as the `date` column stores it. */
 function monthStart(): string {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+}
+
+/** The allowance for someone nothing is counted against. */
+const UNCOUNTED = { used: 0, limit: null, remaining: null } as const;
+
+/**
+ * How many this account may export a month, or null when it is not counted —
+ * a paid plan, or the limit switched off on this server.
+ */
+async function limitFor(userId: string): Promise<number | null> {
+  const subscription = await getActiveSubscription(userId);
+  return subscription ? null : exportLimit.free;
 }
 
 /**
@@ -34,20 +47,20 @@ function monthStart(): string {
  * one to show.
  */
 async function allowanceFor(userId: string): Promise<ExportAllowance> {
-  const subscription = await getActiveSubscription(userId);
-  const limit = subscription ? null : exportLimit.free;
+  const limit = await limitFor(userId);
+  if (limit === null) return { ...UNCOUNTED };
 
-  if (limit === null) return { used: 0, limit: null, remaining: null };
-
-  const { count, error } = await admin()
+  const { data, error } = await admin()
     .from("exports")
-    .select("id", { count: "exact", head: true })
+    .select("times, period_start")
     .eq("user_id", userId)
-    .gte("created_at", monthStart());
+    .maybeSingle();
 
   if (error) throw new HttpError(500, `Could not read your exports: ${error.message}`);
 
-  const used = count ?? 0;
+  // A count left over from a spent month is not this month's, so it reads as
+  // nothing. The next export overwrites it rather than the table being swept.
+  const used = data?.period_start === monthStart() ? data.times : 0;
   return { used, limit, remaining: Math.max(0, limit - used) };
 }
 
@@ -76,22 +89,35 @@ exportRoutes.post(
   authenticate,
   asyncRoute(async (req, res) => {
     const userId = req.user!.id;
-    const allowance = await allowanceFor(userId);
+    const limit = await limitFor(userId);
 
-    if (allowance.remaining !== null && allowance.remaining <= 0) {
+    // Nothing to count, so nothing is written. A paid plan leaves no row at
+    // all, which is also what makes an unsubscribe start the month clean.
+    if (limit === null) {
+      res.json({ ...UNCOUNTED } satisfies ExportAllowance);
+      return;
+    }
+
+    // One statement decides and increments. Splitting the two here would put a
+    // gap between them, and a double-click lands in exactly that gap.
+    const { data, error } = await admin().rpc("claim_export", { p_user: userId, p_limit: limit });
+    if (error) throw new HttpError(500, `Could not record your export: ${error.message}`);
+
+    // Postgres returns a set even for one row.
+    const claim = (Array.isArray(data) ? data[0] : data) as { used: number; granted: boolean } | undefined;
+    if (!claim) throw new HttpError(500, "Could not record your export.");
+
+    if (!claim.granted) {
       throw new HttpError(
         402,
-        `Wanderer exports ${allowance.limit} issues a month, and this month's are spent. Traveller and Cartographer export as many as you like.`,
+        `Wanderer exports ${limit} issues a month, and this month's are spent. Traveller and Cartographer export as many as you like.`,
       );
     }
 
-    // Unlimited accounts are not written down. There is nothing to count, and
-    // a table of rows nobody will ever read is a table somebody has to keep.
-    if (allowance.limit !== null) {
-      const { error } = await admin().from("exports").insert({ user_id: userId });
-      if (error) throw new HttpError(500, `Could not record your export: ${error.message}`);
-    }
-
-    res.json(await allowanceFor(userId));
+    res.json({
+      used: claim.used,
+      limit,
+      remaining: Math.max(0, limit - claim.used),
+    } satisfies ExportAllowance);
   }),
 );

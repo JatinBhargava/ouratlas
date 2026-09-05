@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
-import { ArrowLeft, Download, Eye, Loader2, LogIn, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, Loader2, LogIn, Sparkles } from "lucide-react";
 
 import { IssueView } from "@/components/magazine/issue-view";
 import { PrintSheet } from "@/components/magazine/print-sheet";
@@ -63,6 +63,8 @@ export function Create() {
   const [pressReady, setPressReady] = useState(false);
   /** Set once a parked desk has actually been recovered, not merely looked for. */
   const returning = useRef(false);
+  /** The seed the parked issue was composed with; reused so it comes back the same. */
+  const restoredSeed = useRef<string | null>(null);
 
   /**
    * Nothing may go to press without an account.
@@ -70,16 +72,18 @@ export function Create() {
    * A build with no Supabase keys has nobody to sign in as, so it is not
    * gated — the alternative is a press button that can never be pressed.
    */
-  const needsSignIn = configured && !user;
-
   /**
-   * Signed out, an issue is a proof: it can be read, but not marked up and not
-   * printed. That is the industry's own arrangement — a proof exists to be
-   * looked at and approved, and the press run is a separate act. Here the
-   * separation is an account, and it means nobody has to sign in to find out
-   * whether their trip makes a good magazine.
+   * Whether an account is still needed before this issue can go out.
+   *
+   * The gate is at the export and nowhere earlier: composing, pressing and
+   * marking up all work signed out, so nobody is asked for an account before
+   * they know whether their trip makes a good magazine. What an account buys
+   * is the PDF.
+   *
+   * A build with no Supabase keys has nobody to sign in as, so it is not
+   * gated — the alternative is an export that can never happen.
    */
-  const proofing = needsSignIn;
+  const needsSignIn = configured && !user;
 
   const [issue, setIssue] = useState<Issue | null>(null);
   const [composing, setComposing] = useState(false);
@@ -138,9 +142,12 @@ export function Create() {
 
       if (draft) {
         returning.current = true;
+        restoredSeed.current = draft.seed;
         setTitle(draft.title);
         setStory(draft.story);
         setPolished(draft.polished);
+        setPlateSizes(draft.plateSizes);
+        setSeed(draft.seed);
         setPhotos(
           draft.photos.map(photo => ({
             id: photo.id,
@@ -339,23 +346,26 @@ export function Create() {
   };
 
   /**
-   * Parks the whole desk, then hands the reader to Google.
+   * Parks the whole desk, marked-up issue and all, then hands the reader to
+   * Google.
    *
    * Written here rather than on every keystroke: this is the one moment the
    * page is knowingly about to be destroyed, so it is the only moment the
    * write is worth making.
    */
-  const signInToPress = async () => {
+  const signInToExport = async () => {
     setSignInError(null);
     setSigningIn(true);
 
-    // Photographs included: the whole point of parking the desk is that the
-    // reader comes back to it, and coming back to an empty photo tray is the
-    // same as not coming back at all.
+    // Photographs, plate sizes and the seed included. Someone signing in at
+    // the export has already made the magazine they want; coming back to a
+    // different one is the same as not coming back at all.
     await park({
       title,
       story,
       polished,
+      plateSizes,
+      seed,
       photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus })),
     });
 
@@ -367,7 +377,7 @@ export function Create() {
     }
   };
 
-  const sendToPress = async () => {
+  const sendToPress = async (reuseSeed?: string) => {
     // Every route to the press goes behind the interlude — pressed from the
     // desk, or resumed after signing in. The desk is never left on screen
     // doing visible nothing while the type is set.
@@ -382,8 +392,10 @@ export function Create() {
       await document.fonts.ready;
       await new Promise(resolve => requestAnimationFrame(resolve));
       // A fresh seed per press, used for this composition and kept in state for
-      // every recomposition the reader's dragging causes afterwards.
-      const pressing = crypto.randomUUID();
+      // every recomposition the reader's dragging causes afterwards. A resumed
+      // press hands back the seed it was parked with instead, so the riddle on
+      // the blank leaf is the one the reader already saw.
+      const pressing = reuseSeed ?? crypto.randomUUID();
       setSeed(pressing);
 
       setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing }));
@@ -403,7 +415,7 @@ export function Create() {
    * then would spend a round trip to answer a question nobody has asked.
    */
   useEffect(() => {
-    if (!issue || proofing || !user) return;
+    if (!issue || needsSignIn) return;
 
     let cancelled = false;
 
@@ -422,15 +434,17 @@ export function Create() {
     return () => {
       cancelled = true;
     };
-  }, [issue, proofing, user]);
+  }, [issue, needsSignIn]);
 
   /**
    * Sends a restored desk straight to press.
    *
-   * Someone who signed in from a proof asked for one thing: to mark the issue
-   * up. Handing them the desk back and making them press the button again
-   * would be asking twice. The ref guards against a second run, which React's
-   * double effect would otherwise cause.
+   * Someone who signed in from the press asked for one thing: their PDF.
+   * Handing them the desk back and making them press the button again would
+   * be asking twice. The parked seed and plate sizes go in with it, so what
+   * returns is the issue they left, not a fresh arrangement of it. The ref
+   * guards against a second run, which React's double effect would otherwise
+   * cause.
    */
   const pressed = useRef(false);
   useEffect(() => {
@@ -450,7 +464,7 @@ export function Create() {
     }
 
     pressed.current = true;
-    void sendToPress();
+    void sendToPress(restoredSeed.current ?? undefined);
   }, [draftLoaded, ready, user, issue, photos.length]);
 
   /**
@@ -484,7 +498,7 @@ export function Create() {
             <div className="flex flex-col gap-2">
               <span className="flex items-center gap-3 text-[11px] font-medium tracking-[0.28em] text-white/70 uppercase drop-shadow-sm">
                 <span aria-hidden className="h-px w-6 bg-white/40" />
-                {proofing ? "Proof copy" : "Off the press"}
+                Off the press
               </span>
               <h1 className="font-editorial text-4xl tracking-tight text-white drop-shadow-md">{issue.title}</h1>
             </div>
@@ -494,13 +508,13 @@ export function Create() {
                 Back to the desk
               </Button>
               {/*
-                A proof is approved by going to press, so that is the button —
-                and pressing it is what asks for the account.
+                The one thing an account is needed for. Everything else on this
+                page — the plates, the placing, the sizes — works without one.
               */}
-              {proofing ? (
-                <Button className="rounded-full" disabled={signingIn} onClick={() => void signInToPress()}>
+              {needsSignIn ? (
+                <Button className="rounded-full" disabled={signingIn} onClick={() => void signInToExport()}>
                   {signingIn ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
-                  {signingIn ? "Opening Google" : "Send to press"}
+                  {signingIn ? "Opening Google" : "Sign in to export"}
                 </Button>
               ) : blocked ? (
                 <Button asChild className="rounded-full">
@@ -515,17 +529,7 @@ export function Create() {
             </div>
           </header>
 
-          {/*
-            Withholding the three handlers is what makes this read-only:
-            `IssueView` already renders a plain issue when it has none, so a
-            proof needs no separate view of its own.
-          */}
-          <IssueView
-            issue={issue}
-            onSwapPlates={proofing ? undefined : swapPlates}
-            onResizePlate={proofing ? undefined : resizePlate}
-            onPanPhoto={proofing ? undefined : panPhoto}
-          />
+          <IssueView issue={issue} onSwapPlates={swapPlates} onResizePlate={resizePlate} onPanPhoto={panPhoto} />
 
           {(signInError ?? exportError) && (
             <p className="text-center text-xs text-red-100 drop-shadow-sm" role="alert">
@@ -540,40 +544,31 @@ export function Create() {
             </p>
           )}
 
-          {proofing ? (
-            <p className="mx-auto max-w-prose text-center text-xs text-white/70 drop-shadow-sm">
-              This is a proof — your issue as it stands, set and paginated, but not yet marked up. Send it to press and
-              the plates come under your hand: move the pictures about, choose what shows in each one, set how much of a
-              page a plate takes, and export the whole issue as a PDF. Signing in is all that takes, and it is free.
-            </p>
-          ) : (
-            <>
-              <p className="text-center text-xs text-white/70 drop-shadow-sm">
-                Every picture is placed for you until you say otherwise: hover one and press{" "}
-                <span className="font-medium text-white">Auto</span> to take the placing over, then drag the picture to
-                choose what shows. Press <span className="font-medium text-white">Move</span> to hand it back. The grips on
-                a plate's edges set how much of the page it takes — <span className="font-medium text-white">depth</span> on
-                the horizontal one, <span className="font-medium text-white">width</span> on the vertical — and the story
-                re-flows around whatever you leave it. To swap two photographs, drag one by the{" "}
-                <span className="font-medium text-white">Swap</span> badge in its corner and drop it on the other.
-              </p>
+          <p className="text-center text-xs text-white/70 drop-shadow-sm">
+            Every picture is placed for you until you say otherwise: hover one and press{" "}
+            <span className="font-medium text-white">Auto</span> to take the placing over, then drag the picture to
+            choose what shows. Press <span className="font-medium text-white">Move</span> to hand it back. The grips on
+            a plate's edges set how much of the page it takes — <span className="font-medium text-white">depth</span> on
+            the horizontal one, <span className="font-medium text-white">width</span> on the vertical — and the story
+            re-flows around whatever you leave it. To swap two photographs, drag one by the{" "}
+            <span className="font-medium text-white">Swap</span> badge in its corner and drop it on the other.
+          </p>
 
-              <p className="text-center text-xs text-white/70 drop-shadow-sm">
-                Export opens your print dialog — choose <span className="font-medium text-white">Save as PDF</span>. The
-                pages are already the right size, so leave the scale at 100%.
-              </p>
-            </>
-          )}
+          <p className="text-center text-xs text-white/70 drop-shadow-sm">
+            {needsSignIn
+              ? "Exporting needs an account — it is free, and your issue is kept exactly as you have it here while you sign in."
+              : "Export opens your print dialog — choose Save as PDF. The pages are already the right size, so leave the scale at 100%."}
+          </p>
         </div>
 
         {/*
-          Only laid out when printing — and never for a proof. Keeping the
-          sheet out of the document is what stops Ctrl+P walking straight past
-          the press button; hiding the button alone would not.
+          Only laid out when printing, and never before there is an account to
+          print for. Keeping the sheet out of the document is what stops Ctrl+P
+          walking straight past the sign-in; hiding the button alone would not.
         */}
         {exporting && <PressFeed />}
 
-        {!proofing && !blocked && <PrintSheet issue={issue} />}
+        {!needsSignIn && !blocked && <PrintSheet issue={issue} />}
       </>
     );
   }
@@ -621,30 +616,24 @@ export function Create() {
 
       <div className="sticky bottom-6 flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/50 bg-white/85 py-3 pr-3 pl-6 shadow-lg shadow-black/10 backdrop-blur-md">
         <p className="text-sm text-stone-600">
-          {blocker ?? (proofing ? "Ready to proof." : "Ready for press.")}
+          {blocker ?? "Ready for press."}
           <span className="text-stone-400">
             {" "}
             · {photos.length} photos · {wordCount.toLocaleString()} words
           </span>
         </p>
         {/*
-          Signed out this pulls a proof rather than going to press. Nobody is
-          asked for an account before they have seen what Atlas makes of their
-          trip — the account is asked for at the proof, where it buys something.
+          No account needed to get here, nor to mark the issue up once there.
+          Wrapped rather than passed straight through: `sendToPress` takes an
+          optional seed, and a bare handler would hand it the click event.
         */}
         <Button
           className="rounded-full"
           disabled={!ready || blocker !== null || composing}
-          onClick={sendToPress}
+          onClick={() => void sendToPress()}
         >
-          {composing ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : proofing ? (
-            <Eye className="size-4" />
-          ) : (
-            <Sparkles className="size-4" />
-          )}
-          {composing ? "Setting the type" : proofing ? "Pull a proof" : "Send to press"}
+          {composing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {composing ? "Setting the type" : "Send to press"}
         </Button>
       </div>
     </div>

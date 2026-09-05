@@ -17,6 +17,7 @@
  * written for.
  */
 
+import type { PlateBox } from "@/lib/magazine/templates";
 import type { Focus } from "@/types";
 
 const DB_NAME = "atlas";
@@ -34,12 +35,22 @@ const KEY = "desk";
  */
 const PARKED = "atlas:desk-parked";
 
-/** What is worth carrying across. Plate sizes are not: they belong to an issue. */
+/**
+ * Everything needed to put the reader back exactly where they were.
+ *
+ * The plate sizes and the seed are here because signing in happens at the
+ * export, by which point the issue has been made up and very likely marked
+ * up too. Recomposing without them would hand back a magazine with the
+ * plates at their default sizes and a different riddle on the blank leaf —
+ * recognisably not the one they were about to keep.
+ */
 export type DeskDraft = {
   title: string;
   story: string;
   polished: boolean;
   photos: { id: string; file: File; focus?: Focus }[];
+  plateSizes: Record<number, Partial<PlateBox>>;
+  seed: string;
 };
 
 /** True when `park` ran and `take` has not yet collected it. */
@@ -159,6 +170,9 @@ function valid(value: unknown): value is DeskDraft {
     typeof draft.title === "string" &&
     typeof draft.story === "string" &&
     typeof draft.polished === "boolean" &&
+    typeof draft.seed === "string" &&
+    typeof draft.plateSizes === "object" &&
+    draft.plateSizes !== null &&
     Array.isArray(draft.photos) &&
     draft.photos.every(photo => typeof photo?.id === "string" && photo.file instanceof File)
   );
