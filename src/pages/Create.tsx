@@ -19,6 +19,11 @@ import { claimExport, readAllowance } from "@/lib/exports";
 import { composeIssue } from "@/lib/magazine/compose";
 import { disposeMeasurer } from "@/lib/magazine/fit";
 import type { Axis, PlateBox } from "@/lib/magazine/templates";
+import { DEFAULT_THEME, themeOf, type ThemeId } from "@/lib/magazine/themes";
+import { ThemePicker, TiltControl } from "@/components/theme-picker";
+import { THEMES } from "@/lib/magazine/themes";
+import { LayoutDesigner } from "@/components/layout-designer";
+import { defaultDesign, type CustomBox, type CustomDesign, type CustomSlot } from "@/lib/magazine/custom";
 import type { Issue } from "@/lib/magazine/types";
 import type { ExportAllowance, Focus, Photo } from "@/types";
 
@@ -108,6 +113,35 @@ export function Create() {
   const [seed, setSeed] = useState("");
 
   /**
+   * The style the issue is set in.
+   *
+   * Lives here beside the title and the story because it is one of the things
+   * the reader decides, not something the composer works out — and like them
+   * it has to survive the sign-in redirect.
+   */
+  const [theme, setTheme] = useState<ThemeId>(DEFAULT_THEME);
+  /**
+   * How far the pasted-up photographs lean, or null while the reader has not
+   * said and the theme's own angle stands.
+   *
+   * Null rather than the theme's number, so switching theme picks up the new
+   * theme's lean instead of carrying the last one across — but once the
+   * reader has touched the slider, their answer follows them.
+   */
+  const [tilt, setTilt] = useState<number | null>(null);
+  /**
+   * The three pages the reader has drawn.
+   *
+   * Started from a working default rather than three empty leaves, and kept
+   * whatever theme is showing, so switching away and back does not throw the
+   * drawing away.
+   */
+  const [design, setDesign] = useState<CustomDesign>(defaultDesign);
+  const themeTilt = THEMES[theme].surface.tilt;
+  const leaning = themeTilt !== undefined;
+  const tiltNow = tilt ?? themeTilt ?? 0;
+
+  /**
    * What the server says this account may still export, or null while it has
    * not been asked and when nothing is counted at all.
    */
@@ -148,6 +182,10 @@ export function Create() {
         setPolished(draft.polished);
         setPlateSizes(draft.plateSizes);
         setSeed(draft.seed);
+        // A desk parked before themes existed has none; that is the house style.
+        setTheme(themeOf(draft.theme).id);
+        setTilt(draft.tilt ?? null);
+        if (draft.design) setDesign(draft.design);
         setPhotos(
           draft.photos.map(photo => ({
             id: photo.id,
@@ -224,7 +262,7 @@ export function Create() {
     next[toIndex] = photos[fromIndex]!;
 
     setPhotos(next);
-    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed }));
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design }));
   };
 
   /**
@@ -241,7 +279,7 @@ export function Create() {
   const resizePlate = (index: number, axis: Axis, value: number) => {
     const next = { ...plateSizes, [index]: { ...plateSizes[index], [axis]: value } };
     setPlateSizes(next);
-    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed }));
+    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed, theme, custom: design }));
   };
 
   /**
@@ -260,8 +298,59 @@ export function Create() {
       photo.id === id ? { ...photo, focus: focus ?? undefined } : photo,
     );
     setPhotos(next);
-    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed }));
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design }));
   };
+
+  /**
+   * Sets the issue in another style.
+   *
+   * The plate sizes go with it, and have to. They are recorded against page
+   * numbers, and a theme that lays pages out differently paginates
+   * differently — carried across, a depth pulled on page nine would land on
+   * whatever the new theme happens to put there, which is not the picture the
+   * reader pulled.
+   *
+   * Recomposing here is safe to do synchronously: the fonts were waited for
+   * when the issue was first sent to press, and nothing since has changed them.
+   */
+  const chooseTheme = (next: ThemeId) => {
+    if (next === theme) return;
+    setTheme(next);
+    setPlateSizes({});
+    // The lean belongs to the style it was chosen against.
+    setTilt(null);
+    if (issue) setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme: next, custom: design }));
+  };
+
+  /**
+   * Takes the reader's drawing and sets the issue again from it.
+   *
+   * Recomposed on every change rather than on some "apply": moving a box is
+   * exactly as much of an editorial decision as pulling a plate, and the two
+   * should not behave differently. Nothing here is expensive enough to earn a
+   * button — the fonts were waited for when the issue first went to press.
+   */
+  const changeDesign = (next: CustomDesign) => {
+    setDesign(next);
+    if (issue && theme === "custom") {
+      setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme, custom: next }));
+      setPlateSizes({});
+    }
+  };
+
+  /**
+   * Moves or sizes one box on a drawn page, from the page itself.
+   *
+   * The same act as dragging it in the designer, reached from the other end:
+   * what is edited is the design, so every leaf set from that slot changes
+   * with it. Anything else would mean the issue and the design disagreeing
+   * about what a page is.
+   */
+  const editBox = (slot: CustomSlot, box: CustomBox) =>
+    changeDesign({
+      ...design,
+      [slot]: { boxes: design[slot].boxes.map(b => (b.id === box.id ? box : b)) },
+    });
 
   const removePhoto = (id: string) =>
     setPhotos(current => {
@@ -366,6 +455,9 @@ export function Create() {
       polished,
       plateSizes,
       seed,
+      theme,
+      tilt,
+      design,
       photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus })),
     });
 
@@ -398,7 +490,7 @@ export function Create() {
       const pressing = reuseSeed ?? crypto.randomUUID();
       setSeed(pressing);
 
-      setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing }));
+      setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing, theme, custom: design }));
       window.scrollTo({ top: 0 });
     } finally {
       setComposing(false);
@@ -529,7 +621,23 @@ export function Create() {
             </div>
           </header>
 
-          <IssueView issue={issue} onSwapPlates={swapPlates} onResizePlate={resizePlate} onPanPhoto={panPhoto} />
+          {/* Offered again over the finished issue, because this is the only
+              place the choice can actually be judged. Picking here re-lays the
+              magazine under the reader rather than sending them back a step. */}
+          <div className="flex flex-col gap-4 rounded-2xl border border-white/50 bg-white/85 p-4 backdrop-blur-md">
+            <ThemePicker theme={theme} onChoose={chooseTheme} />
+            {leaning && <TiltControl tilt={tiltNow} onChange={setTilt} />}
+            {theme === "custom" && <LayoutDesigner design={design} onChange={changeDesign} />}
+          </div>
+
+          <IssueView
+            issue={issue}
+            tilt={tiltNow}
+            onSwapPlates={swapPlates}
+            onResizePlate={resizePlate}
+            onPanPhoto={panPhoto}
+            onEditBox={theme === "custom" ? editBox : undefined}
+          />
 
           {(signInError ?? exportError) && (
             <p className="text-center text-xs text-red-100 drop-shadow-sm" role="alert">
@@ -568,7 +676,7 @@ export function Create() {
         */}
         {exporting && <PressFeed />}
 
-        {!needsSignIn && !blocked && <PrintSheet issue={issue} />}
+        {!needsSignIn && !blocked && <PrintSheet issue={issue} tilt={tiltNow} />}
       </>
     );
   }
@@ -600,6 +708,10 @@ export function Create() {
               className="max-w-md bg-white/70 text-base"
             />
           </div>
+
+          <ThemePicker theme={theme} onChoose={chooseTheme} />
+          {leaning && <TiltControl tilt={tiltNow} onChange={setTilt} />}
+          {theme === "custom" && <LayoutDesigner design={design} onChange={changeDesign} />}
 
           <PhotoPicker photos={photos} onAdd={addPhotos} onRemove={removePhoto} onReorder={reorderPhotos} />
           <StoryEditor

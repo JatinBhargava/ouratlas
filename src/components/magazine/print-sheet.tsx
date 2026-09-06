@@ -8,12 +8,19 @@ import type { Issue } from "@/lib/magazine/types";
  * viewer, the printer gets single pages at full size, which is how a PDF of a
  * magazine is actually put together.
  */
-export function PrintSheet({ issue }: { issue: Issue }) {
+export function PrintSheet({ issue, tilt }: { issue: Issue; tilt?: number }) {
   return (
     <div className="hidden print:block">
       {issue.pages.map(page => (
         <div key={page.id} className="break-inside-avoid break-after-page last:break-after-auto">
-          <MagazinePage page={page} title={issue.title} dateline={issue.dateline} polished={issue.polished} />
+          <MagazinePage
+            page={page}
+            title={issue.title}
+            dateline={issue.dateline}
+            polished={issue.polished}
+            theme={issue.theme}
+            tilt={tilt}
+          />
         </div>
       ))}
     </div>

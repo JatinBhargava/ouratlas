@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Photo } from "@/types";
 
-export const MAX_PHOTOS = 10;
+export const MAX_PHOTOS = 15;
 
 /**
  * Our own drag type, which is what tells the two kinds of drop apart: files

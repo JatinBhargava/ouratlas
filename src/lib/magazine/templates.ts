@@ -21,6 +21,16 @@ export type TemplateId =
   | "plate-beside"
   | "plate-beside-right"
   | "plate-band"
+  | "minimal-grid"
+  | "zine-collage"
+  | "zine-rows"
+  | "four-column"
+  | "ornament-feature"
+  | "quad-text"
+  | "centred-article"
+  | "custom-left"
+  | "custom-right"
+  | "custom-special"
   | "full-plate"
   | "paired-plates"
   | "blank"
@@ -45,12 +55,106 @@ export const STACK_GAP = 12;
 export const BAND_PLATE = 176;
 export const BAND_ABOVE = 180;
 
+/**
+ * The minimalist grid: one column of copy, one small plate, and air.
+ *
+ * The empty band at the foot is the layout, not space left over — so it is a
+ * fixed measurement like any other. The plate sits in the bottom of its cell
+ * with the air gathered above it, which is why the copy here does not re-flow
+ * when the plate is pulled: the cell keeps its depth whatever fills it.
+ */
+export const MINIMAL_HEAD = 44;
+export const MINIMAL_AIR = 120;
+export const MINIMAL_ROW = TEXT_HEIGHT - MINIMAL_HEAD - MINIMAL_AIR - STACK_GAP;
+export const MINIMAL_PLATE = 260;
+
+/**
+ * The zine collage: a column of copy, and beside it two photographs pinned up
+ * at angles, overlapping.
+ *
+ * The plates are placed rather than laid out — that is the register — so their
+ * positions are listed here, in page pixels within the collage column, rather
+ * than derived from the grid. The copy beside them stays a plain rectangle:
+ * the fitter measures real type and cannot pour it into a shape.
+ */
+/**
+ * The four-column page: a black band bleeding off the head of the leaf with
+ * the headline reversed out of it, then the plate, then the copy in four
+ * narrow measures.
+ *
+ * The band is given as a depth inside the text area; it is drawn taller than
+ * this, because it runs up through the head margin to the trim. Nothing is
+ * measured against the part that bleeds, so the two numbers never have to
+ * agree on anything but where the band stops.
+ *
+ * Four columns is the whole character of the page. At this measure the type
+ * has to come down with it — see the theme's body overrides — and the result
+ * is a page that is mostly texture with one very loud thing on it.
+ */
+export const BAND_HEAD = 132;
+export const BAND_PLATE_DEPTH = 150;
+export const COLUMN_QUARTER = (TEXT_WIDTH - GUTTER * 3) / 4;
+
+/**
+ * The ornamented feature: a rule of ornament across the head, a centred
+ * headline block under it, the plate, the copy, and the same ornament along
+ * the foot.
+ *
+ * The two rules are what close the page. Everything between them is centred
+ * on the measure rather than ranged left, which is the older way of setting an
+ * opening page and reads as deliberate the moment it sits beside a squared-off
+ * one.
+ */
+/**
+ * The centred article: one narrow measure standing in the middle of the leaf
+ * with air either side, under a centred kicker and a rule.
+ *
+ * A text page that is unmistakably a *page* rather than the continuation of
+ * one. The measure is deliberately narrower than a column pair — the point is
+ * the air around it, and a centred measure that reaches for the margins is
+ * just a wide column.
+ *
+ * The column is centred; the type inside it is not. Whole pages of
+ * centre-aligned body copy are a thing print does for eight lines of an
+ * editorial and never for a page of an article, so the alignment stays
+ * whatever the theme sets.
+ */
+export const CENTRED_WIDTH = 300;
+export const CENTRED_HEAD = 64;
+
+export const ORNAMENT = 14;
+export const ORNAMENT_HEAD = 150;
+export const ORNAMENT_PLATE = 200;
+
+/**
+ * The zine rows: three bands down the leaf, each a narrow column of text
+ * against a wide photograph — and the two changing places row by row. Text
+ * left, then text right, then text left again.
+ *
+ * The proportions hold while the sides swap, so the wide cell crosses the page
+ * on every band. That crossing is the page: three rows built the same way
+ * round would stack, where these interlock.
+ */
+export const ZINE_ROW = (TEXT_HEIGHT - STACK_GAP * 2) / 3;
+export const ZINE_NARROW = (TEXT_WIDTH - GUTTER) / 3;
+export const ZINE_WIDE = TEXT_WIDTH - GUTTER - ZINE_NARROW;
+
+/** Which side the text takes, band by band. The photograph takes the other. */
+export const ZINE_TEXT_LEFT = [true, false, true] as const;
+
+export const ZINE_PLATES = [
+  { top: 26, left: 2, width: 196, height: 232, tilt: -3.2 },
+  { top: 232, left: 24, width: 182, height: 220, tilt: 3.6 },
+] as const;
+
 const openerColumn = TEXT_HEIGHT - OPENER_HEAD - OPENER_PLATE - STACK_GAP * 2;
 const halfColumn = TEXT_HEIGHT - HALF_PLATE - STACK_GAP;
 const bandBelow = TEXT_HEIGHT - BAND_ABOVE - BAND_PLATE - STACK_GAP * 2;
 
 const column = (height: number): Box => ({ width: COLUMN_WIDTH, height });
 const pair = (height: number): Box[] => [column(height), column(height)];
+const quarter = (height: number): Box => ({ width: COLUMN_QUARTER, height });
+const quad = (height: number): Box[] => [quarter(height), quarter(height), quarter(height), quarter(height)];
 
 /**
  * Every layout a page can take. The boxes here are what the fitter pours copy
@@ -69,6 +173,45 @@ export const TEMPLATES: Record<TemplateId, Template> = {
   // what stops a run of illustrated pages reading as one repeated page.
   "plate-beside-right": { id: "plate-beside-right", plates: 1, boxes: [column(TEXT_HEIGHT)] },
   "plate-band": { id: "plate-band", plates: 1, boxes: [...pair(BAND_ABOVE), ...pair(bandBelow)] },
+  // One box, and it does not move: the plate shares the row rather than
+  // sitting above or below the copy, so its depth costs the copy nothing.
+  "minimal-grid": { id: "minimal-grid", plates: 1, boxes: [{ width: COLUMN_WIDTH, height: MINIMAL_ROW }] },
+  // The collage column is not a text box, so the copy takes the other half of
+  // the measure and the whole leaf, exactly as a beside plate does.
+  "zine-collage": { id: "zine-collage", plates: 2, boxes: [column(TEXT_HEIGHT)] },
+  "zine-rows": {
+    id: "zine-rows",
+    plates: 3,
+    // The text column keeps its measure whichever side it lands on, so the
+    // fitter pours the same shape into all three.
+    boxes: ZINE_TEXT_LEFT.map(() => ({ width: ZINE_NARROW, height: ZINE_ROW })),
+  },
+  // Text pages. No plate, so a theme can put one in its `plain` rotation and
+  // get a page of pure reading between the illustrated ones.
+  "quad-text": { id: "quad-text", plates: 0, boxes: quad(TEXT_HEIGHT) },
+  // The reader's own pages. Empty here on purpose: their shape is not a
+  // property of the layout but of the design the reader drew, which travels
+  // with the page. The composer reads it off that and never off this.
+  "custom-left": { id: "custom-left", plates: 0, boxes: [] },
+  "custom-right": { id: "custom-right", plates: 0, boxes: [] },
+  "custom-special": { id: "custom-special", plates: 0, boxes: [] },
+  "centred-article": {
+    id: "centred-article",
+    plates: 0,
+    boxes: [{ width: CENTRED_WIDTH, height: TEXT_HEIGHT - CENTRED_HEAD - STACK_GAP }],
+  },
+  "ornament-feature": {
+    id: "ornament-feature",
+    plates: 1,
+    boxes: pair(
+      TEXT_HEIGHT - ORNAMENT * 2 - ORNAMENT_HEAD - ORNAMENT_PLATE - STACK_GAP * 4,
+    ),
+  },
+  "four-column": {
+    id: "four-column",
+    plates: 1,
+    boxes: quad(TEXT_HEIGHT - BAND_HEAD - BAND_PLATE_DEPTH - STACK_GAP * 2),
+  },
   "full-plate": { id: "full-plate", plates: 1, boxes: [] },
   "paired-plates": { id: "paired-plates", plates: 2, boxes: [] },
   // A leaf left empty so the colophon falls on a right-hand page.
@@ -113,9 +256,11 @@ type Range = { default: number; min: number; max: number };
  * moves the boundary between picture and text, which is a real editorial
  * decision. Which axes are free depends on how the layout is built.
  *
- * A plate stacked above or below the copy has only its depth to give: it is
- * already the full measure wide, and the grid fixes that. A plate set beside a
- * column has both — pulled wider it takes room from the column beside it, and
+ * A plate stacked above or below the copy can give depth, which the copy takes
+ * back, and width, which nothing takes back — narrowing it opens the margin
+ * beside the picture and re-flows nothing, because the copy was never level
+ * with it. Both are real decisions and both are offered. A plate set beside a
+ * column has both too — pulled wider it takes room from the column beside it, and
  * pulled shorter it opens a two-column foot underneath. That second axis is
  * what a portrait photograph needs, since width alone cannot make a tall
  * picture sit differently on the page.
@@ -132,11 +277,37 @@ type Range = { default: number; min: number; max: number };
  * The bounds keep both sides of every boundary usable: at the limit the copy
  * that remains is still several lines, and a column still wide enough to set.
  */
+/**
+ * The width a full-measure plate may be pulled back to.
+ *
+ * Shared by every layout whose plate sits above or below its copy rather than
+ * beside it. Narrower than this and the picture stops being a plate and starts
+ * being a thumbnail with a page around it.
+ */
+const MEASURE_WIDTH = { default: TEXT_WIDTH, min: 170, max: TEXT_WIDTH } as const;
+
 export const PLATE_SIZING = {
-  opener: { height: { default: OPENER_PLATE, min: 150, max: 320 } },
-  "plate-above": { height: { default: HALF_PLATE, min: 150, max: 420 } },
-  "plate-below": { height: { default: HALF_PLATE, min: 150, max: 420 } },
-  "plate-band": { height: { default: BAND_PLATE, min: 110, max: 300 } },
+  opener: { width: MEASURE_WIDTH, height: { default: OPENER_PLATE, min: 150, max: 320 } },
+  "plate-above": { width: MEASURE_WIDTH, height: { default: HALF_PLATE, min: 150, max: 420 } },
+  "plate-below": { width: MEASURE_WIDTH, height: { default: HALF_PLATE, min: 150, max: 420 } },
+  "plate-band": { width: MEASURE_WIDTH, height: { default: BAND_PLATE, min: 110, max: 300 } },
+  // Alone among the resizable layouts this one takes nothing from the copy: it
+  // moves the plate inside a cell that keeps its depth either way.
+  "minimal-grid": {
+    // Its cell is one column wide, so that is as wide as it goes.
+    width: { default: COLUMN_WIDTH, min: 90, max: COLUMN_WIDTH },
+    height: { default: MINIMAL_PLATE, min: 150, max: MINIMAL_ROW },
+  },
+  // The two ornament rules and the headline between them are the layout; only
+  // the plate below them trades against the copy.
+  "ornament-feature": { width: MEASURE_WIDTH, height: { default: ORNAMENT_PLATE, min: 110, max: 300 } },
+  // The band above is fixed — it is the theme's signature and not a thing to
+  // be pulled about — so the plate trades only against the columns below it.
+  "four-column": { width: MEASURE_WIDTH, height: { default: BAND_PLATE_DEPTH, min: 90, max: 300 } },
+  // These two are the layouts that genuinely trade: pulled wider the plate
+  // takes room from the column beside it, pulled shorter it opens a
+  // two-column foot underneath. Both ranges run all the way, and the snap in
+  // `clampPlate` is what carries the last of a drag to the edge.
   "plate-beside": {
     width: { default: COLUMN_WIDTH, min: 140, max: TEXT_WIDTH },
     height: { default: TEXT_HEIGHT, min: 240, max: TEXT_HEIGHT },
@@ -216,6 +387,10 @@ export function boxesFor(id: TemplateId, plate: PlateBox): Box[] {
       return pair(TEXT_HEIGHT - plate.height - STACK_GAP);
     case "plate-band":
       return [...pair(BAND_ABOVE), ...pair(TEXT_HEIGHT - BAND_ABOVE - plate.height - STACK_GAP * 2)];
+    case "ornament-feature":
+      return pair(TEXT_HEIGHT - ORNAMENT * 2 - ORNAMENT_HEAD - plate.height - STACK_GAP * 4);
+    case "four-column":
+      return quad(TEXT_HEIGHT - BAND_HEAD - plate.height - STACK_GAP * 2);
     // The copy runs down the side of the plate, and then across two columns
     // beneath it — each of those only if the plate has been left room for it.
     // A plate given both the measure and the leaf has no boxes at all, and the
@@ -233,26 +408,6 @@ export function boxesFor(id: TemplateId, plate: PlateBox): Box[] {
       return TEMPLATES[id].boxes;
   }
 }
-
-/**
- * The illustrated layouts, in the order they are used.
- *
- * Every one of these carries copy *and* a plate, which is the point: the
- * composer decides whether a page is due a photograph and then takes the next
- * layout from here, so a page that gets a picture never has to give up its
- * text to have one. `two-column` is what a page falls back to, not part of
- * the rhythm.
- *
- * The order alternates where the eye lands — top, left, middle, right, bottom
- * — so consecutive illustrated pages do not read as the same page twice.
- */
-export const PLATE_CYCLE: TemplateId[] = [
-  "plate-above",
-  "plate-beside",
-  "plate-band",
-  "plate-beside-right",
-  "plate-below",
-];
 
 /** What a page takes when there is no photograph due. */
 export const PLAIN: TemplateId = "two-column";

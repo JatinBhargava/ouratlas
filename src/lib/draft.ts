@@ -18,6 +18,8 @@
  */
 
 import type { PlateBox } from "@/lib/magazine/templates";
+import type { CustomDesign } from "@/lib/magazine/custom";
+import type { ThemeId } from "@/lib/magazine/themes";
 import type { Focus } from "@/types";
 
 const DB_NAME = "atlas";
@@ -51,6 +53,12 @@ export type DeskDraft = {
   photos: { id: string; file: File; focus?: Focus }[];
   plateSizes: Record<number, Partial<PlateBox>>;
   seed: string;
+  /** The style it was set in, or absent on a draft parked before themes. */
+  theme?: ThemeId;
+  /** The lean the reader set, or null where they left the theme's own. */
+  tilt?: number | null;
+  /** The three pages they drew, on the theme that uses them. */
+  design?: CustomDesign;
 };
 
 /** True when `park` ran and `take` has not yet collected it. */

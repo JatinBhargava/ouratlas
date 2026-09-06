@@ -10,6 +10,42 @@
 /** Type styling for a column of body copy. */
 export const COPY_CLASS = "hyphens-auto text-justify text-[10px] leading-[1.62] text-stone-700";
 
+/**
+ * What a theme may change about the body face.
+ *
+ * Applied to the column that is drawn *and* to the off-screen box the fitter
+ * measures in — they have to be the same values in both places, or the
+ * measurement is of one typeface and the page is set in another, which shows
+ * up as a line hanging off the foot of a page.
+ *
+ * Everything is optional and absent means "leave the house style alone", so a
+ * theme that only rearranges rectangles carries none of this.
+ */
+export type CopyStyle = {
+  fontFamily?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  letterSpacing?: string;
+  color?: string;
+  textAlign?: "left" | "right" | "center" | "justify";
+};
+
+/**
+ * Every property `CopyStyle` can set.
+ *
+ * The fitter measures in one long-lived node, so each call has to clear what
+ * the last theme put there. Iterating this list is what makes "unset" a state
+ * the measuring box can actually return to.
+ */
+export const COPY_STYLE_KEYS = [
+  "fontFamily",
+  "fontSize",
+  "lineHeight",
+  "letterSpacing",
+  "textAlign",
+  "color",
+] as const;
+
 /** Space between paragraphs. The first in a box never gets it. */
 const PARAGRAPH_CLASS = "mt-[0.75em] first:mt-0";
 
@@ -18,7 +54,7 @@ const PARAGRAPH_CLASS = "mt-[0.75em] first:mt-0";
  * and the copy sets around it.
  */
 const DROP_CAP_CLASS =
-  "[&::first-letter]:font-editorial [&::first-letter]:float-left [&::first-letter]:mr-[3px] [&::first-letter]:pt-[2px] [&::first-letter]:text-[30px] [&::first-letter]:leading-[0.76] [&::first-letter]:text-stone-900";
+  "[&::first-letter]:[font-family:var(--display-font,var(--font-editorial))] [&::first-letter]:float-left [&::first-letter]:mr-[3px] [&::first-letter]:pt-[2px] [&::first-letter]:text-[30px] [&::first-letter]:leading-[0.76] [&::first-letter]:text-[color:var(--ink,var(--color-stone-900))]";
 
 /** One paragraph, or the tail of one carried over from the previous box. */
 export type Line = { text: string; continued: boolean };
@@ -99,13 +135,35 @@ export function remaining(paragraphs: string[][], cursor: Cursor): number {
   return total;
 }
 
+/**
+ * Full stops and ampersands lifted into the accent colour.
+ *
+ * A whole magazine of black type with one warm mark at the end of every
+ * sentence — the device is small enough to be missed on one line and
+ * unmistakable down a column.
+ *
+ * A `<span>` carrying nothing but a colour occupies exactly the space the
+ * character did, so this cannot move a line, and the fitter is free to
+ * measure the same markup without caring what is inside it. It has to *be*
+ * the same markup, though, which is why this is an option on the shared
+ * function rather than something the renderer does afterwards.
+ */
+const inkPunctuation = (html: string) =>
+  html.replace(/[.&]/g, char => `<span style="color:var(--ink-accent)">${char}</span>`);
+
 /** Markup for a slice. Used to measure it and, later, to draw it. */
-export function paragraphsHtml(slice: Slice, options: { dropCap?: boolean } = {}): string {
+export function paragraphsHtml(
+  slice: Slice,
+  options: { dropCap?: boolean; punctuation?: boolean } = {},
+): string {
   return slice.lines
     .map((line, i) => {
       const dropCap = i === 0 && options.dropCap && !line.continued;
       const className = dropCap ? `${PARAGRAPH_CLASS} ${DROP_CAP_CLASS}` : PARAGRAPH_CLASS;
-      return `<p class="${className}">${escapeHtml(line.text)}</p>`;
+      // Escaped first, so the spans are wrapped around real punctuation and
+      // never around the `&` of an entity this just produced.
+      const text = escapeHtml(line.text);
+      return `<p class="${className}">${options.punctuation ? inkPunctuation(text) : text}</p>`;
     })
     .join("");
 }

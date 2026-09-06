@@ -5,6 +5,7 @@ import { MagazinePage, PlateEditProvider } from "@/components/magazine/pages";
 import { Button } from "@/components/ui/button";
 import { PAGE } from "@/lib/magazine/geometry";
 import type { Axis } from "@/lib/magazine/templates";
+import type { CustomBox, CustomSlot } from "@/lib/magazine/custom";
 import type { Focus } from "@/types";
 import type { Issue, Page } from "@/lib/magazine/types";
 import { cn } from "@/lib/utils";
@@ -32,9 +33,26 @@ type IssueViewProps = {
   onResizePlate?: (index: number, axis: Axis, value: number) => void;
   /** Places a photograph inside its frame, or hands the placing back with null. */
   onPanPhoto?: (photoId: string, focus: Focus | null) => void;
+  /**
+   * How far pasted-up plates lean, in degrees, overriding the theme.
+   *
+   * A prop rather than something on the issue: the lean changes no box the
+   * fitter measured, so moving it is a redraw and never a recomposition.
+   */
+  tilt?: number;
+  /** Moves or sizes one box on one of the reader's own pages. */
+  onEditBox?: (slot: CustomSlot, box: CustomBox) => void;
 };
 
-export function IssueView({ issue, className, onSwapPlates, onResizePlate, onPanPhoto }: IssueViewProps) {
+export function IssueView({
+  issue,
+  className,
+  onSwapPlates,
+  onResizePlate,
+  onPanPhoto,
+  onEditBox,
+  tilt,
+}: IssueViewProps) {
   const spreads = useMemo(() => toSpreads(issue.pages), [issue.pages]);
   const [index, setIndex] = useState(0);
   const stage = useRef<HTMLDivElement>(null);
@@ -78,6 +96,8 @@ export function IssueView({ issue, className, onSwapPlates, onResizePlate, onPan
           title={issue.title}
           dateline={issue.dateline}
           polished={issue.polished}
+          theme={issue.theme}
+          tilt={tilt}
         />
       ))}
     </div>
@@ -86,8 +106,14 @@ export function IssueView({ issue, className, onSwapPlates, onResizePlate, onPan
   // Mounted only when there is something for it to do, so a read-only viewer
   // draws plates that cannot be picked up, pulled or moved.
   const editable =
-    onSwapPlates || onResizePlate || onPanPhoto ? (
-      <PlateEditProvider scale={scale} onSwap={onSwapPlates} onResize={onResizePlate} onPan={onPanPhoto}>
+    onSwapPlates || onResizePlate || onPanPhoto || onEditBox ? (
+      <PlateEditProvider
+        scale={scale}
+        onSwap={onSwapPlates}
+        onResize={onResizePlate}
+        onPan={onPanPhoto}
+        onEditBox={onEditBox}
+      >
         {leaves}
       </PlateEditProvider>
     ) : (

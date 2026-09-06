@@ -1,4 +1,13 @@
-import { COPY_CLASS, paragraphsHtml, remaining, take, type Cursor, type Slice } from "@/lib/magazine/copy";
+import {
+  COPY_CLASS,
+  COPY_STYLE_KEYS,
+  paragraphsHtml,
+  remaining,
+  take,
+  type CopyStyle,
+  type Cursor,
+  type Slice,
+} from "@/lib/magazine/copy";
 
 /**
  * Works out how much of the story fits in a text box by rendering candidates
@@ -30,6 +39,25 @@ export function disposeMeasurer() {
   host = null;
 }
 
+/**
+ * Dresses the measuring box in the theme's type.
+ *
+ * Every key is written on every call, blank where the theme says nothing, so
+ * the node cannot carry a previous theme's face into this measurement.
+ *
+ * `--display-font` is set alongside the body overrides because of the drop
+ * cap: it is the one piece of display type that sits *inside* a measured box
+ * and pushes the copy around it. The measuring box lives on `document.body`,
+ * outside the leaf that declares the variable, so without this line the cap
+ * would be measured in the house serif and drawn in the theme's face — and
+ * the opener would wrap a line short or a line long.
+ */
+function wear(box: HTMLDivElement, style: CopyStyle | undefined, display: string | undefined) {
+  for (const key of COPY_STYLE_KEYS) box.style[key] = style?.[key] ?? "";
+  if (display) box.style.setProperty("--display-font", display);
+  else box.style.removeProperty("--display-font");
+}
+
 /** Words per box is well under this even for a full page of small type. */
 const CEILING = 700;
 
@@ -43,13 +71,14 @@ export function fitBox(
   cursor: Cursor,
   width: number,
   height: number,
-  options: { dropCap?: boolean } = {},
+  options: { dropCap?: boolean; punctuation?: boolean; copy?: CopyStyle; display?: string } = {},
 ): { slice: Slice; next: Cursor; taken: number } {
   const left = remaining(paragraphs, cursor);
   if (left === 0) return { slice: { lines: [] }, next: cursor, taken: 0 };
 
   const box = measurer();
   box.style.width = `${width}px`;
+  wear(box, options.copy, options.display);
 
   const fits = (count: number) => {
     box.innerHTML = paragraphsHtml(take(paragraphs, cursor, count).slice, options);

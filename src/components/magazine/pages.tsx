@@ -1,4 +1,4 @@
-import { createContext, use, useMemo, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
+import { createContext, use, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent, type ReactNode } from "react";
 import { ChevronsUpDown, GripVertical, Move, Wand2 } from "lucide-react";
 
 import { COPY_CLASS, paragraphsHtml, type Slice } from "@/lib/magazine/copy";
@@ -16,13 +16,28 @@ import {
   besideColumn,
   besideFoot,
   clampPlate,
+  BAND_HEAD,
+  COLUMN_QUARTER,
+  CENTRED_HEAD,
+  CENTRED_WIDTH,
+  ORNAMENT,
+  ORNAMENT_HEAD,
+  MINIMAL_HEAD,
+  MINIMAL_ROW,
   OPENER_HEAD,
   plateAxes,
   STACK_GAP,
+  ZINE_NARROW,
+  ZINE_PLATES,
+  ZINE_ROW,
+  ZINE_TEXT_LEFT,
+  ZINE_WIDE,
   type Axis,
   type PlateBox,
   type TemplateId,
 } from "@/lib/magazine/templates";
+import { DEFAULT_THEME, THEMES, type Surface, type ThemeId } from "@/lib/magazine/themes";
+import { clampBox, plateBoxes, textBoxes, type CustomBox, type CustomSlot } from "@/lib/magazine/custom";
 import type { Page, Plate } from "@/lib/magazine/types";
 import { CENTRED, type Focus, type Photo } from "@/types";
 import { cn } from "@/lib/utils";
@@ -52,6 +67,14 @@ type PlateEdit = {
    * plate with null.
    */
   onPan?: (photoId: string, focus: Focus | null) => void;
+  /**
+   * Moves or resizes one box on one of the reader's own pages.
+   *
+   * The design is what these pages are made of, so editing a page here is
+   * editing the design — and every leaf drawn from that slot changes with it.
+   * That is the point of designing three pages rather than twenty.
+   */
+  onEditBox?: (slot: CustomSlot, box: CustomBox) => void;
 };
 
 const PlateEditContext = createContext<PlateEdit | null>(null);
@@ -60,10 +83,13 @@ export function PlateEditProvider({
   children,
   ...edit
 }: PlateEdit & { children: ReactNode }) {
-  const { scale, onSwap, onResize, onPan } = edit;
+  const { scale, onSwap, onResize, onPan, onEditBox } = edit;
   // The viewer re-renders on every resize; a fresh object here would drag
   // every plate on the spread through a re-render with it.
-  const value = useMemo(() => ({ scale, onSwap, onResize, onPan }), [scale, onSwap, onResize, onPan]);
+  const value = useMemo(
+    () => ({ scale, onSwap, onResize, onPan, onEditBox }),
+    [scale, onSwap, onResize, onPan, onEditBox],
+  );
   return <PlateEditContext value={value}>{children}</PlateEditContext>;
 }
 
@@ -115,6 +141,28 @@ function usePlateHandle(photoId: string | undefined) {
 
 /** How a plate reads while one is held over it. */
 const OVER = "outline-2 outline-offset-2 outline-emerald-500";
+
+/**
+ * Layouts whose plate hangs from the foot of its cell rather than the head.
+ *
+ * The grip has to be on the edge that actually moves, or the plate grows away
+ * from the direction it is being pulled.
+ */
+const FOOT_ANCHORED = new Set<TemplateId>(["plate-below", "minimal-grid"]);
+
+/**
+ * The paper and ink of the issue being drawn.
+ *
+ * A theme is mostly a running order of layouts, but one of them is a zine, and
+ * a zine is not a grid decision — it is cream paper, raspberry ink and
+ * photographs printed as snapshots. Those reach the layouts through here
+ * rather than as a prop, because a plate sits several components down and
+ * every layout would otherwise have to pass the surface through untouched.
+ *
+ * Defaulted, so the printed sheet and any caller that knows nothing about
+ * themes still draws the house style.
+ */
+const SurfaceContext = createContext<Surface>(THEMES[DEFAULT_THEME].surface);
 
 /** The badge a plate is picked up by, shown once the plate is hovered. */
 function SwapGrip({ grip }: { grip: Record<string, unknown> }) {
@@ -280,7 +328,7 @@ function usePlateSize(page: Page): { size: PlateBox; grips: ReactNode } {
    */
   const towards = (axis: Axis): number => {
     if (axis === "width") return page.template === "plate-beside-right" ? -1 : 1;
-    return page.template === "plate-below" ? -1 : 1;
+    return FOOT_ANCHORED.has(page.template) ? -1 : 1;
   };
 
   const grip = (axis: Axis) => {
@@ -392,12 +440,17 @@ function Copy({
   width?: number;
   dropCap?: boolean;
 }) {
+  // The very same overrides the fitter measured this slice against. Taken from
+  // the surface rather than passed down, so no layout can forget to hand them
+  // on and quietly set a column in the wrong face.
+  const { copy, punctuation } = use(SurfaceContext);
+
   if (!slice) return null;
   return (
     <div
       className={cn(COPY_CLASS, "flow-root overflow-hidden")}
-      style={{ width, height }}
-      dangerouslySetInnerHTML={{ __html: paragraphsHtml(slice, { dropCap }) }}
+      style={{ width, height, ...copy }}
+      dangerouslySetInnerHTML={{ __html: paragraphsHtml(slice, { dropCap, punctuation }) }}
     />
   );
 }
@@ -412,7 +465,28 @@ function Columns({ page, height, from = 0 }: { page: Page; height: number; from?
   );
 }
 
-const CAPTION_CLASS = "truncate text-[7px] tracking-[0.14em] text-stone-400 uppercase";
+/**
+ * Copy set in four narrow measures.
+ *
+ * Only the modernist page takes this, and it is the whole of its character:
+ * at roughly twenty characters a line the page stops reading as columns of
+ * text and starts reading as texture, which is what the enormous headline
+ * above it needs underneath it.
+ */
+function Quad({ page, height }: { page: Page; height: number }) {
+  return (
+    <div className="flex" style={{ gap: GUTTER }}>
+      {[0, 1, 2, 3].map(n => (
+        <Copy key={n} slice={page.slices[n]} width={COLUMN_QUARTER} height={height} />
+      ))}
+    </div>
+  );
+}
+
+// Inked from the leaf rather than fixed, so a caption under a plate on a
+// reversed page is legible instead of dark grey on near-black.
+const CAPTION_CLASS =
+  "truncate text-[7px] tracking-[0.14em] uppercase text-[color:var(--ink,var(--color-stone-400))] opacity-55";
 
 /**
  * A photograph with its plate number set beneath it.
@@ -426,10 +500,24 @@ function PlateFigure({ plate, width, height }: { plate: Plate | undefined; width
   const handle = usePlateHandle(plate?.photo.id);
   const pan = usePhotoPan(plate?.photo);
 
+  const surface = use(SurfaceContext);
+
   if (!plate) return <div style={{ width, height }} />;
   return (
     <figure className="flex flex-col" style={{ width, height }}>
-      <div className="relative overflow-hidden rounded-[2px]" style={{ height: height - CAPTION }} {...handle.target}>
+      {/*
+        A snapshot surface prints the picture inside a white border, the way a
+        photograph pasted into a zine still carries the edge of the print. The
+        border is inside the plate, so nothing the fitter measured moves.
+      */}
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-[2px]",
+          surface.snapshots && "bg-white p-[5px] shadow-[0_1px_3px_rgba(0,0,0,0.18)]",
+        )}
+        style={{ height: height - CAPTION }}
+        {...handle.target}
+      >
         <img
           src={plate.photo.url}
           alt={plate.label}
@@ -438,7 +526,6 @@ function PlateFigure({ plate, width, height }: { plate: Plate | undefined; width
           className={cn("size-full bg-stone-200 object-cover", pan.pannable && "cursor-move", handle.over && OVER)}
         />
         {handle.swappable && <SwapGrip grip={handle.grip} />}
-      {pan.placement}
         {pan.placement}
       </div>
       <figcaption className={cn(CAPTION_CLASS, "pt-[5px]")} style={{ height: CAPTION }}>
@@ -448,8 +535,14 @@ function PlateFigure({ plate, width, height }: { plate: Plate | undefined; width
   );
 }
 
-const KICKER = "text-[8px] font-medium tracking-[0.28em] text-stone-400 uppercase";
-const HEADLINE = "font-editorial text-stone-900";
+// The accent is a CSS variable so one declaration on the leaf re-inks every
+// kicker on it, whatever layout drew them.
+const KICKER =
+  "text-[8px] font-medium tracking-[0.28em] uppercase text-[color:var(--ink-accent,var(--color-stone-400))]";
+// Both are CSS variables declared on the leaf, so one theme declaration
+// re-sets every headline the layouts draw without any of them knowing.
+const HEADLINE =
+  "[font-family:var(--display-font,var(--font-editorial))] [font-weight:var(--display-weight,400)] [letter-spacing:var(--display-tracking,normal)] text-[color:var(--ink,var(--color-stone-900))]";
 
 function Cover({ page, title, dateline }: { page: Page; title: string; dateline: string }) {
   const plate = page.plates[0];
@@ -478,12 +571,12 @@ function Cover({ page, title, dateline }: { page: Page; title: string; dateline:
       <div className="absolute inset-0 bg-linear-to-b from-black/55 via-black/10 to-black/70" />
       <div className="absolute inset-0 flex flex-col justify-between" style={{ padding: MARGIN }}>
         <div className="flex items-baseline justify-between text-white/85">
-          <span className="font-editorial text-[22px] leading-none">Atlas</span>
+          <span className="[font-family:var(--display-font)] text-[22px] leading-none">Atlas</span>
           <span className="text-[8px] tracking-[0.28em] uppercase">{dateline}</span>
         </div>
         <div className="flex flex-col gap-2">
           <span className="text-[8px] font-medium tracking-[0.28em] text-white/70 uppercase">The issue</span>
-          <h1 className="font-editorial text-[40px] leading-[1.02] text-balance text-white">{title}</h1>
+          <h1 className="[font-family:var(--display-font)] text-[40px] leading-[1.02] text-balance text-white">{title}</h1>
         </div>
       </div>
     </div>
@@ -493,7 +586,7 @@ function Cover({ page, title, dateline }: { page: Page; title: string; dateline:
 function Contents({ page, title, dateline }: PageProps) {
   return (
     <div className="flex h-full flex-col">
-      <span className="font-editorial text-[30px] leading-none text-stone-900">Atlas</span>
+      <span className={cn(HEADLINE, "text-[30px] leading-none")}>Atlas</span>
       <p className="mt-2 text-[8px] tracking-[0.28em] text-stone-400 uppercase">{dateline}</p>
       <div className="mt-5 h-px bg-stone-300" style={{ width: COLUMN_WIDTH }} />
 
@@ -536,8 +629,8 @@ function Opener({ page, title }: { page: Page; title: string }) {
         <h2 className={cn(HEADLINE, "mt-2 line-clamp-2 text-[34px] leading-[1.04] text-balance")}>{title}</h2>
         <p className="mt-2 text-[9px] text-stone-400 italic">Words and pictures — you</p>
       </div>
-      <div className="group/plate relative shrink-0" style={{ height: size.height }}>
-        <PlateFigure plate={page.plates[0]} width={TEXT_WIDTH} height={size.height} />
+      <div className="group/plate relative shrink-0" style={{ width: size.width, height: size.height }}>
+        <PlateFigure plate={page.plates[0]} width={size.width} height={size.height} />
         {grips}
       </div>
       <Columns page={page} height={TEXT_HEIGHT - OPENER_HEAD - size.height - STACK_GAP * 2} />
@@ -549,8 +642,8 @@ function PlateAbove({ page }: { page: Page }) {
   const { size, grips } = usePlateSize(page);
   return (
     <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
-      <div className="group/plate relative shrink-0" style={{ height: size.height }}>
-        <PlateFigure plate={page.plates[0]} width={TEXT_WIDTH} height={size.height} />
+      <div className="group/plate relative shrink-0" style={{ width: size.width, height: size.height }}>
+        <PlateFigure plate={page.plates[0]} width={size.width} height={size.height} />
         {grips}
       </div>
       <Columns page={page} height={TEXT_HEIGHT - size.height - STACK_GAP} />
@@ -563,8 +656,8 @@ function PlateBelow({ page }: { page: Page }) {
   return (
     <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
       <Columns page={page} height={TEXT_HEIGHT - size.height - STACK_GAP} />
-      <div className="group/plate relative shrink-0" style={{ height: size.height }}>
-        <PlateFigure plate={page.plates[0]} width={TEXT_WIDTH} height={size.height} />
+      <div className="group/plate relative shrink-0" style={{ width: size.width, height: size.height }}>
+        <PlateFigure plate={page.plates[0]} width={size.width} height={size.height} />
         {grips}
       </div>
     </div>
@@ -622,11 +715,448 @@ function PlateBand({ page }: { page: Page }) {
   return (
     <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
       <Columns page={page} height={BAND_ABOVE} />
-      <div className="group/plate relative shrink-0" style={{ height: size.height }}>
-        <PlateFigure plate={page.plates[0]} width={TEXT_WIDTH} height={size.height} />
+      <div className="group/plate relative shrink-0" style={{ width: size.width, height: size.height }}>
+        <PlateFigure plate={page.plates[0]} width={size.width} height={size.height} />
         {grips}
       </div>
       <Columns page={page} height={below} from={2} />
+    </div>
+  );
+}
+
+/**
+ * The minimalist grid: a rule, one column, one plate, and a band of nothing.
+ *
+ * The plate is set against the bottom of its cell so the white space collects
+ * above it and along the foot, in one continuous L rather than as two gaps.
+ * Pulling the plate moves only the plate: its cell keeps its depth, so the
+ * column beside it does not re-flow and the page holds its stillness.
+ */
+function MinimalGrid({ page }: { page: Page }) {
+  const { size, grips } = usePlateSize(page);
+  const plate = page.plates[0];
+  return (
+    <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
+      <div className="flex shrink-0 items-center" style={{ height: MINIMAL_HEAD }}>
+        <span className={KICKER}>{plate?.label ?? "Atlas"}</span>
+        <span aria-hidden className="ml-3 h-px grow bg-stone-200" />
+      </div>
+      <div className="flex shrink-0" style={{ gap: GUTTER, height: MINIMAL_ROW }}>
+        <Copy slice={page.slices[0]} width={COLUMN_WIDTH} height={MINIMAL_ROW} />
+        <div className="flex flex-col justify-end" style={{ width: COLUMN_WIDTH, height: MINIMAL_ROW }}>
+          <div className="group/plate relative" style={{ width: size.width, height: size.height }}>
+            <PlateFigure plate={plate} width={size.width} height={size.height} />
+            {grips}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Three bands down the leaf, each a narrow column of text against a wide
+ * photograph, the two changing places row by row.
+ *
+ * Each photograph leans a little, and alternately — one way, the other, back
+ * again — because three prints pasted at the same angle read as a mistake in
+ * the printing rather than as a hand. How far they lean is the reader's, set
+ * from the desk.
+ *
+ * The lean is on a wrapper, not on the plate: rotating the plate would rotate
+ * its drag surfaces with it, and a picture that pans along a tilted axis is
+ * not what anyone means by dragging it sideways. It also means the boxes the
+ * fitter measured are untouched, so the slider never re-sets the type.
+ */
+function ZineRows({ page }: { page: Page }) {
+  const { tilt = 0 } = use(SurfaceContext);
+  return (
+    <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
+      {ZINE_TEXT_LEFT.map((textLeft, row) => {
+        const copy = <Copy slice={page.slices[row]} width={ZINE_NARROW} height={ZINE_ROW} />;
+        const plate = (
+          <div
+            className="group/plate shrink-0"
+            style={{
+              width: ZINE_WIDE,
+              height: ZINE_ROW,
+              rotate: `${row % 2 === 0 ? tilt : -tilt}deg`,
+            }}
+          >
+            <PlateFigure plate={page.plates[row]} width={ZINE_WIDE} height={ZINE_ROW} />
+          </div>
+        );
+        return (
+          <div key={row} className="flex shrink-0" style={{ gap: GUTTER, height: ZINE_ROW }}>
+            {textLeft ? copy : plate}
+            {textLeft ? plate : copy}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The zine page: a column of copy, and two photographs pinned up beside it at
+ * angles, overlapping.
+ *
+ * Nothing here is on the grid, which is the point — a zine is pasted up, not
+ * set. The plates are placed absolutely from `ZINE_PLATES` and tilted, and
+ * because they are lifted out of the flow they cannot push the copy around:
+ * the column beside them is an ordinary measured box, so the story still fits
+ * exactly as the fitter said it would.
+ *
+ * The tilt is on a wrapper rather than on the plate itself. Rotating the plate
+ * would rotate the drag surfaces with it, and a picture that pans along a
+ * tilted axis is not what anyone means by dragging it up.
+ */
+function ZineCollage({ page }: { page: Page }) {
+  const { tilt = 0 } = use(SurfaceContext);
+  return (
+    <div className="flex h-full" style={{ gap: GUTTER }}>
+      <Copy slice={page.slices[0]} width={COLUMN_WIDTH} height={TEXT_HEIGHT} dropCap={page.dropCap} />
+      <div className="relative shrink-0" style={{ width: COLUMN_WIDTH, height: TEXT_HEIGHT }}>
+        {ZINE_PLATES.map((spot, n) => (
+          <div
+            key={n}
+            className="group/plate absolute"
+            style={{
+              top: spot.top,
+              left: spot.left,
+              width: spot.width,
+              height: spot.height,
+              // The theme's angles, scaled by whatever the reader has set. At
+              // nought they lie flat and the page becomes a plain paste-up.
+              rotate: `${(spot.tilt / 3.2) * tilt}deg`,
+              // The second print is pasted over the first.
+              zIndex: n + 1,
+            }}
+          >
+            <PlateFigure plate={page.plates[n]} width={spot.width} height={spot.height} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Which of the reader's three pages a leaf was drawn from. */
+const SLOT_OF: Partial<Record<TemplateId, CustomSlot>> = {
+  "custom-left": "left",
+  "custom-right": "right",
+  "custom-special": "special",
+};
+
+/**
+ * One box on a drawn page, with the handles that move and size it in place.
+ *
+ * A component rather than a hook called in a loop, because each box keeps its
+ * own live position while it is being dragged: the box is redrawn at the new
+ * size on every frame, and the issue is set again once, on release. Re-fitting
+ * type sixty times a second is the thing this exists to avoid.
+ *
+ * The handles are deliberately small and cornered rather than the whole box
+ * being a drag surface. A plate already answers to three gestures — swap it,
+ * place the picture inside it, size it — and a text box has to stay
+ * selectable, so neither can afford to have its middle claimed as well.
+ */
+function DrawnBox({
+  slot,
+  box,
+  children,
+}: {
+  slot: CustomSlot | undefined;
+  box: CustomBox;
+  children: (drawn: CustomBox) => ReactNode;
+}) {
+  const edit = use(PlateEditContext);
+  const [live, setLive] = useState<CustomBox | null>(null);
+  const latest = useRef<CustomBox | null>(null);
+
+  const drawn = live ?? box;
+  const place = {
+    position: "absolute" as const,
+    left: drawn.x,
+    top: drawn.y,
+    width: drawn.width,
+    height: drawn.height,
+  };
+
+  if (!edit?.onEditBox || !slot) {
+    return <div style={place}>{children(drawn)}</div>;
+  }
+  const { onEditBox, scale } = edit;
+
+  const grab = (mode: "move" | "size") => (event: PointerEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const fromX = event.clientX;
+    const fromY = event.clientY;
+    const start = box;
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    // Pages are drawn at print size and scaled to fit, so a pixel of pointer
+    // travel is more than a pixel on the leaf.
+    const moved = (event_: globalThis.PointerEvent) => {
+      const dx = (event_.clientX - fromX) / (scale || 1);
+      const dy = (event_.clientY - fromY) / (scale || 1);
+      const next = clampBox(
+        mode === "move"
+          ? { ...start, x: start.x + dx, y: start.y + dy }
+          : { ...start, width: start.width + dx, height: start.height + dy },
+      );
+      latest.current = next;
+      setLive(next);
+    };
+
+    const up = () => {
+      window.removeEventListener("pointermove", moved);
+      window.removeEventListener("pointerup", up);
+      const settled = latest.current;
+      latest.current = null;
+      setLive(null);
+      if (settled) onEditBox(slot, settled);
+    };
+
+    window.addEventListener("pointermove", moved);
+    window.addEventListener("pointerup", up);
+  };
+
+  const dragging = live !== null;
+
+  return (
+    <div className={cn("group/box", dragging && "z-30")} style={place}>
+      {children(drawn)}
+
+      {/* The box's own outline, shown while it is being handled so the reader
+          can see what they are moving even where the box is empty. */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-0 border border-dashed border-emerald-600 transition-opacity",
+          dragging ? "opacity-100" : "opacity-0 group-hover/box:opacity-60",
+        )}
+      />
+
+      <span
+        onPointerDown={grab("move")}
+        role="button"
+        tabIndex={-1}
+        aria-label="Drag to move this box"
+        title="Drag to move this box"
+        className="absolute bottom-1 left-1 z-20 flex cursor-move items-center gap-0.5 rounded-full bg-stone-900/60 px-1 py-0.5 text-[7px] tracking-[0.14em] text-white uppercase opacity-0 transition-opacity group-hover/box:opacity-100"
+      >
+        <Move className="size-2.5" aria-hidden />
+        Place
+      </span>
+
+      <span
+        onPointerDown={grab("size")}
+        role="button"
+        tabIndex={-1}
+        aria-label="Drag to resize this box"
+        title="Drag to resize this box"
+        className={cn(
+          "absolute -right-[3px] -bottom-[3px] z-20 size-[10px] cursor-nwse-resize rounded-[1px] border border-white transition-opacity",
+          dragging ? "bg-emerald-600 opacity-100" : "bg-emerald-600 opacity-0 group-hover/box:opacity-100",
+        )}
+      />
+
+      {dragging && (
+        <span className="absolute -top-4 left-0 z-30 rounded bg-emerald-600 px-1 text-[7px] text-white tabular-nums">
+          {Math.round(drawn.width)} × {Math.round(drawn.height)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A page the reader drew.
+ *
+ * Every box is placed absolutely from the design, because that is what a
+ * design is — positions, not a flow. The two runs are matched to their
+ * contents by reading order, the same order the composer poured into: the
+ * third text box down the page holds the third slice, and the second plate box
+ * holds the second photograph, whatever order they happen to sit in the array.
+ *
+ * A page with no design falls back to plain columns rather than drawing
+ * nothing, so choosing this theme before drawing anything still gives an issue.
+ */
+function CustomLayout({ page }: { page: Page }) {
+  if (!page.layout) return <Columns page={page} height={TEXT_HEIGHT} />;
+
+  const slot = SLOT_OF[page.template];
+  const texts = textBoxes(page.layout);
+  const plates = plateBoxes(page.layout);
+
+  return (
+    <div className="relative" style={{ width: TEXT_WIDTH, height: TEXT_HEIGHT }}>
+      {texts.map((box, n) => (
+        <DrawnBox key={box.id} slot={slot} box={box}>
+          {drawn => (
+            <Copy
+              slice={page.slices[n]}
+              width={drawn.width}
+              height={drawn.height}
+              dropCap={n === 0 && page.dropCap}
+            />
+          )}
+        </DrawnBox>
+      ))}
+      {plates.map((box, n) => (
+        <DrawnBox key={box.id} slot={slot} box={box}>
+          {drawn => (
+            <div className="group/plate size-full">
+              <PlateFigure plate={page.plates[n]} width={drawn.width} height={drawn.height} />
+            </div>
+          )}
+        </DrawnBox>
+      ))}
+    </div>
+  );
+}
+
+/** Four narrow measures of reading, and nothing else on the leaf. */
+function QuadText({ page }: { page: Page }) {
+  return <Quad page={page} height={TEXT_HEIGHT} />;
+}
+
+/**
+ * One narrow measure standing in the middle of the leaf.
+ *
+ * The air either side is the layout. A centred kicker and a hairline over it,
+ * then a single column that runs to the foot — the page an issue gives to a
+ * piece that wants to be read slowly rather than looked at.
+ */
+function CentredArticle({ page }: { page: Page }) {
+  const { accent } = use(SurfaceContext);
+  return (
+    <div className="flex h-full flex-col items-center" style={{ gap: STACK_GAP }}>
+      <div
+        className="flex shrink-0 flex-col items-center justify-end gap-2 text-center"
+        style={{ height: CENTRED_HEAD }}
+      >
+        <span className={KICKER}>The essay</span>
+        <span aria-hidden className="h-px w-10" style={{ backgroundColor: accent, opacity: 0.6 }} />
+      </div>
+      <Copy
+        slice={page.slices[0]}
+        width={CENTRED_WIDTH}
+        height={TEXT_HEIGHT - CENTRED_HEAD - STACK_GAP}
+        dropCap={page.dropCap}
+      />
+    </div>
+  );
+}
+
+/**
+ * A rule of repeated ornament, closing the head or the foot of a page.
+ *
+ * Drawn as one line of the mark repeated and clipped, rather than a counted
+ * number of them, so it fills the measure exactly at any width and never ends
+ * on half a flourish.
+ */
+function Ornament() {
+  const { ornament, accent } = use(SurfaceContext);
+  if (!ornament) return <div style={{ height: ORNAMENT }} />;
+  return (
+    <div
+      aria-hidden
+      className="overflow-hidden text-center leading-none whitespace-nowrap select-none"
+      style={{ height: ORNAMENT, color: accent, fontSize: 13, letterSpacing: "0.06em" }}
+    >
+      {ornament.repeat(48)}
+    </div>
+  );
+}
+
+/**
+ * The ornamented feature: rule, a centred headline, the plate, the copy, and
+ * the rule again.
+ *
+ * Centred rather than ranged left, and set between two closed ends — the older
+ * way of opening a piece. It earns its place here by sitting opposite the
+ * squared-off pages the rest of the issue is made of.
+ */
+function OrnamentFeature({ page, title }: { page: Page; title: string }) {
+  const { size, grips } = usePlateSize(page);
+  return (
+    <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
+      <Ornament />
+
+      <div className="flex shrink-0 flex-col items-center justify-center text-center" style={{ height: ORNAMENT_HEAD }}>
+        <span className={cn(KICKER, "italic")}>Feature</span>
+        <h2
+          className={cn(HEADLINE, "mt-3 line-clamp-3 text-[30px] leading-[1.14] text-balance")}
+          style={{ maxWidth: COLUMN_WIDTH * 1.5 }}
+        >
+          {title}
+        </h2>
+      </div>
+
+      <div className="group/plate relative shrink-0" style={{ width: size.width, height: size.height }}>
+        <PlateFigure plate={page.plates[0]} width={size.width} height={size.height} />
+        {grips}
+      </div>
+
+      <Columns page={page} height={TEXT_HEIGHT - ORNAMENT * 2 - ORNAMENT_HEAD - size.height - STACK_GAP * 4} />
+
+      <Ornament />
+    </div>
+  );
+}
+
+/**
+ * A black band off the head of the leaf with the headline reversed out of it,
+ * the plate beneath, and the copy in four narrow measures under that.
+ *
+ * The band is the one thing on the page that ignores the margin: it is drawn
+ * from the trim, pulled out and up by exactly the margin the page applies, so
+ * it reaches three edges the way a printed band does. Nothing is measured
+ * against the bled part — the fitter only ever sees the depth below it — so
+ * the two cannot drift apart.
+ */
+function FourColumn({ page, title }: { page: Page; title: string }) {
+  const { size, grips } = usePlateSize(page);
+  const surface = use(SurfaceContext);
+  return (
+    <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
+      <div className="relative shrink-0" style={{ height: BAND_HEAD }}>
+        <div
+          aria-hidden
+          className="absolute"
+          style={{
+            top: -MARGIN,
+            left: -MARGIN,
+            width: PAGE.width,
+            height: BAND_HEAD + MARGIN,
+            backgroundColor: surface.ink,
+          }}
+        />
+        {/* Hung from the foot of the band, so a one-line title and a two-line
+            one both sit on the same baseline above the plate. */}
+        <div className="relative flex h-full flex-col justify-end pb-3">
+          <h2
+            className={cn(
+              HEADLINE,
+              "line-clamp-2 text-[46px] leading-[0.88] tracking-[-0.03em] text-balance lowercase",
+            )}
+            style={{ color: surface.paper }}
+          >
+            {title}
+          </h2>
+        </div>
+      </div>
+
+      <div className="group/plate relative shrink-0" style={{ width: size.width, height: size.height }}>
+        <PlateFigure plate={page.plates[0]} width={size.width} height={size.height} />
+        {grips}
+      </div>
+
+      <Quad page={page} height={TEXT_HEIGHT - BAND_HEAD - size.height - STACK_GAP * 2} />
     </div>
   );
 }
@@ -728,24 +1258,148 @@ const LAYOUTS: Record<TemplateId, (props: PageProps) => React.ReactNode> = {
   "plate-beside": ({ page }) => <PlateBeside page={page} />,
   "plate-beside-right": ({ page }) => <PlateBesideRight page={page} />,
   "plate-band": ({ page }) => <PlateBand page={page} />,
+  "minimal-grid": ({ page }) => <MinimalGrid page={page} />,
+  "zine-collage": ({ page }) => <ZineCollage page={page} />,
+  "zine-rows": ({ page }) => <ZineRows page={page} />,
+  "four-column": ({ page, title }) => <FourColumn page={page} title={title} />,
+  "ornament-feature": ({ page, title }) => <OrnamentFeature page={page} title={title} />,
+  "quad-text": ({ page }) => <QuadText page={page} />,
+  "custom-left": ({ page }) => <CustomLayout page={page} />,
+  "custom-right": ({ page }) => <CustomLayout page={page} />,
+  "custom-special": ({ page }) => <CustomLayout page={page} />,
+  "centred-article": ({ page }) => <CentredArticle page={page} />,
   "full-plate": ({ page }) => <FullPlate page={page} />,
   "paired-plates": ({ page }) => <PairedPlates page={page} />,
   blank: Blank,
   colophon: Colophon,
 };
 
-/** Layouts that run to the trim and so take no margin or folio. */
-const BLEEDS = new Set<TemplateId>(["cover", "full-plate"]);
+/**
+ * The surface this particular leaf is printed on.
+ *
+ * A theme with a `reverse` prints cream and black by turns. The cover has no
+ * folio and is never reversed; after it every spread is verso then recto, so
+ * the even numbers are the left-hand leaves and taking those gives a reader
+ * one of each on every opening.
+ *
+ * Only colours are exchanged. The body face, its size and its leading are
+ * what the fitter measured every box against, and swapping any of those here
+ * would set a page in type the composer never fitted.
+ */
+function leafOf(surface: Surface, folio: number | null): Surface {
+  const reverse = surface.reverse;
+  if (!reverse || folio === null || folio % 2 !== 0) return surface;
+  return {
+    ...surface,
+    paper: reverse.paper,
+    ink: reverse.ink,
+    copy: { ...surface.copy, color: reverse.copy },
+  };
+}
 
-/** One page of the issue, drawn at full size. Scale it from the outside. */
-export function MagazinePage({ page, title, dateline, polished }: PageProps) {
-  const Layout = LAYOUTS[page.template];
-  const bleeds = BLEEDS.has(page.template);
+/**
+ * The page number at the foot.
+ *
+ * The house rule is a small number in the corner, out of the way of the
+ * reading. The modernist theme makes a device of it instead: an outsized
+ * light numeral against the *outer* edge with the issue named beside it
+ * behind a hairline, mirrored on the verso, so an open spread reads as one
+ * running foot rather than two corners that happen to match.
+ *
+ * Which edge is outer is decided by the folio itself. The cover stands alone
+ * and every spread after it is verso-then-recto, which puts the even numbers
+ * on the left-hand leaf.
+ */
+function Folio({ folio, dateline, surface }: { folio: number; dateline: string; surface: Surface }) {
+  if (surface.folio !== "large") {
+    return (
+      <span
+        className="absolute text-[8px] tabular-nums opacity-45"
+        style={{ left: MARGIN, bottom: MARGIN / 2, color: surface.ink }}
+      >
+        {folio}
+      </span>
+    );
+  }
+
+  const verso = folio % 2 === 0;
+  const label = (
+    <span className="flex flex-col text-[6.5px] leading-[1.5] tracking-[0.16em] uppercase">
+      <span>Atlas</span>
+      <span className="opacity-60">{dateline}</span>
+    </span>
+  );
 
   return (
     <div
-      className="relative shrink-0 overflow-hidden bg-white"
-      style={{ width: PAGE.width, height: PAGE.height }}
+      className="absolute flex items-center gap-3"
+      style={{
+        left: verso ? MARGIN : undefined,
+        right: verso ? undefined : MARGIN,
+        bottom: MARGIN / 2 - 6,
+        color: surface.ink,
+      }}
+    >
+      {verso && (
+        <span className="text-[30px] leading-none font-light tabular-nums">{folio}</span>
+      )}
+      <span aria-hidden className="h-7 w-px" style={{ backgroundColor: surface.ink, opacity: 0.35 }} />
+      {label}
+      {!verso && (
+        <>
+          <span aria-hidden className="h-7 w-px" style={{ backgroundColor: surface.ink, opacity: 0.35 }} />
+          <span className="text-[30px] leading-none font-light tabular-nums">{folio}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Layouts that run to the trim and so take no margin or folio. */
+const BLEEDS = new Set<TemplateId>(["cover", "full-plate"]);
+
+/**
+ * One page of the issue, drawn at full size. Scale it from the outside.
+ *
+ * The theme is taken by id rather than as a resolved surface so that callers
+ * — the spread viewer, the printed sheet — only have to pass along what the
+ * issue already records, and an issue composed before themes existed still
+ * draws on white.
+ */
+export function MagazinePage({
+  page,
+  title,
+  dateline,
+  polished,
+  theme,
+  tilt,
+}: PageProps & { theme?: ThemeId; tilt?: number }) {
+  const Layout = LAYOUTS[page.template];
+  const bleeds = BLEEDS.has(page.template);
+  const base = THEMES[theme ?? DEFAULT_THEME]?.surface ?? THEMES[DEFAULT_THEME].surface;
+  // The reader's lean wins over the theme's, and none at all is a real answer
+  // rather than "unset" — hence the explicit undefined check.
+  const surface = { ...leafOf(base, page.folio), tilt: tilt ?? base.tilt };
+
+  return (
+    <SurfaceContext value={surface}>
+    <div
+      className="relative shrink-0 overflow-hidden"
+      style={
+        {
+          width: PAGE.width,
+          height: PAGE.height,
+          // Printed backgrounds are dropped by default in every browser's
+          // print dialog, so the stock is set as a real element behind the
+          // page rather than as the page's own background.
+          backgroundColor: surface.paper,
+          "--ink-accent": surface.accent,
+          "--ink": surface.ink,
+          "--display-font": surface.display,
+          "--display-weight": surface.displayWeight ?? "400",
+          "--display-tracking": surface.displayTracking ?? "normal",
+        } as CSSProperties
+      }
     >
       <div className="size-full" style={bleeds ? undefined : { padding: MARGIN, paddingBottom: MARGIN }}>
         {bleeds ? (
@@ -758,13 +1412,9 @@ export function MagazinePage({ page, title, dateline, polished }: PageProps) {
       </div>
 
       {!bleeds && page.folio !== null && (
-        <span
-          className="absolute text-[8px] text-stone-400 tabular-nums"
-          style={{ left: MARGIN, bottom: MARGIN / 2 }}
-        >
-          {page.folio}
-        </span>
+        <Folio folio={page.folio} dateline={dateline} surface={surface} />
       )}
     </div>
+    </SurfaceContext>
   );
 }

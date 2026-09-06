@@ -1,6 +1,8 @@
 import type { Slice } from "@/lib/magazine/copy";
 import type { Riddle } from "@/lib/magazine/diversions";
+import type { CustomPage } from "@/lib/magazine/custom";
 import type { PlateBox, TemplateId } from "@/lib/magazine/templates";
+import type { ThemeId } from "@/lib/magazine/themes";
 import type { Photo } from "@/types";
 
 /** A photograph as it appears in the issue, with the label printed beside it. */
@@ -23,6 +25,15 @@ export type Page = {
   plate: PlateBox;
   /** One slice per text box on the template, in reading order. */
   slices: Slice[];
+  /**
+   * The boxes this page was drawn from, on the reader's own layouts only.
+   *
+   * Carried on the page rather than looked up while drawing, for the same
+   * reason the riddle is: the design can be edited under a composed issue, and
+   * a page must go on printing what it was actually set from until the issue
+   * is set again.
+   */
+  layout?: CustomPage;
   /** Printed page number, or null on the cover. */
   folio: number | null;
   /** Only the opening page of the feature takes a drop cap. */
@@ -48,4 +59,12 @@ export type Issue = {
   overflowWords: number;
   /** Whether the copy went through the copy desk, which the colophon states. */
   polished: boolean;
+  /**
+   * The style it was set in.
+   *
+   * Recorded on the issue rather than passed alongside it: the printed sheet
+   * and the spread viewer both draw the same pages, and a magazine that came
+   * off the press as a zine must not print as anything else.
+   */
+  theme: ThemeId;
 };
