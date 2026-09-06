@@ -1,7 +1,7 @@
-import { createContext, use, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent, type ReactNode } from "react";
+import { createContext, use, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent, type ReactNode } from "react";
 import { ChevronsUpDown, GripVertical, Move, Wand2 } from "lucide-react";
 
-import { COPY_CLASS, paragraphsHtml, type Slice } from "@/lib/magazine/copy";
+import { COPY_CLASS, paragraphsHtml, type Cursor, type Slice } from "@/lib/magazine/copy";
 import {
   CAPTION,
   COLUMN_WIDTH,
@@ -37,7 +37,8 @@ import {
   type TemplateId,
 } from "@/lib/magazine/templates";
 import { DEFAULT_THEME, THEMES, type Surface, type ThemeId } from "@/lib/magazine/themes";
-import { clampBox, plateBoxes, textBoxes, type CustomBox, type CustomSlot } from "@/lib/magazine/custom";
+import { clampBox, plateBoxes, sketchBoxes, textBoxes, type CustomBox, type CustomSlot } from "@/lib/magazine/custom";
+import { surfaceOf, type TypeChoice } from "@/lib/magazine/typography";
 import type { Page, Plate } from "@/lib/magazine/types";
 import { CENTRED, type Focus, type Photo } from "@/types";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,21 @@ type PlateEdit = {
    * That is the point of designing three pages rather than twenty.
    */
   onEditBox?: (slot: CustomSlot, box: CustomBox) => void;
+  /**
+   * Replaces the run of story a box is showing with what was typed into it.
+   *
+   * Addressed by the two cursors the slice was cut with rather than by the
+   * box, because the box is not where the words live — the story is, and it is
+   * the story that has to change for the edit to survive the next setting.
+   */
+  onEditCopy?: (from: Cursor, to: Cursor, text: string) => void;
+  /**
+   * Records a drawing, against the id of the surface it was made on.
+   *
+   * Keyed rather than single, because a reader may put several drawing boxes
+   * on one of their own pages and each has to keep its own marks.
+   */
+  onSketch?: (id: string, dataUrl: string) => void;
 };
 
 const PlateEditContext = createContext<PlateEdit | null>(null);
@@ -83,12 +99,12 @@ export function PlateEditProvider({
   children,
   ...edit
 }: PlateEdit & { children: ReactNode }) {
-  const { scale, onSwap, onResize, onPan, onEditBox } = edit;
+  const { scale, onSwap, onResize, onPan, onEditBox, onEditCopy, onSketch } = edit;
   // The viewer re-renders on every resize; a fresh object here would drag
   // every plate on the spread through a re-render with it.
   const value = useMemo(
-    () => ({ scale, onSwap, onResize, onPan, onEditBox }),
-    [scale, onSwap, onResize, onPan, onEditBox],
+    () => ({ scale, onSwap, onResize, onPan, onEditBox, onEditCopy, onSketch }),
+    [scale, onSwap, onResize, onPan, onEditBox, onEditCopy, onSketch],
   );
   return <PlateEditContext value={value}>{children}</PlateEditContext>;
 }
@@ -444,12 +460,37 @@ function Copy({
   // the surface rather than passed down, so no layout can forget to hand them
   // on and quietly set a column in the wrong face.
   const { copy, punctuation } = use(SurfaceContext);
+  const edit = use(PlateEditContext);
 
   if (!slice) return null;
+
+  const { from, to } = slice;
+  const writable = Boolean(edit?.onEditCopy && from && to);
+
   return (
     <div
-      className={cn(COPY_CLASS, "flow-root overflow-hidden")}
+      className={cn(COPY_CLASS, "flow-root overflow-hidden", writable && "outline-offset-2 focus:outline-2 focus:outline-emerald-600")}
       style={{ width, height, ...copy }}
+      // Typed into in place. React owns this subtree until the moment it does
+      // not, which is why nothing else on the page changes while a box has the
+      // caret: the issue is set again on blur, not on every keystroke.
+      contentEditable={writable || undefined}
+      suppressContentEditableWarning={writable}
+      role={writable ? "textbox" : undefined}
+      aria-label={writable ? "The words on this part of the page" : undefined}
+      title={writable ? "Click to edit these words" : undefined}
+      onBlur={
+        writable
+          ? event => {
+              // Read paragraph by paragraph. `innerText` alone separates them
+              // with a single newline, which the story parser reads as one
+              // paragraph — every edit would quietly weld them together.
+              const blocks = [...event.currentTarget.querySelectorAll("p")].map(node => node.innerText);
+              const text = (blocks.length > 0 ? blocks : [event.currentTarget.innerText]).join("\n\n");
+              edit!.onEditCopy!(from!, to!, text);
+            }
+          : undefined
+      }
       dangerouslySetInnerHTML={{ __html: paragraphsHtml(slice, { dropCap, punctuation }) }}
     />
   );
@@ -985,12 +1026,13 @@ function DrawnBox({
  * A page with no design falls back to plain columns rather than drawing
  * nothing, so choosing this theme before drawing anything still gives an issue.
  */
-function CustomLayout({ page }: { page: Page }) {
+function CustomLayout({ page, sketches }: { page: Page; sketches?: Record<string, string> }) {
   if (!page.layout) return <Columns page={page} height={TEXT_HEIGHT} />;
 
   const slot = SLOT_OF[page.template];
   const texts = textBoxes(page.layout);
   const plates = plateBoxes(page.layout);
+  const pads = sketchBoxes(page.layout);
 
   return (
     <div className="relative" style={{ width: TEXT_WIDTH, height: TEXT_HEIGHT }}>
@@ -1012,6 +1054,22 @@ function CustomLayout({ page }: { page: Page }) {
             <div className="group/plate size-full">
               <PlateFigure plate={page.plates[n]} width={drawn.width} height={drawn.height} />
             </div>
+          )}
+        </DrawnBox>
+      ))}
+      {/* Nothing is poured into these and no photograph dealt to them: each
+          holds only what was drawn on it, kept against its own id so a page
+          may carry several and each keep its own marks. */}
+      {pads.map(box => (
+        <DrawnBox key={box.id} slot={slot} box={box}>
+          {drawn => (
+            <SketchPad
+              id={box.id}
+              width={drawn.width}
+              height={drawn.height}
+              sketch={sketches?.[box.id]}
+              compact
+            />
           )}
         </DrawnBox>
       ))}
@@ -1246,7 +1304,20 @@ function Colophon({ title, dateline, polished }: PageProps) {
   );
 }
 
-type PageProps = { page: Page; title: string; dateline: string; polished: boolean };
+type PageProps = {
+  page: Page;
+  title: string;
+  dateline: string;
+  polished: boolean;
+  /**
+   * What the reader has drawn, by the id of the surface it was drawn on.
+   *
+   * Handed down rather than kept on the page, because it belongs to the issue
+   * and not to a leaf of it: the page is thrown away and rebuilt on every
+   * recomposition, and a drawing must not be.
+   */
+  sketches?: Record<string, string>;
+};
 
 const LAYOUTS: Record<TemplateId, (props: PageProps) => React.ReactNode> = {
   cover: Cover,
@@ -1264,12 +1335,13 @@ const LAYOUTS: Record<TemplateId, (props: PageProps) => React.ReactNode> = {
   "four-column": ({ page, title }) => <FourColumn page={page} title={title} />,
   "ornament-feature": ({ page, title }) => <OrnamentFeature page={page} title={title} />,
   "quad-text": ({ page }) => <QuadText page={page} />,
-  "custom-left": ({ page }) => <CustomLayout page={page} />,
-  "custom-right": ({ page }) => <CustomLayout page={page} />,
-  "custom-special": ({ page }) => <CustomLayout page={page} />,
+  "custom-left": ({ page, sketches }) => <CustomLayout page={page} sketches={sketches} />,
+  "custom-right": ({ page, sketches }) => <CustomLayout page={page} sketches={sketches} />,
+  "custom-special": ({ page, sketches }) => <CustomLayout page={page} sketches={sketches} />,
   "centred-article": ({ page }) => <CentredArticle page={page} />,
   "full-plate": ({ page }) => <FullPlate page={page} />,
   "paired-plates": ({ page }) => <PairedPlates page={page} />,
+  canvas: ({ sketches }) => <SketchPage sketches={sketches} />,
   blank: Blank,
   colophon: Colophon,
 };
@@ -1355,6 +1427,299 @@ function Folio({ folio, dateline, surface }: { folio: number; dateline: string; 
   );
 }
 
+/**
+ * The pens, and what they are loaded with.
+ *
+ * A set rather than a colour picker: the point of a drawing box is a signature
+ * or a scrawl, and a full spectrum would make it a paint program on a surface
+ * two inches wide on screen.
+ */
+export const INKS = [
+  "#1c1917",
+  "#78716c",
+  "#c1121f",
+  "#ea580c",
+  "#ca8a04",
+  "#15803d",
+  "#0e7490",
+  "#1d4ed8",
+  "#7e22ce",
+  "#be185d",
+];
+
+export const NIBS = [2, 5, 11, 20];
+
+/**
+ * How a stroke is laid down.
+ *
+ * The marker is opaque and even — one pass is one mark, and going over it
+ * again changes nothing. The brush is thin ink: every pass darkens what is
+ * under it, so a shape built up slowly looks built up. The rubber takes marks
+ * off rather than painting the paper over them, which matters because the leaf
+ * is transparent and the page behind it is not always white.
+ */
+export type Tool = "marker" | "brush" | "rubber";
+
+const TOOLS: { id: Tool; name: string }[] = [
+  { id: "marker", name: "Marker" },
+  { id: "brush", name: "Brush" },
+  { id: "rubber", name: "Rubber" },
+];
+
+/**
+ * A surface to draw on: a whole leaf, or one box on a page the reader drew.
+ *
+ * Painted at twice its shown size so a signature is not a staircase in the
+ * PDF, and what is kept is the finished bitmap rather than the strokes —
+ * nothing here needs replaying, and a data URL survives the parking, the
+ * recomposition and the print sheet without any of them knowing what a stroke
+ * is.
+ *
+ * Where there is nothing to draw with — the printed sheet — it is an image of
+ * what was drawn. An image prints; a live canvas is a gamble.
+ */
+function SketchPad({
+  id,
+  width,
+  height,
+  sketch,
+  compact,
+}: {
+  id: string;
+  width: number;
+  height: number;
+  sketch?: string;
+  /** Floats the tools over the surface instead of standing them above it. */
+  compact?: boolean;
+}) {
+  const edit = use(PlateEditContext);
+  const surface = use(SurfaceContext);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [ink, setInk] = useState(INKS[0]!);
+  const [nib, setNib] = useState(NIBS[1]!);
+  const [tool, setTool] = useState<Tool>("marker");
+  const drawing = useRef(false);
+
+  const onSketch = edit?.onSketch;
+
+  // Whatever was drawn before is painted back in first, so a stroke made now
+  // composites onto the strokes made earlier rather than onto an empty leaf.
+  useEffect(() => {
+    const node = canvas.current;
+    if (!node) return;
+    const brush = node.getContext("2d");
+    if (!brush) return;
+    brush.clearRect(0, 0, node.width, node.height);
+    if (!sketch) return;
+    const image = new globalThis.Image();
+    image.onload = () => brush.drawImage(image, 0, 0, node.width, node.height);
+    image.src = sketch;
+  }, [sketch]);
+
+  if (!onSketch) {
+    return sketch ? (
+      <img src={sketch} alt="" style={{ width, height }} className="object-contain" />
+    ) : (
+      <div style={{ width, height }} />
+    );
+  }
+
+  /** Pointer position in canvas pixels, whatever the page is scaled to. */
+  const at = (event: PointerEvent<HTMLCanvasElement>) => {
+    const node = event.currentTarget;
+    const frame = node.getBoundingClientRect();
+    return {
+      x: ((event.clientX - frame.left) / frame.width) * node.width,
+      y: ((event.clientY - frame.top) / frame.height) * node.height,
+    };
+  };
+
+  const load = (node: HTMLCanvasElement) => {
+    const brush = node.getContext("2d");
+    if (!brush) return null;
+    brush.lineCap = "round";
+    brush.lineJoin = "round";
+    // The canvas is twice its shown size, so the nib has to be too or a
+    // two-pixel pen would draw a one-pixel line.
+    brush.lineWidth = nib * 2 * (tool === "brush" ? 1.6 : 1);
+    brush.globalAlpha = tool === "brush" ? 0.3 : 1;
+    brush.globalCompositeOperation = tool === "rubber" ? "destination-out" : "source-over";
+    brush.strokeStyle = tool === "rubber" ? "#000" : ink;
+    return brush;
+  };
+
+  const down = (event: PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const brush = load(event.currentTarget);
+    if (!brush) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drawing.current = true;
+    const { x, y } = at(event);
+    brush.beginPath();
+    brush.moveTo(x, y);
+    // So a tap leaves a dot rather than nothing.
+    brush.lineTo(x + 0.01, y);
+    brush.stroke();
+  };
+
+  const move = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current) return;
+    const brush = load(event.currentTarget);
+    if (!brush) return;
+    const { x, y } = at(event);
+    brush.lineTo(x, y);
+    brush.stroke();
+  };
+
+  // Kept on release: one data URL a stroke, not one a pixel.
+  const up = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current) return;
+    drawing.current = false;
+    onSketch(id, event.currentTarget.toDataURL("image/png"));
+  };
+
+  const clear = () => {
+    const node = canvas.current;
+    const brush = node?.getContext("2d");
+    if (!node || !brush) return;
+    brush.globalCompositeOperation = "source-over";
+    brush.clearRect(0, 0, node.width, node.height);
+    onSketch(id, node.toDataURL("image/png"));
+  };
+
+  const tools = (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-x-2 gap-y-1",
+        compact &&
+          "absolute top-1 left-1 z-20 rounded bg-white/90 px-1.5 py-1 opacity-0 shadow-sm transition-opacity group-hover/pad:opacity-100",
+      )}
+    >
+      <div className="flex items-center gap-1">
+        {TOOLS.map(({ id: which, name }) => (
+          <button
+            key={which}
+            type="button"
+            onClick={() => setTool(which)}
+            aria-pressed={which === tool}
+            title={name}
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[7px] tracking-[0.14em] uppercase transition-colors",
+              which === tool ? "bg-stone-800 text-white" : "text-stone-500 hover:bg-stone-100",
+            )}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+
+      <span aria-hidden className="h-3 w-px bg-stone-300" />
+
+      <div className="flex items-center gap-1">
+        {INKS.map(colour => (
+          <button
+            key={colour}
+            type="button"
+            onClick={() => {
+              setInk(colour);
+              // Choosing a colour is asking to draw with it.
+              if (tool === "rubber") setTool("marker");
+            }}
+            aria-label="Draw in this colour"
+            aria-pressed={colour === ink && tool !== "rubber"}
+            className={cn(
+              "size-[9px] rounded-full transition-transform",
+              colour === ink && tool !== "rubber" && "scale-[1.45] ring-1 ring-stone-400 ring-offset-1",
+            )}
+            style={{ backgroundColor: colour }}
+          />
+        ))}
+      </div>
+
+      <span aria-hidden className="h-3 w-px bg-stone-300" />
+
+      <div className="flex items-center gap-1">
+        {NIBS.map(size => (
+          <button
+            key={size}
+            type="button"
+            onClick={() => setNib(size)}
+            aria-label={`Nib ${size} across`}
+            aria-pressed={size === nib}
+            className={cn(
+              "flex size-4 items-center justify-center rounded-full",
+              size === nib ? "bg-stone-200" : "hover:bg-stone-100",
+            )}
+          >
+            <span
+              className="rounded-full bg-stone-700"
+              style={{ width: Math.min(11, size), height: Math.min(11, size) }}
+            />
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={clear}
+        className="rounded-full px-1 text-[7px] tracking-[0.14em] text-stone-500 uppercase hover:text-stone-800"
+      >
+        Clear
+      </button>
+    </div>
+  );
+
+  const board = (
+    <canvas
+      ref={canvas}
+      width={width * 2}
+      height={height * 2}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      // Or a drag on a touchscreen scrolls the spread instead of drawing.
+      className="touch-none rounded-[2px]"
+      style={{
+        width,
+        height,
+        border: `1px dashed ${surface.accent}`,
+        cursor: tool === "rubber" ? "cell" : "crosshair",
+      }}
+    />
+  );
+
+  if (compact) {
+    return (
+      <div className="group/pad relative" style={{ width, height }}>
+        {board}
+        {tools}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <span className={KICKER}>Your own hand</span>
+        {tools}
+      </div>
+      {board}
+    </div>
+  );
+}
+
+/** The leaf left blank for the reader to draw, write or sign on. */
+function SketchPage({ sketches }: { sketches?: Record<string, string> }) {
+  return (
+    <SketchPad id={SKETCH_LEAF} width={TEXT_WIDTH} height={TEXT_HEIGHT - STACK_GAP - 18} sketch={sketches?.[SKETCH_LEAF]} />
+  );
+}
+
+/** The key the whole-leaf drawing is kept under. */
+export const SKETCH_LEAF = "leaf";
+
 /** Layouts that run to the trim and so take no margin or folio. */
 const BLEEDS = new Set<TemplateId>(["cover", "full-plate"]);
 
@@ -1373,10 +1738,14 @@ export function MagazinePage({
   polished,
   theme,
   tilt,
-}: PageProps & { theme?: ThemeId; tilt?: number }) {
+  type,
+  sketches,
+}: PageProps & { theme?: ThemeId; tilt?: number; type?: TypeChoice }) {
   const Layout = LAYOUTS[page.template];
   const bleeds = BLEEDS.has(page.template);
-  const base = THEMES[theme ?? DEFAULT_THEME]?.surface ?? THEMES[DEFAULT_THEME].surface;
+  const themed = THEMES[theme ?? DEFAULT_THEME]?.surface ?? THEMES[DEFAULT_THEME].surface;
+  // Exactly what the composer fitted against — same function, same input.
+  const base = type ? { ...themed, ...surfaceOf(type) } : themed;
   // The reader's lean wins over the theme's, and none at all is a real answer
   // rather than "unset" — hence the explicit undefined check.
   const surface = { ...leafOf(base, page.folio), tilt: tilt ?? base.tilt };
@@ -1403,10 +1772,10 @@ export function MagazinePage({
     >
       <div className="size-full" style={bleeds ? undefined : { padding: MARGIN, paddingBottom: MARGIN }}>
         {bleeds ? (
-          <Layout page={page} title={title} dateline={dateline} polished={polished} />
+          <Layout page={page} title={title} dateline={dateline} polished={polished} sketches={sketches} />
         ) : (
           <div style={{ height: TEXT_HEIGHT }}>
-            <Layout page={page} title={title} dateline={dateline} polished={polished} />
+            <Layout page={page} title={title} dateline={dateline} polished={polished} sketches={sketches} />
           </div>
         )}
       </div>

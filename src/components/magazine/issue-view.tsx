@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PAGE } from "@/lib/magazine/geometry";
 import type { Axis } from "@/lib/magazine/templates";
 import type { CustomBox, CustomSlot } from "@/lib/magazine/custom";
+import type { Cursor } from "@/lib/magazine/copy";
 import type { Focus } from "@/types";
 import type { Issue, Page } from "@/lib/magazine/types";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,11 @@ type IssueViewProps = {
   tilt?: number;
   /** Moves or sizes one box on one of the reader's own pages. */
   onEditBox?: (slot: CustomSlot, box: CustomBox) => void;
+  /** Replaces the run of story a box is showing with what was typed into it. */
+  onEditCopy?: (from: Cursor, to: Cursor, text: string) => void;
+  /** What has been drawn, by surface id, and how to keep a new stroke. */
+  sketches?: Record<string, string>;
+  onSketch?: (id: string, dataUrl: string) => void;
 };
 
 export function IssueView({
@@ -51,6 +57,9 @@ export function IssueView({
   onResizePlate,
   onPanPhoto,
   onEditBox,
+  onEditCopy,
+  sketches,
+  onSketch,
   tilt,
 }: IssueViewProps) {
   const spreads = useMemo(() => toSpreads(issue.pages), [issue.pages]);
@@ -98,6 +107,8 @@ export function IssueView({
           polished={issue.polished}
           theme={issue.theme}
           tilt={tilt}
+          type={issue.type}
+          sketches={sketches}
         />
       ))}
     </div>
@@ -106,13 +117,15 @@ export function IssueView({
   // Mounted only when there is something for it to do, so a read-only viewer
   // draws plates that cannot be picked up, pulled or moved.
   const editable =
-    onSwapPlates || onResizePlate || onPanPhoto || onEditBox ? (
+    onSwapPlates || onResizePlate || onPanPhoto || onEditBox || onEditCopy || onSketch ? (
       <PlateEditProvider
         scale={scale}
         onSwap={onSwapPlates}
         onResize={onResizePlate}
         onPan={onPanPhoto}
         onEditBox={onEditBox}
+        onEditCopy={onEditCopy}
+        onSketch={onSketch}
       >
         {leaves}
       </PlateEditProvider>

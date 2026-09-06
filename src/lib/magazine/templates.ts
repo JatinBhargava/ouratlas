@@ -31,6 +31,7 @@ export type TemplateId =
   | "custom-left"
   | "custom-right"
   | "custom-special"
+  | "canvas"
   | "full-plate"
   | "paired-plates"
   | "blank"
@@ -214,6 +215,9 @@ export const TEMPLATES: Record<TemplateId, Template> = {
   },
   "full-plate": { id: "full-plate", plates: 1, boxes: [] },
   "paired-plates": { id: "paired-plates", plates: 2, boxes: [] },
+  // The leaf kept blank for the reader's own hand. No boxes and no plates:
+  // whatever ends up here was drawn, not composed.
+  canvas: { id: "canvas", plates: 0, boxes: [] },
   // A leaf left empty so the colophon falls on a right-hand page.
   blank: { id: "blank", plates: 0, boxes: [] },
   // No boxes: the colophon is set copy, and any box here would swallow a

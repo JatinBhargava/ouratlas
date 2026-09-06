@@ -13,7 +13,7 @@ import { TEXT_HEIGHT, TEXT_WIDTH } from "@/lib/magazine/geometry";
  * and drawn 211 wide. Nothing is converted anywhere.
  */
 
-export type CustomKind = "text" | "plate";
+export type CustomKind = "text" | "plate" | "sketch";
 
 export type CustomBox = {
   id: string;
@@ -55,6 +55,8 @@ export const SLOT_NOTE: Record<CustomSlot, string> = {
 export const MIN_BOX: Record<CustomKind, { width: number; height: number }> = {
   text: { width: 90, height: 56 },
   plate: { width: 56, height: 48 },
+  // Smaller than a plate may be: a signature wants a strip, not a square.
+  sketch: { width: 70, height: 40 },
 };
 
 let counter = 0;
@@ -93,6 +95,15 @@ export function inReadingOrder(boxes: CustomBox[]): CustomBox[] {
 
 export const textBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "text"));
 export const plateBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "plate"));
+/**
+ * Boxes given over to the reader's own hand.
+ *
+ * Unlike the other two these are not filled by the composer — nothing is
+ * poured into them and no photograph is dealt to them. Each simply holds
+ * whatever was drawn on it, kept against the box's own id so a page may carry
+ * several and each keep its own marks.
+ */
+export const sketchBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "sketch"));
 
 const box = (kind: CustomKind, x: number, y: number, width: number, height: number): CustomBox => ({
   id: newBoxId(),

@@ -4,6 +4,7 @@ import { isSpent, remaining, START, toParagraphs, wordCount, type Cursor, type S
 import { boxesFor, PLAIN, plateSize, TEMPLATES, type PlateBox, type Template } from "@/lib/magazine/templates";
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@/lib/magazine/themes";
 import { plateBoxes, textBoxes, type CustomDesign, type CustomPage, type CustomSlot } from "@/lib/magazine/custom";
+import { surfaceOf, type TypeChoice } from "@/lib/magazine/typography";
 import type { Issue, Page, Plate } from "@/lib/magazine/types";
 import type { Photo } from "@/types";
 
@@ -77,6 +78,16 @@ type ComposeInput = {
    * which is what a theme chosen before anything was drawn should do.
    */
   custom?: CustomDesign;
+  /**
+   * Type chosen by the reader, replacing the theme's own.
+   *
+   * Unlike the lean, this cannot be applied after the fact: the body face and
+   * its size are what every box was measured against, so changing it means
+   * setting the issue again.
+   */
+  type?: TypeChoice;
+  /** Whether the issue carries a leaf for the reader to draw or sign on. */
+  sketch?: boolean;
 };
 
 /**
@@ -106,8 +117,13 @@ export function composeIssue({
   seed,
   theme = DEFAULT_THEME,
   custom,
+  type,
+  sketch,
 }: ComposeInput): Issue {
-  const chosen = THEMES[theme] ?? THEMES[DEFAULT_THEME];
+  const base = THEMES[theme] ?? THEMES[DEFAULT_THEME];
+  // The reader's type wins over the theme's, and the fitter below is given
+  // the result rather than the theme's own.
+  const chosen = type ? { ...base, surface: { ...base.surface, ...surfaceOf(type) } } : base;
   const order = chosen.cycle;
   // The face every box on every page is measured in. A theme that changes the
   // body type has to change it here too, or the pages are measured in one
@@ -297,6 +313,10 @@ export function composeIssue({
     add(pool.length >= 2 ? TEMPLATES["paired-plates"] : TEMPLATES["full-plate"]);
   }
 
+  // The blank leaf, if one was asked for. After the plates and before the
+  // padding, so it is the last thing in the issue that carries anything.
+  if (sketch && pages.length < MAX_PAGES) add(TEMPLATES.canvas);
+
   // The cover stands alone, so the rest must be even for every spread to be
   // whole. Pad before the colophon rather than after it, so the issue closes
   // on a right-hand page the way a printed one does.
@@ -325,5 +345,6 @@ export function composeIssue({
     overflowWords: remaining(paragraphs, cursor),
     polished,
     theme,
+    type,
   };
 }

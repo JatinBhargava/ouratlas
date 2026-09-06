@@ -2,6 +2,7 @@ import type { Slice } from "@/lib/magazine/copy";
 import type { Riddle } from "@/lib/magazine/diversions";
 import type { CustomPage } from "@/lib/magazine/custom";
 import type { PlateBox, TemplateId } from "@/lib/magazine/templates";
+import type { TypeChoice } from "@/lib/magazine/typography";
 import type { ThemeId } from "@/lib/magazine/themes";
 import type { Photo } from "@/types";
 
@@ -67,4 +68,13 @@ export type Issue = {
    * off the press as a zine must not print as anything else.
    */
   theme: ThemeId;
+  /**
+   * Type the reader chose, where they chose any.
+   *
+   * On the issue rather than passed alongside it, and for a stronger reason
+   * than the theme is: the body face decides where every line breaks, so this
+   * is part of what the pages were fitted against. A drawn page and a page
+   * measured in another face are two different magazines.
+   */
+  type?: TypeChoice;
 };

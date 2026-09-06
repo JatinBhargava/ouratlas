@@ -59,8 +59,15 @@ const DROP_CAP_CLASS =
 /** One paragraph, or the tail of one carried over from the previous box. */
 export type Line = { text: string; continued: boolean };
 
-/** The run of copy that fills a single text box. */
-export type Slice = { lines: Line[] };
+/**
+ * The run of copy that fills a single text box.
+ *
+ * `from` and `to` are where in the story it came from. They are what makes a
+ * box on a printed page editable: the box knows which words of the story it is
+ * showing, so what is typed into it can be put back exactly there and nowhere
+ * else. Without them a box is a picture of some text and there is no way home.
+ */
+export type Slice = { lines: Line[]; from?: Cursor; to?: Cursor };
 
 /** A position in the story: which paragraph, and how far into it. */
 export type Cursor = { paragraph: number; word: number };
@@ -124,7 +131,7 @@ export function take(
     word = 0;
   }
 
-  return { slice: { lines }, next: { paragraph, word }, taken };
+  return { slice: { lines, from: cursor, to: { paragraph, word } }, next: { paragraph, word }, taken };
 }
 
 /** How many words are left from here to the end. */
@@ -133,6 +140,48 @@ export function remaining(paragraphs: string[][], cursor: Cursor): number {
   let total = paragraphs[cursor.paragraph]!.length - cursor.word;
   for (let i = cursor.paragraph + 1; i < paragraphs.length; i++) total += paragraphs[i]!.length;
   return total;
+}
+
+/**
+ * The story with one run of it replaced by something else.
+ *
+ * Used when a box on a printed page is typed into. The run is addressed by the
+ * two cursors the slice was cut with, so what comes back goes exactly where
+ * what went out came from — and everything before and after it is untouched,
+ * including the paragraph the run began in the middle of.
+ *
+ * The head and tail of a part-consumed paragraph are rejoined to the new text
+ * rather than left as paragraphs of their own. A box that starts mid-sentence
+ * and is edited must not split its paragraph in two.
+ *
+ * What comes back is a story, not paragraphs: the reader's own editor holds
+ * one string, and it is the thing that has to change for anything to persist.
+ * Whitespace inside a paragraph is normalised on the way through, which is
+ * what the composer had already done to it before it reached the page.
+ */
+export function spliceStory(paragraphs: string[][], from: Cursor, to: Cursor, text: string): string {
+  const replacement = toParagraphs(text);
+
+  // A run that began at word nought took its whole paragraph with it, so
+  // there is no head to rejoin — and the same at the other end. Merging on a
+  // clean boundary would swallow the next paragraph into the edit.
+  const before = paragraphs.slice(0, from.paragraph);
+  const headWords = from.word > 0 ? (paragraphs[from.paragraph] ?? []).slice(0, from.word) : [];
+
+  const partial = to.word > 0 && to.paragraph < paragraphs.length;
+  const tailWords = partial ? paragraphs[to.paragraph]!.slice(to.word) : [];
+  const after = paragraphs.slice(partial ? to.paragraph + 1 : to.paragraph);
+
+  const middle = replacement.length > 0 ? replacement.map(words => [...words]) : [[]];
+  // Whatever the box began part-way through carries on into its first line,
+  // and whatever it ended part-way through carries on out of its last.
+  middle[0] = [...headWords, ...middle[0]!];
+  middle[middle.length - 1] = [...middle[middle.length - 1]!, ...tailWords];
+
+  return [...before, ...middle, ...after]
+    .filter(words => words.length > 0)
+    .map(words => words.join(" "))
+    .join("\n\n");
 }
 
 /**

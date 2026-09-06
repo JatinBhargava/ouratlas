@@ -1,5 +1,5 @@
 import { useRef, useState, type PointerEvent } from "react";
-import { Image, Plus, Trash2, Type } from "lucide-react";
+import { Brush, Image, Plus, Trash2, Type } from "lucide-react";
 
 import {
   clampBox,
@@ -29,7 +29,11 @@ const SCALE = CANVAS_WIDTH / TEXT_WIDTH;
 const SKIN: Record<CustomKind, string> = {
   text: "bg-[repeating-linear-gradient(to_bottom,var(--color-stone-300)_0_1px,transparent_1px_4px)] border-stone-400",
   plate: "bg-stone-300 border-stone-500",
+  // Dashed and empty, the way it prints if nothing is drawn on it.
+  sketch: "border-dashed border-emerald-500 bg-emerald-50/60",
 };
+
+const KIND_LABEL: Record<CustomKind, string> = { text: "Text", plate: "Photo", sketch: "Draw" };
 
 type Drag =
   | { mode: "move"; id: string; fromX: number; fromY: number; box: CustomBox }
@@ -103,7 +107,7 @@ function Page({
             }}
           >
             <span className="pointer-events-none absolute top-0.5 left-1 text-[7px] tracking-[0.14em] text-stone-600 uppercase">
-              {box.kind === "text" ? "Text" : "Photo"}
+              {KIND_LABEL[box.kind]}
             </span>
             {/* The corner is its own surface: one press cannot mean both
                 "move this box" and "make it bigger". */}
@@ -154,7 +158,7 @@ export function LayoutDesigner({
       x: 24 + (page.boxes.length % 4) * 18,
       y: 24 + (page.boxes.length % 6) * 22,
       width: kind === "text" ? 200 : 220,
-      height: kind === "text" ? 200 : 170,
+      height: kind === "sketch" ? 120 : kind === "text" ? 200 : 170,
     });
     put([...page.boxes, box]);
     setSelected(box.id);
@@ -163,6 +167,7 @@ export function LayoutDesigner({
   const counts = {
     text: page.boxes.filter(b => b.kind === "text").length,
     plate: page.boxes.filter(b => b.kind === "plate").length,
+    sketch: page.boxes.filter(b => b.kind === "sketch").length,
   };
 
   return (
@@ -211,6 +216,11 @@ export function LayoutDesigner({
             <Image className="size-3.5" />
             Photo box
           </Button>
+          <Button variant="outline" size="sm" className="justify-start rounded-full" onClick={() => add("sketch")}>
+            <Plus className="size-3.5" />
+            <Brush className="size-3.5" />
+            Drawing box
+          </Button>
 
           <Button
             variant="ghost"
@@ -228,7 +238,7 @@ export function LayoutDesigner({
           </Button>
 
           <p className="mt-1 text-[11px] leading-[1.5] text-stone-500">
-            {counts.text} text · {counts.plate} photo
+            {counts.text} text · {counts.plate} photo · {counts.sketch} draw
             <br />
             Drag a box to move it, the green corner to size it.
           </p>

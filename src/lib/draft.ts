@@ -20,6 +20,7 @@
 import type { PlateBox } from "@/lib/magazine/templates";
 import type { CustomDesign } from "@/lib/magazine/custom";
 import type { ThemeId } from "@/lib/magazine/themes";
+import type { TypeChoice } from "@/lib/magazine/typography";
 import type { Focus } from "@/types";
 
 const DB_NAME = "atlas";
@@ -59,6 +60,11 @@ export type DeskDraft = {
   tilt?: number | null;
   /** The three pages they drew, on the theme that uses them. */
   design?: CustomDesign;
+  /** The type they chose for those pages. */
+  type?: TypeChoice;
+  /** Whether the issue carries a leaf to draw on, and what is drawn on it. */
+  wantsSketch?: boolean;
+  sketches?: Record<string, string>;
 };
 
 /** True when `park` ran and `take` has not yet collected it. */

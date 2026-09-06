@@ -17,12 +17,15 @@ import { isParked, park, take } from "@/lib/draft";
 import { HttpError } from "@/lib/api";
 import { claimExport, readAllowance } from "@/lib/exports";
 import { composeIssue } from "@/lib/magazine/compose";
+import { spliceStory, toParagraphs, type Cursor } from "@/lib/magazine/copy";
 import { disposeMeasurer } from "@/lib/magazine/fit";
 import type { Axis, PlateBox } from "@/lib/magazine/templates";
 import { DEFAULT_THEME, themeOf, type ThemeId } from "@/lib/magazine/themes";
 import { ThemePicker, TiltControl } from "@/components/theme-picker";
 import { THEMES } from "@/lib/magazine/themes";
 import { LayoutDesigner } from "@/components/layout-designer";
+import { TypePanel } from "@/components/type-panel";
+import { clampType, DEFAULT_TYPE, type TypeChoice } from "@/lib/magazine/typography";
 import { defaultDesign, type CustomBox, type CustomDesign, type CustomSlot } from "@/lib/magazine/custom";
 import type { Issue } from "@/lib/magazine/types";
 import type { ExportAllowance, Focus, Photo } from "@/types";
@@ -137,6 +140,27 @@ export function Create() {
    * drawing away.
    */
   const [design, setDesign] = useState<CustomDesign>(defaultDesign);
+  /**
+   * The type the reader has chosen for their own pages.
+   *
+   * Only handed to the composer on their own theme: every other theme is a
+   * set of typographic decisions already made, and overriding them from here
+   * would leave the picker naming a style the pages are not set in.
+   */
+  const [type, setType] = useState<TypeChoice>(DEFAULT_TYPE);
+  /** Whether the issue carries a leaf to draw on, and what is on it. */
+  const [wantsSketch, setWantsSketch] = useState(false);
+  /**
+   * What has been drawn, by the id of the surface it was drawn on.
+   *
+   * Keyed rather than single, because a reader may put drawing boxes on their
+   * own pages as well as taking the blank leaf, and each surface keeps its own
+   * marks. Nothing here is ever poured into or dealt to; it is only kept.
+   */
+  const [sketches, setSketches] = useState<Record<string, string>>({});
+  const keepSketch = (id: string, dataUrl: string) =>
+    setSketches(current => ({ ...current, [id]: dataUrl }));
+  const ownType = theme === "custom" ? type : undefined;
   const themeTilt = THEMES[theme].surface.tilt;
   const leaning = themeTilt !== undefined;
   const tiltNow = tilt ?? themeTilt ?? 0;
@@ -186,6 +210,9 @@ export function Create() {
         setTheme(themeOf(draft.theme).id);
         setTilt(draft.tilt ?? null);
         if (draft.design) setDesign(draft.design);
+        if (draft.type) setType(clampType(draft.type));
+        setWantsSketch(draft.wantsSketch ?? false);
+        setSketches(draft.sketches ?? {});
         setPhotos(
           draft.photos.map(photo => ({
             id: photo.id,
@@ -262,7 +289,7 @@ export function Create() {
     next[toIndex] = photos[fromIndex]!;
 
     setPhotos(next);
-    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design }));
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch }));
   };
 
   /**
@@ -279,7 +306,7 @@ export function Create() {
   const resizePlate = (index: number, axis: Axis, value: number) => {
     const next = { ...plateSizes, [index]: { ...plateSizes[index], [axis]: value } };
     setPlateSizes(next);
-    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed, theme, custom: design }));
+    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed, theme, custom: design, type: ownType, sketch: wantsSketch }));
   };
 
   /**
@@ -298,7 +325,7 @@ export function Create() {
       photo.id === id ? { ...photo, focus: focus ?? undefined } : photo,
     );
     setPhotos(next);
-    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design }));
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch }));
   };
 
   /**
@@ -319,7 +346,7 @@ export function Create() {
     setPlateSizes({});
     // The lean belongs to the style it was chosen against.
     setTilt(null);
-    if (issue) setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme: next, custom: design }));
+    if (issue) setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme: next, custom: design, type: next === "custom" ? type : undefined, sketch: wantsSketch }));
   };
 
   /**
@@ -333,7 +360,20 @@ export function Create() {
   const changeDesign = (next: CustomDesign) => {
     setDesign(next);
     if (issue && theme === "custom") {
-      setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme, custom: next }));
+      setIssue(
+        composeIssue({
+          title,
+          photos,
+          story,
+          polished,
+          plateSizes: {},
+          seed,
+          theme,
+          custom: next,
+          type: ownType,
+          sketch: wantsSketch,
+        }),
+      );
       setPlateSizes({});
     }
   };
@@ -351,6 +391,86 @@ export function Create() {
       ...design,
       [slot]: { boxes: design[slot].boxes.map(b => (b.id === box.id ? box : b)) },
     });
+
+  /**
+   * Sets the issue again in new type.
+   *
+   * Unlike the lean, this cannot be a redraw: the body face and its size are
+   * what every box on every page was measured against, so a change here means
+   * the whole magazine is composed afresh. The panel's sliders report on
+   * release for exactly this reason.
+   */
+  const changeType = (next: TypeChoice) => {
+    setType(next);
+    if (issue && theme === "custom") {
+      setIssue(
+        composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme, custom: design, type: next, sketch: wantsSketch }),
+      );
+      setPlateSizes({});
+    }
+  };
+
+  /**
+   * Puts back what was typed into a box on a printed page.
+   *
+   * The words on a page are a run of the story, not a thing of their own, so
+   * this edits the story and lets the issue be set again from it — which is
+   * also why an edit can push a page's worth of copy onto the next leaf, and
+   * should. Anything else would leave the magazine saying one thing and the
+   * desk another.
+   *
+   * The plate sizes go, for the reason they always go: they are recorded
+   * against page numbers, and the pages after an edit are no longer the pages
+   * they were recorded against.
+   */
+  const editCopy = (from: Cursor, to: Cursor, text: string) => {
+    const next = spliceStory(toParagraphs(story), from, to, text);
+    if (next === story) return;
+    setStory(next);
+    setPlateSizes({});
+    setIssue(
+      composeIssue({
+        title,
+        photos,
+        story: next,
+        polished,
+        plateSizes: {},
+        seed,
+        theme,
+        custom: design,
+        type: ownType,
+        sketch: wantsSketch,
+      }),
+    );
+  };
+
+  /**
+   * Adds or removes the leaf given over to drawing, and sets the issue again.
+   *
+   * A page appearing or disappearing changes the pagination, so this cannot
+   * be a redraw — which is the whole reason the checkbox alone did nothing
+   * before: it recorded the wish and never asked for the magazine to be made
+   * again.
+   */
+  const chooseSketch = (next: boolean) => {
+    setWantsSketch(next);
+    if (!issue) return;
+    setPlateSizes({});
+    setIssue(
+      composeIssue({
+        title,
+        photos,
+        story,
+        polished,
+        plateSizes: {},
+        seed,
+        theme,
+        custom: design,
+        type: ownType,
+        sketch: next,
+      }),
+    );
+  };
 
   const removePhoto = (id: string) =>
     setPhotos(current => {
@@ -458,6 +578,9 @@ export function Create() {
       theme,
       tilt,
       design,
+      type,
+      wantsSketch,
+      sketches,
       photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus })),
     });
 
@@ -490,7 +613,7 @@ export function Create() {
       const pressing = reuseSeed ?? crypto.randomUUID();
       setSeed(pressing);
 
-      setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing, theme, custom: design }));
+      setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing, theme, custom: design, type: ownType, sketch: wantsSketch }));
       window.scrollTo({ top: 0 });
     } finally {
       setComposing(false);
@@ -627,7 +750,21 @@ export function Create() {
           <div className="flex flex-col gap-4 rounded-2xl border border-white/50 bg-white/85 p-4 backdrop-blur-md">
             <ThemePicker theme={theme} onChoose={chooseTheme} />
             {leaning && <TiltControl tilt={tiltNow} onChange={setTilt} />}
-            {theme === "custom" && <LayoutDesigner design={design} onChange={changeDesign} />}
+            {theme === "custom" && (
+              <>
+                <LayoutDesigner design={design} onChange={changeDesign} />
+                <TypePanel type={type} onChange={changeType} />
+              </>
+            )}
+            <label className="flex items-center gap-2 text-sm text-stone-600">
+              <input
+                type="checkbox"
+                checked={wantsSketch}
+                onChange={event => chooseSketch(event.target.checked)}
+                className="size-4 accent-emerald-600"
+              />
+              Add a page to draw on
+            </label>
           </div>
 
           <IssueView
@@ -637,6 +774,9 @@ export function Create() {
             onResizePlate={resizePlate}
             onPanPhoto={panPhoto}
             onEditBox={theme === "custom" ? editBox : undefined}
+            onEditCopy={editCopy}
+            sketches={sketches}
+            onSketch={keepSketch}
           />
 
           {(signInError ?? exportError) && (
@@ -676,7 +816,7 @@ export function Create() {
         */}
         {exporting && <PressFeed />}
 
-        {!needsSignIn && !blocked && <PrintSheet issue={issue} tilt={tiltNow} />}
+        {!needsSignIn && !blocked && <PrintSheet issue={issue} tilt={tiltNow} sketches={sketches} />}
       </>
     );
   }
@@ -711,7 +851,30 @@ export function Create() {
 
           <ThemePicker theme={theme} onChoose={chooseTheme} />
           {leaning && <TiltControl tilt={tiltNow} onChange={setTilt} />}
-          {theme === "custom" && <LayoutDesigner design={design} onChange={changeDesign} />}
+
+          {/* A leaf of the issue given over to whatever the reader wants to
+              put on it by hand. Off by default: an issue that ends in a blank
+              page nobody asked for is a printing fault, not a feature. */}
+          <label className="flex items-start gap-2 text-sm text-stone-600">
+            <input
+              type="checkbox"
+              checked={wantsSketch}
+              onChange={event => chooseSketch(event.target.checked)}
+              className="mt-0.5 size-4 accent-emerald-600"
+            />
+            <span>
+              Add a page to draw on
+              <span className="block text-xs text-stone-500">
+                A blank leaf near the back — sign it, scrawl on it, colour it in.
+              </span>
+            </span>
+          </label>
+          {theme === "custom" && (
+            <>
+              <LayoutDesigner design={design} onChange={changeDesign} />
+              <TypePanel type={type} onChange={changeType} />
+            </>
+          )}
 
           <PhotoPicker photos={photos} onAdd={addPhotos} onRemove={removePhoto} onReorder={reorderPhotos} />
           <StoryEditor
