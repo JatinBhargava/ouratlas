@@ -160,6 +160,14 @@
     </script>
 
     <!--
+      Warm the analytics connections early: Lighthouse measured ~300 ms spent
+      opening them on a phone. Preconnect only does DNS and TLS, sends no data,
+      and sets no cookies, so the privacy promise below is unchanged.
+    -->
+    <link rel="preconnect" href="https://cloud.umami.is" />
+    <link rel="preconnect" href="https://gateway.umami.is" />
+
+    <!--
       Umami: page views and referrers, nothing else. Cookieless and with no
       fingerprinting, which is what lets the privacy policy keep saying we set
       no tracking cookies. `defer` so it never blocks the first paint.

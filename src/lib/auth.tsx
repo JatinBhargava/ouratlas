@@ -58,21 +58,54 @@ function toSessionUser(session: Session): SessionUser {
 }
 
 /**
+ * The path a sign-in returned to, read once when this module first runs.
+ *
+ * `AuthProvider` spends the `code` and tidies it out of the address as soon as
+ * the exchange finishes. That used to be safe because every page mounted in
+ * the same render as the provider. /create is now its own chunk, and it can
+ * arrive after the exchange; without this record a desk that loads late would
+ * find no `code` and decide nobody was coming back. The path is kept, not
+ * just a flag, so a return to /account does not make a later visit to /create
+ * look like one.
+ */
+const returnedTo: string | null = (() => {
+  try {
+    return new URLSearchParams(window.location.search).has("code") ? window.location.pathname : null;
+  } catch {
+    return null;
+  }
+})();
+
+/** Set by the page that needed the answer, so it is given only once. */
+let returnSettled = false;
+
+/**
  * Whether this page load is the return leg of a sign-in.
  *
  * Synchronous on purpose. A page that must not show its ordinary state while
  * someone is coming back from Google has to know that before it paints, which
  * rules out waiting for the session — by the time `ready` is true the wrong
  * thing has already been on screen. The `code` parameter is put there by the
- * provider and taken off again once it is spent, so its presence is the one
- * fact available at the first render.
+ * provider and taken off again once it is spent; while it is still in the
+ * address it is the answer, and after that `returnedTo` remembers it until the
+ * page it was for has read it.
  */
 export function isSignInReturn(): boolean {
   try {
-    return new URLSearchParams(window.location.search).has("code");
+    if (new URLSearchParams(window.location.search).has("code")) return true;
+    return !returnSettled && returnedTo === window.location.pathname;
   } catch {
     return false;
   }
+}
+
+/**
+ * Marks the sign-in return as read. Called by the page that acted on it, so
+ * that leaving and coming back later in the same visit is an ordinary visit,
+ * as it was when the tidied address was the only record.
+ */
+export function settleSignInReturn(): void {
+  returnSettled = true;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

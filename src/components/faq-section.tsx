@@ -54,7 +54,7 @@ export function FaqSection() {
             >
               <AccordionTrigger className="gap-4 text-left text-base font-medium text-stone-900">
                 <span className="flex items-baseline gap-3">
-                  <span className="text-xs text-stone-400 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="text-xs text-stone-500 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
                   {faq.question}
                 </span>
               </AccordionTrigger>

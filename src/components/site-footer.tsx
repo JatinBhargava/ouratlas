@@ -157,7 +157,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} OurAtlas. All rights reserved.{" "}
             {/* Small, but it is the only way to tell from a browser which
                 build is actually being served. */}
-            <span className="text-stone-400 tabular-nums">v{APP_VERSION}</span>
+            <span className="text-stone-500 tabular-nums">v{APP_VERSION}</span>
           </p>
           <p>Made for people who take the long way home.</p>
         </div>

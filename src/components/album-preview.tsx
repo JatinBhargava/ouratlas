@@ -76,21 +76,21 @@ export function AlbumPreview() {
         {/* Verso: the picture, given the whole page. */}
         <div className="flex flex-col gap-2.5 border-stone-200 p-5 sm:border-r">
           <Plate src={SAMPLE_PHOTOS.gull} swatch={PHOTO_SWATCHES[0]} className="aspect-4/3 rounded-lg" priority />
-          <p className="text-[10px] tracking-[0.2em] text-stone-400 uppercase">Plate I — the ridge at dawn</p>
+          <p className="text-[10px] tracking-[0.2em] text-stone-500 uppercase">Plate I — the ridge at dawn</p>
           <Column>
             He came out of the glare without a sound and hung there, close enough that we could see the wind moving
             through his feathers. Nobody reached for a camera until it was nearly too late.
           </Column>
-          <span className="mt-auto pt-3 text-[10px] text-stone-400 tabular-nums">14</span>
+          <span className="mt-auto pt-3 text-[10px] text-stone-500 tabular-nums">14</span>
         </div>
 
         {/* Recto: the feature itself. */}
         <div className="flex flex-col gap-2.5 p-5">
-          <span className="text-[10px] font-medium tracking-[0.24em] text-stone-400 uppercase">Feature</span>
+          <span className="text-[10px] font-medium tracking-[0.24em] text-stone-500 uppercase">Feature</span>
           <p className="font-editorial text-2xl leading-[1.15] text-stone-900">
             We walked out before the light came up
           </p>
-          <p className="text-[11px] tracking-wide text-stone-400 italic">Words and pictures — you</p>
+          <p className="text-[11px] tracking-wide text-stone-500 italic">Words and pictures — you</p>
 
           <Column dropCap>
             We left the hut at four, when the valley below was still only a rumour and the loudest thing on the mountain
@@ -108,7 +108,7 @@ export function AlbumPreview() {
             I remember most clearly, and the part I took no pictures of at all.
           </Column>
 
-          <span className="mt-auto pt-3 text-[10px] text-stone-400 tabular-nums">15</span>
+          <span className="mt-auto pt-3 text-[10px] text-stone-500 tabular-nums">15</span>
         </div>
       </div>
     </div>

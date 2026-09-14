@@ -232,7 +232,7 @@ export function PricingSection({ headingLevel = "h2" }: { headingLevel?: "h1" | 
                 >
                   {plan.price}
                 </span>
-                <span className={cn("text-sm", plan.featured ? "text-white/50" : "text-stone-400")}>
+                <span className={cn("text-sm", plan.featured ? "text-white/50" : "text-stone-500")}>
                   {plan.cadence}
                 </span>
               </p>

@@ -17,6 +17,10 @@ const result = await Bun.build({
   // relative address resolves against the page's own folder, so from
   // /guides/goa it would ask for /guides/chunk.js and be handed HTML.
   publicPath: "/",
+  // Required for `lazy(() => import(...))` in App.tsx to become a separate
+  // file. Without it Bun inlines every dynamic import into the one bundle, and
+  // the desk's magazine engine ships to every reader of the cover.
+  splitting: true,
   plugins: [tailwind],
   minify: true,
   target: "browser",
@@ -62,7 +66,66 @@ for (const output of result.outputs) {
 // renamed or duplicated in index.html fails the build here, rather than
 // quietly shipping every page with the home page's title again.
 
-const shell = await Bun.file(path.join(outdir, "index.html")).text();
+const built = await Bun.file(path.join(outdir, "index.html")).text();
+
+// Module preloads for every chunk the entry script imports statically.
+//
+// With `splitting` on, the entry no longer carries everything: it imports
+// shared chunks (React, the auth client) that the browser discovers only after
+// it has downloaded and parsed the entry itself. On a slow phone that is one
+// file after another, and in testing it pushed the largest paint later than
+// the single bundle did. Named in the HTML, they all download at once.
+//
+// Found with Bun's own import scanner rather than a pattern over minified
+// code, and static imports only: the desk's chunk, reached by a dynamic
+// import, must stay unfetched until somebody opens the desk.
+const scanner = new Bun.Transpiler({ loader: "js" });
+
+async function staticChunks(file: string, seen = new Set<string>()): Promise<Set<string>> {
+  const source = await Bun.file(path.join(outdir, file)).text();
+  for (const { path: specifier, kind } of scanner.scanImports(source)) {
+    if (kind !== "import-statement") continue;
+    const name = path.basename(specifier);
+    if (seen.has(name)) continue;
+    seen.add(name);
+    await staticChunks(name, seen);
+  }
+  return seen;
+}
+
+const entryTag = built.match(/<script type="module"[^>]*src="\/([^"]+\.js)"[^>]*><\/script>/);
+const entryFile = entryTag?.[1];
+if (!entryTag || !entryFile) throw new Error("build.ts: no module script found in dist/index.html");
+const firstLoad = await staticChunks(entryFile);
+const modulePreloads = [...firstLoad].map(name => `<link rel="modulepreload" crossorigin href="/${name}" />`).join("");
+const shell = built.replace(entryTag[0], () => `${modulePreloads}${entryTag[0]}`);
+console.log(` dist/*.html  modulepreload ${[...firstLoad].join(", ") || "none"}`);
+
+// The desk and the account page are lazy chunks (App.tsx), so on their own
+// addresses the browser would learn of them only after the entry had run and
+// asked — one more round trip, measured as a later paint on /create, which is
+// also where the return from Google lands. Their own HTML names them up front;
+// no other page does. The chunk is found by the page's source file in its
+// source map, which is exact, rather than by guessing at minified contents.
+const LAZY_PAGES: Record<string, string> = {
+  "/create": "src/pages/Create.tsx",
+  "/account": "src/pages/Account.tsx",
+};
+
+async function lazyPreloads(source: string): Promise<string> {
+  for (const output of result.outputs) {
+    const name = path.basename(output.path);
+    if (!/^chunk-[a-z0-9]+\.js$/.test(name)) continue;
+    const map = Bun.file(path.join(outdir, `${name}.map`));
+    if (!(await map.exists())) continue;
+    const { sources } = (await map.json()) as { sources: string[] };
+    if (!sources.some(file => file.endsWith(source))) continue;
+    const chunks = [name, ...(await staticChunks(name))].filter(chunk => !firstLoad.has(chunk) && chunk !== entryFile);
+    return chunks.map(chunk => `<link rel="modulepreload" crossorigin href="/${chunk}" />`).join("");
+  }
+  console.warn(` build.ts: no chunk found for ${source}, so its page gets no module preload`);
+  return "";
+}
 
 /** Escapes text for a double-quoted attribute (and, harmlessly, for <title>). */
 const escape = (text: string) =>
@@ -110,9 +173,22 @@ function page(head: Head, url: string | null, structuredData: boolean): string {
   return html;
 }
 
+// No `<link rel="preload">` for the home page's largest photograph, although
+// it looks like the obvious fix. It was measured: the plate is painted only
+// once the bundle has run, so fetching it earlier buys nothing, and in all
+// three comparisons made (simulated and real throttling, with and without
+// splitting) it moved the largest paint 100–150 ms later by competing with the
+// scripts for the connection.
+
 for (const [route, head] of Object.entries(ROUTES)) {
   const file = route === "/" ? "index.html" : `${route.slice(1)}.html`;
-  await Bun.write(path.join(outdir, file), page(head, new URL(route, SITE).toString(), route === "/"));
+  let html = page(head, new URL(route, SITE).toString(), route === "/");
+  const lazySource = LAZY_PAGES[route];
+  if (lazySource) {
+    const preloads = await lazyPreloads(lazySource);
+    if (preloads) html = replaceOnce(html, /<\/head>/, `  ${preloads}\n  </head>`);
+  }
+  await Bun.write(path.join(outdir, file), html);
   console.log(` ${path.join("dist", file)}  ${head.index ? "" : "noindex  "}${head.title}`);
 }
 await Bun.write(path.join(outdir, "404.html"), page(NOT_FOUND, null, false));

@@ -78,7 +78,7 @@ export function NewsletterForm({ source = "footer", className }: NewsletterFormP
         />
         <Button type="submit" size="sm" className="shrink-0 rounded-full" disabled={sending}>
           {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          <span className="hidden sm:inline">{sending ? "Sending" : "Join"}</span>
+          <span className="sr-only sm:not-sr-only">{sending ? "Sending" : "Join"}</span>
         </Button>
       </div>
 

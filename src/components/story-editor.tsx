@@ -49,7 +49,11 @@ export function StoryEditor({ story, onChange, wordCount, onPolish }: StoryEdito
             placeholder="Where did you go, who were you with, and what do you want to remember about it?"
             className="min-h-64 resize-y bg-white/70 text-base leading-relaxed"
           />
-          <Progress value={Math.min(100, (wordCount / MIN_WORDS) * 100)} className="h-1.5" />
+          <Progress
+            value={Math.min(100, (wordCount / MIN_WORDS) * 100)}
+            aria-label={`Story length: ${wordCount.toLocaleString()} of ${MIN_WORDS.toLocaleString()} words`}
+            className="h-1.5"
+          />
           <p className="text-sm text-stone-500">
             {wordCount >= MIN_WORDS
               ? "Plenty to work with. Keep going if there's more."

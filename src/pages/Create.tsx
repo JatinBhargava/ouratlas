@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isSignInReturn, useAuth } from "@/lib/auth";
+import { isSignInReturn, settleSignInReturn, useAuth } from "@/lib/auth";
 import { isParked, park, take } from "@/lib/draft";
 import { HttpError } from "@/lib/api";
 import { claimExport, readAllowance } from "@/lib/exports";
@@ -59,6 +59,10 @@ export function Create() {
    * on the desk.
    */
   const [staging, setStaging] = useState(() => isParked() || isSignInReturn());
+  // The answer has been read into `staging`; a later visit in the same page
+  // load is not a return. After the initialiser, so React's double render of
+  // it in development still sees the same answer twice.
+  useEffect(() => settleSignInReturn(), []);
   /** Whether the read has settled, however it settled. */
   const [draftLoaded, setDraftLoaded] = useState(false);
   /** The interlude has played out; set by the component when its last stage lands. */
@@ -923,7 +927,7 @@ export function Create() {
       <div className="sticky bottom-6 flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/50 bg-white/85 py-3 pr-3 pl-6 shadow-lg shadow-black/10 backdrop-blur-md">
         <p className="text-sm text-stone-600">
           {blocker ?? "Ready for press."}
-          <span className="text-stone-400">
+          <span className="text-stone-500">
             {" "}
             · {photos.length} photos · {wordCount.toLocaleString()} words
           </span>

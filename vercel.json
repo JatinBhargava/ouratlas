@@ -6,6 +6,12 @@
   "outputDirectory": "dist",
   "trailingSlash": false,
   "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/:file([^/]+-[a-z0-9]{8}\\.(?:js|css|avif|jpg|svg))",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
+  ],
   "redirects": [
     {
       "source": "/(.*)",

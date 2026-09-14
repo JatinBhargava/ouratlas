@@ -48,7 +48,7 @@ export function HowItWorks() {
             <Card className={cn("group h-full gap-0 pt-0", SURFACE, SURFACE_LIFT)}>
               {/* A look at what the step actually produces. */}
               <div className="relative rounded-t-xl border-b border-stone-200/70 bg-stone-900/4 px-5 pt-8 pb-4">
-                <span className="absolute top-3 left-4 text-xs font-semibold text-stone-400 tabular-nums">
+                <span className="absolute top-3 left-4 text-xs font-semibold text-stone-500 tabular-nums">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <step.scene />

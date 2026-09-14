@@ -244,11 +244,11 @@ export function LayoutDesigner({
           </p>
 
           {chosen && (
-            <p className="text-[11px] text-stone-400 tabular-nums">
+            <p className="text-[11px] text-stone-500 tabular-nums">
               {Math.round(chosen.width)} × {Math.round(chosen.height)}
               {(chosen.width <= MIN_BOX[chosen.kind].width ||
                 chosen.height <= MIN_BOX[chosen.kind].height) && (
-                <span className="text-stone-500"> · at its smallest</span>
+                <span className="text-stone-600"> · at its smallest</span>
               )}
             </p>
           )}

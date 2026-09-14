@@ -78,7 +78,7 @@ export function AuthMenu({ className }: { className?: string }) {
         sight, which read as the page breaking rather than as progress.
       */}
       {busy ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
-      <span className="hidden sm:inline">Log in</span>
+      <span className="sr-only sm:not-sr-only">Log in</span>
     </Button>
   );
 }
