@@ -5,6 +5,7 @@
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
   "trailingSlash": false,
+  "cleanUrls": true,
   "redirects": [
     {
       "source": "/(.*)",
@@ -14,7 +15,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://api.ouratlas.co.in/api/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "https://api.ouratlas.co.in/api/:path*" }
   ]
 }

@@ -5,9 +5,7 @@ import { BetaNotice } from "@/components/beta-notice";
 import { SceneBackground } from "@/components/scene-background";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
-
-/** The site's own origin, which the canonical link must be absolute against. */
-const SITE = "https://ouratlas.co.in";
+import { applyHead } from "@/lib/seo";
 
 /**
  * App shell. The marketing footer belongs to the landing page; the album
@@ -18,16 +16,18 @@ export function RootLayout({ children }: { children: ReactNode }) {
   const isLanding = pathname === "/";
 
   /**
-   * Keeps the canonical link pointing at the page actually being shown.
+   * Keeps the title, description, canonical and robots tag in step with the
+   * page being shown.
    *
-   * `index.html` is one file serving every route, so its canonical is written
-   * for the home page. Left alone it would tell a crawler that /pricing and
-   * /create are duplicates of / — the opposite of what a canonical is for, and
-   * enough to keep them out of the index entirely.
+   * Each route is now served with its own head, written by `build.ts` from
+   * the same table, so on a first load this changes nothing. It matters on
+   * navigation inside the app, where no new document arrives and the tab
+   * would otherwise keep the previous page's title — and it only ever sets
+   * the values the server sent for that address, which is what Google asks of
+   * a canonical set by script.
    */
   useEffect(() => {
-    const link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    if (link) link.href = new URL(pathname, SITE).toString();
+    applyHead(pathname);
   }, [pathname]);
 
   return (

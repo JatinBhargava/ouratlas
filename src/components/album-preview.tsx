@@ -26,11 +26,27 @@ function Column({ children, dropCap = false }: { children: string; dropCap?: boo
  * A photograph in the mock spread. The swatch sits behind as a coloured
  * placeholder so the layout never flashes white while the file loads.
  */
-function Plate({ src, swatch, className }: { src: SamplePhoto; swatch: string; className?: string }) {
+function Plate({
+  src,
+  swatch,
+  className,
+  priority = false,
+}: {
+  src: SamplePhoto;
+  swatch: string;
+  className?: string;
+  /**
+   * For the one plate that is the largest thing painted on the home page.
+   * Lighthouse measures it as the LCP element, and without a hint the browser
+   * fetches it at the same low priority as the prints drifting at the edges.
+   */
+  priority?: boolean;
+}) {
   return (
     <Picture
       photo={src}
       decoding="async"
+      fetchPriority={priority ? "high" : undefined}
       className={cn("w-full bg-linear-to-br object-cover", swatch, className)}
     />
   );
@@ -59,7 +75,7 @@ export function AlbumPreview() {
       <div className="animate-drift-slower grid grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25 ring-1 ring-black/5 sm:grid-cols-2">
         {/* Verso: the picture, given the whole page. */}
         <div className="flex flex-col gap-2.5 border-stone-200 p-5 sm:border-r">
-          <Plate src={SAMPLE_PHOTOS.gull} swatch={PHOTO_SWATCHES[0]} className="aspect-4/3 rounded-lg" />
+          <Plate src={SAMPLE_PHOTOS.gull} swatch={PHOTO_SWATCHES[0]} className="aspect-4/3 rounded-lg" priority />
           <p className="text-[10px] tracking-[0.2em] text-stone-400 uppercase">Plate I — the ridge at dawn</p>
           <Column>
             He came out of the glare without a sound and hung there, close enough that we could see the wind moving

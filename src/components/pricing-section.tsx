@@ -107,7 +107,11 @@ function checkoutOpen(): boolean {
  */
 const SUBSCRIPTIONS_AT_PROOF = !checkoutOpen();
 
-export function PricingSection() {
+/**
+ * `headingLevel` is `h1` where the plans are the whole page (/pricing) and the
+ * default `h2` where they are one section of the home page.
+ */
+export function PricingSection({ headingLevel = "h2" }: { headingLevel?: "h1" | "h2" } = {}) {
   const { user, billing, configured, signInWithGoogle } = useAuth();
   const [pending, setPending] = useState<PaidPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +155,7 @@ export function PricingSection() {
   return (
     <section id="pricing" className="flex flex-col gap-8">
       <SectionHeading
+        as={headingLevel}
         kicker="Subscriptions"
         title="Keep the whole journey"
         description="Your photos and words never touch our database — every plan sends the finished magazine straight to you."

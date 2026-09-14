@@ -1,9 +1,12 @@
-# Everything here is public except the pages that only mean something to the
-# person signed in. Nothing a crawler could reach exposes anyone's photographs
-# or writing — those never leave the browser they were opened in.
+# Everything here may be crawled. Nothing a crawler could reach exposes
+# anyone's photographs or writing — those never leave the browser they were
+# opened in.
+#
+# /account is kept out of the index by a noindex in its own HTML rather than
+# by a Disallow here: a crawler barred from a page never sees its noindex, and
+# can still list the bare address from a link.
 
 User-agent: *
 Allow: /
-Disallow: /account
 
 Sitemap: https://ouratlas.co.in/sitemap.xml

@@ -6,10 +6,17 @@ type SectionHeadingProps = {
   title: string;
   description?: string;
   align?: "left" | "center";
+  /**
+   * The heading level. A section is an `h2` under the page's own headline,
+   * but where the section is the whole page — the plans at /pricing — its
+   * title is the headline, and a page with no `h1` gives search engines and
+   * screen readers nothing to take as its subject.
+   */
+  as?: "h1" | "h2";
 };
 
 /** Section masthead: rubric, display headline, standfirst. */
-export function SectionHeading({ kicker, title, description, align = "center" }: SectionHeadingProps) {
+export function SectionHeading({ kicker, title, description, align = "center", as: Heading = "h2" }: SectionHeadingProps) {
   return (
     <div className={cn("flex flex-col gap-3", align === "center" && "items-center text-center")}>
       {kicker && (
@@ -20,9 +27,9 @@ export function SectionHeading({ kicker, title, description, align = "center" }:
         </span>
       )}
 
-      <h2 className="font-editorial text-4xl leading-tight tracking-tight text-white drop-shadow-md sm:text-5xl">
+      <Heading className="font-editorial text-4xl leading-tight tracking-tight text-white drop-shadow-md sm:text-5xl">
         {title}
-      </h2>
+      </Heading>
 
       {description && <p className="max-w-prose text-white/90 drop-shadow-sm">{description}</p>}
     </div>

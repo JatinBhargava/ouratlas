@@ -13,7 +13,9 @@ import { PricingSection } from "@/components/pricing-section";
  * A route has no such problem, and gives the plans an address worth sending
  * someone. The section stays on the home page too: this is not a replacement
  * for it, it is a destination for links that come from elsewhere.
+ *
+ * Here the section's title is the page's headline, so it is set as the `h1`.
  */
 export function Pricing() {
-  return <PricingSection />;
+  return <PricingSection headingLevel="h1" />;
 }

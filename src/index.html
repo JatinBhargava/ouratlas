@@ -3,9 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The title, description, canonical, og:url and their share-card twins in
+      this file are the home page's. build.ts writes a copy of this file for
+      every other route with those values replaced from src/lib/seo.ts, and
+      fails the build if it cannot find each tag exactly once — so keep one of
+      each here, and change the wording in seo.ts rather than only here.
+    -->
     <meta
       name="description"
-      content="Trip photos and your own words, set as a magazine you can keep. Ten photographs and up to ten thousand words in; a paginated issue out, ready to export."
+      content="Ten trip photographs and your own words, typeset in the browser as a magazine issue and exported as a PDF. Free to start; photos never leave your device."
     />
     <meta name="theme-color" content="#0c0a09" />
 
@@ -26,10 +33,10 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Atlas" />
     <meta property="og:url" content="https://ouratlas.co.in/" />
-    <meta property="og:title" content="Atlas — your trip, set as a magazine" />
+    <meta property="og:title" content="Atlas — your trip photos and words, set as a magazine" />
     <meta
       property="og:description"
-      content="Ten photographs and up to ten thousand words in; a paginated issue out, ready to export. The photographs never leave your browser."
+      content="Ten trip photographs and your own words, typeset in the browser as a magazine issue and exported as a PDF. Free to start; photos never leave your device."
     />
     <meta property="og:image" content="https://ouratlas.co.in/og.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
@@ -41,10 +48,10 @@
     />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Atlas — your trip, set as a magazine" />
+    <meta name="twitter:title" content="Atlas — your trip photos and words, set as a magazine" />
     <meta
       name="twitter:description"
-      content="Ten photographs and up to ten thousand words in; a paginated issue out, ready to export. The photographs never leave your browser."
+      content="Ten trip photographs and your own words, typeset in the browser as a magazine issue and exported as a PDF. Free to start; photos never leave your device."
     />
     <meta name="twitter:image" content="https://ouratlas.co.in/og.jpg" />
     <!--
@@ -84,25 +91,46 @@
     -->
     <link rel="icon" type="image/svg+xml" href="./assets/atlas-mark.svg" />
     <link rel="apple-touch-icon" href="./assets/atlas-mark.svg" />
-    <title>Atlas — your trip, set as a magazine</title>
+    <title>Atlas — your trip photos and words, set as a magazine</title>
 
     <!--
       Structured data. Deliberately modest: what the thing is, who publishes it
       and what it costs to start. No ratings, no review counts and no prices for
       the paid plans — those would be claims, and an invented one is worse than
-      an absent one.
+      an absent one. The paid plans cannot be bought yet (see
+      SUBSCRIPTIONS_AT_PROOF in pricing-section.tsx), so offering them here
+      would be exactly that.
+
+      No word count either: the Wanderer card and the editor do not yet agree
+      on one, and markup must not promise what the visible page does not.
+
+      The Organization carries "OurAtlas" as its alternate name because the
+      footer signs the site that way, and "Atlas" alone is shared with a great
+      many other things. No logo until there is an unhashed raster to point at:
+      the SVG's address changes with every build.
+
+      build.ts keeps this block on the home page only.
     -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@graph": [
           {
+            "@type": "Organization",
+            "@id": "https://ouratlas.co.in/#organization",
+            "name": "Atlas",
+            "alternateName": "OurAtlas",
+            "url": "https://ouratlas.co.in/"
+          },
+          {
             "@type": "WebSite",
             "@id": "https://ouratlas.co.in/#website",
             "url": "https://ouratlas.co.in/",
             "name": "Atlas",
-            "description": "Trip photos and your own words, set as a magazine you can keep.",
-            "inLanguage": "en"
+            "alternateName": "OurAtlas",
+            "description": "Trip photographs and your own words, set as a magazine issue you can keep.",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://ouratlas.co.in/#organization" }
           },
           {
             "@type": "WebApplication",
@@ -113,7 +141,8 @@
             "operatingSystem": "Any modern web browser",
             "browserRequirements": "Requires JavaScript",
             "isPartOf": { "@id": "https://ouratlas.co.in/#website" },
-            "description": "Ten photographs and up to ten thousand words in; a paginated magazine issue out, ready to export as a PDF. The photographs and the writing are laid out in the browser and are never uploaded.",
+            "publisher": { "@id": "https://ouratlas.co.in/#organization" },
+            "description": "Ten trip photographs and your own words in; a paginated magazine issue out, ready to export as a PDF. The photographs and the writing are laid out in the browser and are never uploaded.",
             "featureList": [
               "Automatic magazine layout with cover, contents, spreads and folios",
               "Export to PDF at print size",
