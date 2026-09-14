@@ -19,6 +19,7 @@ import { claimExport, readAllowance } from "@/lib/exports";
 import { composeIssue } from "@/lib/magazine/compose";
 import { spliceStory, toParagraphs, type Cursor } from "@/lib/magazine/copy";
 import { disposeMeasurer } from "@/lib/magazine/fit";
+import { pressPdf, printHonoursPageSize, saveIssue } from "@/lib/magazine/press";
 import type { Axis, PlateBox } from "@/lib/magazine/templates";
 import { DEFAULT_THEME, themeOf, type ThemeId } from "@/lib/magazine/themes";
 import { ThemePicker, TiltControl } from "@/components/theme-picker";
@@ -173,6 +174,13 @@ export function Create() {
   const [exportError, setExportError] = useState<string | null>(null);
   /** The press-feed overlay, up from the click until the print dialog closes. */
   const [exporting, setExporting] = useState(false);
+  /**
+   * Whether export goes through the print dialog or makes the PDF itself.
+   * Asked once: the platform does not change under a mounted page.
+   */
+  const [printsToSize] = useState(printHonoursPageSize);
+  /** The print sheet, whose leaves a phone export draws one at a time. */
+  const sheet = useRef<HTMLDivElement>(null);
   /**
    * Set only when an export is actually refused, never merely when the last
    * one is spent.
@@ -489,7 +497,8 @@ export function Create() {
           : null;
 
   /**
-   * Opens the print dialog, but not before every photograph has decoded.
+   * Opens the print dialog — or, on a phone, makes the PDF itself — but not
+   * before every photograph has decoded.
    *
    * The print sheet is `display: none` until the print stylesheet applies, so
    * nothing in it has ever been painted and its images may not be decoded when
@@ -546,10 +555,22 @@ export function Create() {
       const held = Date.now() - started;
       if (held < FEED_MS) await new Promise(resolve => setTimeout(resolve, FEED_MS - held));
 
-      window.print();
+      if (printsToSize) {
+        window.print();
+      } else {
+        // A phone's print dialog would put the page on Letter or A4 at actual
+        // size, so the PDF is made here instead, from the sheet laid out off-screen.
+        const name = issue?.title ?? title;
+        try {
+          saveIssue(await pressPdf([...(sheet.current?.children ?? [])] as HTMLElement[], name), name);
+        } catch {
+          setExportError("The PDF could not be made on this phone. Try again, or export from a computer.");
+        }
+      }
     } finally {
-      // Reached when the dialog closes, and on the refusal above. Chrome and
-      // Safari both return from `print()` once it is dismissed.
+      // Reached when the dialog closes or the PDF is handed over, and on the
+      // refusal above. Chrome and Safari both return from `print()` once it
+      // is dismissed.
       setExporting(false);
     }
   };
@@ -805,7 +826,9 @@ export function Create() {
           <p className="text-center text-xs text-white/70 drop-shadow-sm">
             {needsSignIn
               ? "Exporting needs an account — it is free, and your issue is kept exactly as you have it here while you sign in."
-              : "Export opens your print dialog — choose Save as PDF. The pages are already the right size, so leave the scale at 100%."}
+              : printsToSize
+                ? "Export opens your print dialog — choose Save as PDF. The pages are already the right size, so leave the scale at 100%."
+                : "Export saves the issue as a PDF to your downloads. A long issue takes a little while to set."}
           </p>
         </div>
 
@@ -816,7 +839,15 @@ export function Create() {
         */}
         {exporting && <PressFeed />}
 
-        {!needsSignIn && !blocked && <PrintSheet issue={issue} tilt={tiltNow} sketches={sketches} />}
+        {!needsSignIn && !blocked && (
+          <PrintSheet
+            ref={sheet}
+            issue={issue}
+            tilt={tiltNow}
+            sketches={sketches}
+            offscreen={exporting && !printsToSize}
+          />
+        )}
       </>
     );
   }
