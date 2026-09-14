@@ -1,5 +1,5 @@
 /**
- * The browser's Supabase client.
+ * The browser's Supabase auth client.
  *
  * Only the project URL and the anon key reach the browser. The anon key is
  * public by design — row-level security in `api/schema.sql` is what actually
@@ -10,7 +10,9 @@
  * the server, which is what keeps the service-role key out of here.
  */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// `AuthClient` is exported as a value alias of the class, so the class itself
+// is what can name the type.
+import { AuthClient, type GoTrueClient } from "@supabase/auth-js";
 
 // Guarded for the same reason as in `version.ts`: an unset BUN_PUBLIC_ variable
 // is not inlined, so `process` would be read in the browser and throw. Without
@@ -51,23 +53,53 @@ const anonKey = publicEnv(() => process.env.BUN_PUBLIC_SUPABASE_ANON_KEY);
  */
 export const authConfigured = Boolean(url && anonKey);
 
-export const supabase: SupabaseClient | null = authConfigured
-  ? createClient(url!, anonKey!, {
-      auth: {
-        // The session lives in localStorage and is refreshed in the
-        // background, so a reload does not sign anyone out.
-        persistSession: true,
-        autoRefreshToken: true,
-        // Off on purpose. Left on, the library exchanges the `?code=` during
-        // its own initialisation and reports a failure nowhere in particular —
-        // the symptom is a code sitting in the address bar and an app that
-        // still reads as signed out. `AuthProvider` does the exchange itself so
-        // the error has somewhere to go.
-        detectSessionInUrl: false,
-        flowType: "pkce",
-      },
-    })
-  : null;
+/**
+ * The auth client on its own, rather than `createClient` from supabase-js.
+ *
+ * The browser only ever signs people in; the database is reached through our
+ * API. `createClient` builds the database, realtime, storage and functions
+ * clients as well, and the bundler cannot leave out what a constructor
+ * references, so every reader of the home page downloaded and parsed all four
+ * for nothing. `createClient` hands its settings to this same class, and they
+ * are repeated here as it sets them.
+ *
+ * Two of them must never drift. The storage key is where every signed-in
+ * reader's session already sits in localStorage, and where a sign-in that is
+ * mid-redirect keeps its PKCE verifier: a different key signs everybody out
+ * and fails the next return from Google. And the anon key goes as both
+ * `apikey` and the bearer token, which is what the auth server expects from a
+ * client that has no session yet.
+ */
+function authClient(projectUrl: string, key: string): GoTrueClient {
+  const base = new URL(projectUrl.endsWith("/") ? projectUrl : `${projectUrl}/`);
+  return new AuthClient({
+    url: new URL("auth/v1", base).href,
+    headers: { Authorization: `Bearer ${key}`, apikey: key },
+    storageKey: `sb-${base.hostname.split(".")[0]}-auth-token`,
+    // The session lives in localStorage and is refreshed in the background, so
+    // a reload does not sign anyone out.
+    persistSession: true,
+    autoRefreshToken: true,
+    // Off on purpose. Left on, the library exchanges the `?code=` during its
+    // own initialisation and reports a failure nowhere in particular — the
+    // symptom is a code sitting in the address bar and an app that still reads
+    // as signed out. `AuthProvider` does the exchange itself so the error has
+    // somewhere to go.
+    detectSessionInUrl: false,
+    flowType: "pkce",
+  });
+}
+
+/**
+ * Shaped like the old client (`supabase.auth.…`) so its callers did not change.
+ *
+ * Built only in a browser. `build.ts` renders the home page ahead of time, and
+ * a client made there would start refresh timers that keep the build from
+ * exiting, for a session that cannot exist. `authConfigured` still reads true
+ * during that render, so the nav draws the same placeholder the browser draws.
+ */
+export const supabase: { auth: GoTrueClient } | null =
+  authConfigured && typeof window !== "undefined" ? { auth: authClient(url!, anonKey!) } : null;
 
 /**
  * The current access token, or null when signed out.

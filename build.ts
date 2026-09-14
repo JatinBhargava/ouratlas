@@ -1,13 +1,26 @@
 import tailwind from "bun-plugin-tailwind";
 import { versionOf } from "./scripts/versions";
 import { NOT_FOUND, ROUTES, SITE, type Head } from "./src/lib/seo";
-import { rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const outdir = path.join(process.cwd(), "dist");
 await rm(outdir, { recursive: true, force: true });
 
 const entrypoints = [...new Bun.Glob("src/**/*.html").scanSync()];
+
+/**
+ * Build-time values, shared by the browser bundle and the prerender bundle
+ * below. The two must agree: a switch that read differently in each would draw
+ * different markup, and hydration would fail on it.
+ */
+const define = {
+  "process.env.NODE_ENV": JSON.stringify("production"),
+  // Baked in like the Supabase settings, and for the same reason: the
+  // bundle has to carry it, there is no run time to read it at.
+  "process.env.BUN_PUBLIC_APP_VERSION": JSON.stringify(process.env.BUN_PUBLIC_APP_VERSION ?? versionOf("ui")),
+};
 
 const result = await Bun.build({
   entrypoints,
@@ -28,12 +41,7 @@ const result = await Bun.build({
   // Same prefix bunfig.toml gives the dev server, so a production bundle and a
   // hot-reloaded one see the same Supabase settings.
   env: "BUN_PUBLIC_*",
-  define: {
-    "process.env.NODE_ENV": JSON.stringify("production"),
-    // Baked in like the Supabase settings, and for the same reason: the
-    // bundle has to carry it, there is no run time to read it at.
-    "process.env.BUN_PUBLIC_APP_VERSION": JSON.stringify(process.env.BUN_PUBLIC_APP_VERSION ?? versionOf("ui")),
-  },
+  define,
 });
 
 // Everything in src/static is copied through verbatim and unhashed, because
@@ -98,7 +106,24 @@ const entryFile = entryTag?.[1];
 if (!entryTag || !entryFile) throw new Error("build.ts: no module script found in dist/index.html");
 const firstLoad = await staticChunks(entryFile);
 const modulePreloads = [...firstLoad].map(name => `<link rel="modulepreload" crossorigin href="/${name}" />`).join("");
-const shell = built.replace(entryTag[0], () => `${modulePreloads}${entryTag[0]}`);
+// The headline face, preloaded on every page, just ahead of the @font-face
+// rule in index.html that names it.
+//
+// A rule alone fetches nothing: the browser asks for the file only once it has
+// laid out text that needs it. With the home page arriving as finished HTML, a
+// throttled Lighthouse run measured that request starting at 1.7 s, queued
+// behind the scripts, and finishing at 4.5 s. The headline is the largest paint
+// on a phone, and it was counted when the face swapped in. `crossorigin` is
+// required even on our own origin, or the preloaded copy is not the one the
+// rule uses and the file is fetched twice.
+//
+// Written here rather than in index.html, where the HTML bundler would try to
+// resolve the address as a source file and fail the build.
+const fontPreload = `<link rel="preload" href="/instrument-serif.ttf" as="font" type="font/ttf" crossorigin />\n    `;
+const shell = replaceOnce(built, /<style>(?=\s*@font-face)/, `${fontPreload}<style>`).replace(
+  entryTag[0],
+  () => `${modulePreloads}${entryTag[0]}`,
+);
 console.log(` dist/*.html  modulepreload ${[...firstLoad].join(", ") || "none"}`);
 
 // The desk and the account page are lazy chunks (App.tsx), so on their own
@@ -173,16 +198,66 @@ function page(head: Head, url: string | null, structuredData: boolean): string {
   return html;
 }
 
-// No `<link rel="preload">` for the home page's largest photograph, although
-// it looks like the obvious fix. It was measured: the plate is painted only
-// once the bundle has run, so fetching it earlier buys nothing, and in all
-// three comparisons made (simulated and real throttling, with and without
-// splitting) it moved the largest paint 100–150 ms later by competing with the
-// scripts for the connection.
+// The home page, drawn at build time and hydrated in the browser.
+//
+// Until the bundle had downloaded and run, a reader of the cover saw the
+// scene and nothing else: on a mid-range phone that was about 2.7 s of the
+// 3.9 s before the largest paint, and the photograph itself took 0.1 s of it.
+// Writing the rendered page into index.html puts the masthead and the plate on
+// screen as soon as the HTML and the stylesheet arrive, and `frontend.tsx`
+// hydrates the markup instead of drawing it again.
+//
+// Only the home page. It is the page that arrives from search and shared links
+// and the one measured as slow. The desk draws from state that exists only in
+// the reader's browser, and the other pages are small enough that the wait
+// was never theirs.
+//
+// Rendered from its own bundle of `src/prerender.tsx`, built with the same
+// plugins, public path and `define` as the browser's. Importing the app
+// straight into this script would give every photograph its source path rather
+// than the hashed address in dist, and the markup would then disagree with the
+// browser's render on every <img>.
+//
+// No `<link rel="preload">` for the home page's largest photograph. It was
+// measured before this existed, when the plate painted only after the bundle
+// ran, and cost 100–150 ms by competing with the scripts. The <img> is now in
+// the HTML itself, with `fetchpriority="high"`, so the browser's preload
+// scanner finds it just as early without one.
+const prerenderDir = await mkdtemp(path.join(tmpdir(), "atlas-prerender-"));
+const prerender = await Bun.build({
+  entrypoints: ["src/prerender.tsx"],
+  outdir: prerenderDir,
+  publicPath: "/",
+  plugins: [tailwind],
+  target: "bun",
+  env: "BUN_PUBLIC_*",
+  define,
+});
+const prerenderEntry = prerender.outputs.find(output => output.kind === "entry-point");
+if (!prerender.success || !prerenderEntry) throw new Error("build.ts: the prerender bundle did not build");
+const { render } = (await import(prerenderEntry.path)) as { render: (location: string) => string };
+const homeMarkup = render("/");
+await rm(prerenderDir, { recursive: true, force: true });
+
+// Every file the rendered page points at must be one this build wrote. The two
+// bundles hash assets independently, and if they ever disagreed the page would
+// ship with broken images that only the hydrated render repaired, after the
+// wait this exists to remove.
+for (const [, address] of homeMarkup.matchAll(/(?:src|srcSet|srcset|href)="(\/[^"#?]+\.[a-z0-9]+)"/g)) {
+  if (!(await Bun.file(path.join(outdir, address!)).exists())) {
+    throw new Error(`build.ts: the prerendered home page points at ${address}, which is not in dist`);
+  }
+}
+console.log(` dist/index.html  prerendered ${(homeMarkup.length / 1024).toFixed(1)} KB of markup`);
 
 for (const [route, head] of Object.entries(ROUTES)) {
   const file = route === "/" ? "index.html" : `${route.slice(1)}.html`;
   let html = page(head, new URL(route, SITE).toString(), route === "/");
+  // Marked with the address it was drawn for, which `frontend.tsx` checks
+  // before hydrating rather than trusting whichever path was served this file.
+  if (route === "/") {
+    html = replaceOnce(html, /<div id="root"><\/div>/, `<div id="root" data-prerendered="/">${homeMarkup}</div>`);
+  }
   const lazySource = LAZY_PAGES[route];
   if (lazySource) {
     const preloads = await lazyPreloads(lazySource);

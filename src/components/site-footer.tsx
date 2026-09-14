@@ -153,7 +153,11 @@ export function SiteFooter() {
         <Separator className="my-10 bg-stone-300" />
 
         <div className="flex flex-col items-center justify-between gap-3 text-sm text-stone-500 sm:flex-row">
-          <p>
+          {/* The home page's HTML is rendered at build time, so the year in it
+              is the build's. On a first visit after New Year that differs from
+              the browser's, and without the suppression hydration would fail
+              over one number; the next deploy brings it forward. */}
+          <p suppressHydrationWarning>
             © {new Date().getFullYear()} OurAtlas. All rights reserved.{" "}
             {/* Small, but it is the only way to tell from a browser which
                 build is actually being served. */}

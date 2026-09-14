@@ -36,9 +36,17 @@ import "@/styles/globals.css";
 const Create = lazy(() => import("@/pages/Create").then(module => ({ default: module.Create })));
 const Account = lazy(() => import("@/pages/Account").then(module => ({ default: module.Account })));
 
-export function App() {
+/**
+ * Everything inside the router, so a router can be chosen from outside.
+ *
+ * The browser wraps it in `BrowserRouter` (below). `build.ts` renders the home
+ * page ahead of time through `src/prerender.tsx`, which wraps the same tree in
+ * a `StaticRouter` fixed at "/". Both routers draw no element of their own, so
+ * the markup they produce is identical, which hydration depends on.
+ */
+export function AppRoutes() {
   return (
-    <BrowserRouter>
+    <>
       {/* Inside the router so sign-in can send people back where they were. */}
       <AuthProvider>
         <RootLayout>
@@ -82,6 +90,14 @@ export function App() {
         <Analytics />
         <SpeedInsights />
       </AuthProvider>
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

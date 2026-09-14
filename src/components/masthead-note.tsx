@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { useVisitorCount } from "@/hooks/use-visitor-count";
 import { cn } from "@/lib/utils";
 
@@ -26,10 +28,14 @@ const circulation = new Intl.NumberFormat("en");
 export function MastheadNote({ className }: { className?: string }) {
   const visitors = useVisitorCount();
 
-  // Read once per render rather than kept in state: the line is decoration, and
-  // a timer ticking all day to move it between two words would cost more than
-  // it is worth. It settles on the right edition at the next navigation.
-  const edition = editionFor(new Date().getHours());
+  // Read from the reader's clock once the page is in their browser, never
+  // during render. The home page is rendered ahead of time by `build.ts`,
+  // where the hour is the build machine's; an edition read during render would
+  // differ from the one the browser draws, and hydration would fail over two
+  // words. Not kept current either: a timer ticking all day to move the line
+  // between editions would cost more than decoration is worth.
+  const [edition, setEdition] = useState<string | null>(null);
+  useEffect(() => setEdition(editionFor(new Date().getHours())), []);
 
   return (
     <span
@@ -49,10 +55,14 @@ export function MastheadNote({ className }: { className?: string }) {
       {visitors === null ? (
         <>
           Vol. I
-          <span aria-hidden className="text-stone-300">
-            ·
-          </span>
-          {edition}
+          {edition && (
+            <>
+              <span aria-hidden className="text-stone-300">
+                ·
+              </span>
+              {edition}
+            </>
+          )}
         </>
       ) : (
         <>

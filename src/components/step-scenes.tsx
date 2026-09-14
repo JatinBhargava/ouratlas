@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import gsap from "gsap";
 import { Download } from "lucide-react";
 
 import { Picture } from "@/components/picture";
+import { loadGsap, type Gsap } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 import { PHOTO_SWATCHES } from "@/lib/palette";
 import { SAMPLE_PHOTOS, type SamplePhoto } from "@/lib/sample-photos";
@@ -166,10 +166,13 @@ export function AlbumScene() {
   const active = useRef(0);
   const busy = useRef(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const engine = useRef<Gsap | null>(null);
+  const hovering = useRef(false);
 
   const swap = () => {
     const host = stage.current;
-    if (!host || busy.current) return;
+    const gsap = engine.current;
+    if (!host || !gsap || busy.current) return;
 
     const decks = Array.from(host.querySelectorAll<HTMLElement>("[data-spread]"));
     const leaving = decks[active.current];
@@ -196,13 +199,22 @@ export function AlbumScene() {
   };
 
   const start = () => {
+    hovering.current = true;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (timer.current) return;
-    swap();
-    timer.current = setInterval(swap, SWAP_INTERVAL);
+    // GSAP is fetched on the first hover rather than with the page (see
+    // `lib/gsap.ts`). The pointer may have left again by the time it lands, in
+    // which case nothing starts; a failed fetch leaves the first spread showing.
+    loadGsap().then(gsap => {
+      engine.current = gsap;
+      if (!hovering.current || timer.current) return;
+      swap();
+      timer.current = setInterval(swap, SWAP_INTERVAL);
+    }, () => {});
   };
 
   const stop = () => {
+    hovering.current = false;
     if (!timer.current) return;
     clearInterval(timer.current);
     timer.current = null;

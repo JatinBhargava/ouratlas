@@ -72,6 +72,10 @@
       `swap` so the words are readable in the fallback while the file arrives.
       Instrument Serif is published by Rosetta under the SIL Open Font
       License 1.1.
+
+      Preloaded, but by build.ts rather than here: the HTML bundler tries to
+      resolve a <link href> to /instrument-serif.ttf as a source file and fails
+      the build. See the note there for why the preload matters.
     -->
     <style>
       @font-face {

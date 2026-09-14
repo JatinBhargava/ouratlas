@@ -17,6 +17,21 @@ function seeded(seed: number) {
 
 type Leaf = { cx: number; cy: number; r: number };
 
+/**
+ * Rounds a generated coordinate to `places` decimals.
+ *
+ * The scene is part of the home page's pre-rendered HTML, and its 1,160 circles
+ * are most of that file. Left as the PRNG produced them, each attribute carried
+ * sixteen digits (`cx="458.93974527716637"`): 107 KB of markup that gzip could
+ * only bring down to 37 KB, because digits that random barely compress. A
+ * tenth of a unit in a 1600-wide viewBox is well under a pixel on any screen,
+ * so rounding changes nothing anyone can see and roughly halves the page.
+ *
+ * Rounded here, in the data both renders share, rather than in the markup, so
+ * the build's HTML and the browser's hydration draw identical numbers.
+ */
+const round = (value: number, places = 1) => Number(value.toFixed(places));
+
 /** Scatters overlapping circles into an organic leafy mass. */
 function canopy(seed: number, cx: number, cy: number, rx: number, ry: number, count: number, size: number): Leaf[] {
   const rand = seeded(seed);
@@ -24,9 +39,9 @@ function canopy(seed: number, cx: number, cy: number, rx: number, ry: number, co
     const a = rand() * Math.PI * 2;
     const d = Math.sqrt(rand());
     return {
-      cx: cx + Math.cos(a) * d * rx,
-      cy: cy + Math.sin(a) * d * ry,
-      r: size * (0.55 + rand() * 0.75),
+      cx: round(cx + Math.cos(a) * d * rx),
+      cy: round(cy + Math.sin(a) * d * ry),
+      r: round(size * (0.55 + rand() * 0.75)),
     };
   });
 }
@@ -43,9 +58,9 @@ const RAND_FLOWER = seeded(97);
 const FLOWERS = Array.from({ length: 150 }, () => {
   const t = RAND_FLOWER();
   return {
-    x: 300 + RAND_FLOWER() * 1050,
-    y: 792 + RAND_FLOWER() * RAND_FLOWER() * 150,
-    r: 2.2 + RAND_FLOWER() * 2.6,
+    x: round(300 + RAND_FLOWER() * 1050),
+    y: round(792 + RAND_FLOWER() * RAND_FLOWER() * 150),
+    r: round(2.2 + RAND_FLOWER() * 2.6),
     fill: t > 0.62 ? "#d94f36" : t > 0.34 ? "#e8a33d" : "#f0dfa0",
   };
 });
@@ -53,10 +68,10 @@ const FLOWERS = Array.from({ length: 150 }, () => {
 /** Sparse bright flecks in the sky, as in the reference print. */
 const RAND_SPARK = seeded(131);
 const SPARKS = Array.from({ length: 120 }, () => ({
-  x: RAND_SPARK() * 1600,
-  y: RAND_SPARK() * 780,
-  r: 1 + RAND_SPARK() * 1.8,
-  o: 0.25 + RAND_SPARK() * 0.5,
+  x: round(RAND_SPARK() * 1600),
+  y: round(RAND_SPARK() * 780),
+  r: round(1 + RAND_SPARK() * 1.8),
+  o: round(0.25 + RAND_SPARK() * 0.5, 2),
 }));
 
 const noise = (frequency: number, octaves: number, slope: number, intercept: number) =>
@@ -166,10 +181,10 @@ export function SceneBackground() {
           {/* Sunlit leaves catching light along the top of each mass. */}
           <g fill="#3c6624" opacity="0.5">
             {LEFT_EDGE.filter((_, i) => i % 3 === 0).map((l, i) => (
-              <circle key={`ll${i}`} cx={l.cx + 6} cy={l.cy - 10} r={l.r * 0.7} />
+              <circle key={`ll${i}`} cx={round(l.cx + 6)} cy={round(l.cy - 10)} r={round(l.r * 0.7)} />
             ))}
             {RIGHT_EDGE.filter((_, i) => i % 3 === 0).map((l, i) => (
-              <circle key={`rl${i}`} cx={l.cx - 6} cy={l.cy - 10} r={l.r * 0.7} />
+              <circle key={`rl${i}`} cx={round(l.cx - 6)} cy={round(l.cy - 10)} r={round(l.r * 0.7)} />
             ))}
           </g>
         </g>

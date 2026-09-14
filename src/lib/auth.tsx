@@ -8,7 +8,7 @@
  */
 
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/auth-js";
 
 import { api } from "@/lib/api";
 import { authConfigured, supabase } from "@/lib/supabase";

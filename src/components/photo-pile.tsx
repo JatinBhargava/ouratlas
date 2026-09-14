@@ -1,23 +1,23 @@
-import { useLayoutEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef } from "react";
 
 import { SectionHeading } from "@/components/section-heading";
+import { loadScrollTrigger, type Gsap } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 
 import { Picture } from "@/components/picture";
 import { SAMPLE_PHOTOS } from "@/lib/sample-photos";
-
-gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Five prints dealt out on a table — overlapping, none of them straight.
  * Positions are hand-placed rather than generated so the pile reads as
  * deliberately careless instead of evenly spaced.
  *
- * GSAP owns every transform on these cards (the deal-in, the resting angle and
- * the hover), so rotation lives here as a number rather than a utility class —
- * a Tailwind `rotate-*` would be overwritten by the inline transform anyway.
+ * Each card is drawn at its resting angle in its own inline style, so the pile
+ * is already laid out in the pre-rendered HTML and for anyone whose browser
+ * never fetches GSAP. GSAP takes over the transform once it arrives, for the
+ * deal-in and the hover, so rotation lives here as a number rather than a
+ * utility class: a Tailwind `rotate-*` would be overwritten by the inline
+ * transform anyway.
  */
 const PILE = [
   {
@@ -62,39 +62,74 @@ const PILE = [
   },
 ];
 
+/** Where each card pivots, for the deal-in, the hover and the resting angle alike. */
+const ORIGIN = "50% 60%";
+
+/** How far below the screen the pile is when GSAP is sent for: well before a reader gets there. */
+const FETCH_AHEAD = "800px";
+
+const prefersStill = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export function PhotoPile() {
   const table = useRef<HTMLDivElement>(null);
+  const engine = useRef<Gsap | null>(null);
 
-  useLayoutEffect(() => {
-    const context = gsap.context(() => {
-      const cards = gsap.utils.toArray<HTMLElement>(".pile-card");
-      const settled = (i: number) => ({ rotate: PILE[i]!.rotate, x: 0, y: 0, scale: 1, opacity: 1 });
+  useEffect(() => {
+    const host = table.current;
+    if (!host) return;
 
-      // Nothing to animate for readers who would rather things sat still.
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        cards.forEach((card, i) => gsap.set(card, settled(i)));
-        return;
-      }
+    let cancelled = false;
+    let revert: (() => void) | undefined;
 
-      gsap.set(cards, { rotate: 0, x: 0, y: 70, scale: 0.9, opacity: 0, transformOrigin: "50% 60%" });
+    const arm = (gsap: Gsap) => {
+      if (cancelled) return;
+      engine.current = gsap;
 
-      gsap.to(cards, {
-        rotate: (i: number) => PILE[i]!.rotate,
-        y: 0,
-        scale: 1,
-        opacity: 1,
-        duration: 0.75,
-        ease: "power3.out",
-        stagger: 0.09,
-        scrollTrigger: { trigger: table.current, start: "top 78%", once: true },
-      });
-    }, table);
+      // Nothing to animate for readers who would rather things sat still. And
+      // if the pile is already on screen when the library lands (a restored
+      // scroll position, a very quick reader), the prints are resting where they
+      // belong: sweeping them away to deal them back in would read as a glitch.
+      if (prefersStill() || host.getBoundingClientRect().top < window.innerHeight) return;
 
-    return () => context.revert();
+      const context = gsap.context(() => {
+        const cards = gsap.utils.toArray<HTMLElement>(".pile-card");
+        gsap.set(cards, { rotate: 0, x: 0, y: 70, scale: 0.9, opacity: 0, transformOrigin: ORIGIN });
+        gsap.to(cards, {
+          rotate: (i: number) => PILE[i]!.rotate,
+          y: 0,
+          scale: 1,
+          opacity: 1,
+          duration: 0.75,
+          ease: "power3.out",
+          stagger: 0.09,
+          scrollTrigger: { trigger: host, start: "top 78%", once: true },
+        });
+      }, host);
+      revert = () => context.revert();
+    };
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        observer.disconnect();
+        // A failed fetch leaves the pile at rest, which is how it was drawn.
+        loadScrollTrigger().then(arm, () => {});
+      },
+      { rootMargin: `${FETCH_AHEAD} 0px` },
+    );
+    observer.observe(host);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      revert?.();
+    };
   }, []);
 
   const lift = (element: HTMLElement, index: number, up: boolean) => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const gsap = engine.current;
+    // Before GSAP has arrived the prints simply stay put under the pointer.
+    if (!gsap || prefersStill()) return;
     gsap.set(element, { zIndex: up ? 40 : PILE[index]!.z });
     gsap.to(element, {
       rotate: up ? 0 : PILE[index]!.rotate,
@@ -118,7 +153,7 @@ export function PhotoPile() {
         {PILE.map((photo, i) => (
           <figure
             key={photo.alt}
-            style={{ zIndex: photo.z }}
+            style={{ zIndex: photo.z, transform: `rotate(${photo.rotate}deg)`, transformOrigin: ORIGIN }}
             onMouseEnter={event => lift(event.currentTarget, i, true)}
             onMouseLeave={event => lift(event.currentTarget, i, false)}
             className={cn(

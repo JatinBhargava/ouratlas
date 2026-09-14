@@ -175,6 +175,41 @@
   }
 }
 
+/*
+  The landing page's masthead setting itself, line by line (Home.tsx staggers
+  it with inline delays). CSS, not JavaScript, so it plays from the HTML the
+  build pre-renders instead of waiting for the bundle. `both` holds each line
+  at its starting frame through its delay, as motion's variants did.
+*/
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+
+@utility animate-rise {
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The spread under the masthead: movement only. See Home.tsx for why it no longer fades. */
+@keyframes rise-plate {
+  from {
+    transform: translateY(40px);
+  }
+}
+
+@utility animate-rise-plate {
+  animation: rise-plate 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-rise-plate {
+    animation: none;
+  }
+}
+
 /* Typing caret for the transcription scene. */
 @keyframes caret {
   0%,

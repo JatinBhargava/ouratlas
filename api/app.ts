@@ -63,14 +63,19 @@ export function createApp(): Express {
   app.use("/api", notFound);
 
   if (serveStatic) {
-    app.use(express.static(DIST));
+    // `extensions` answers /pricing with pricing.html, as Vercel's `cleanUrls`
+    // does. Each route has its own page from `build.ts`, and index.html is no
+    // longer an empty shell: it carries the home page, rendered at build time,
+    // so handing it to /create would flash the cover before the desk replaced it.
+    app.use(express.static(DIST, { extensions: ["html"] }));
 
-    // Client-side routing: anything not matched above is a page, so hand back
-    // the shell and let React Router work out what it is. Mounted as
-    // middleware rather than a wildcard route to stay clear of Express 5's
-    // stricter path syntax.
+    // Any other address is not a page. 404.html is an empty shell with a
+    // noindex head, and React Router still draws the not-found page inside it;
+    // the status is a real 404, as on Vercel, so a mistyped address is not
+    // indexed as a copy of the site. Mounted as middleware rather than a
+    // wildcard route to stay clear of Express 5's stricter path syntax.
     app.use((_req, res) => {
-      res.sendFile(path.join(DIST, "index.html"));
+      res.status(404).sendFile(path.join(DIST, "404.html"));
     });
   }
 
