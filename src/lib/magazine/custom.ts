@@ -13,7 +13,16 @@ import { TEXT_HEIGHT, TEXT_WIDTH } from "@/lib/magazine/geometry";
  * and drawn 211 wide. Nothing is converted anywhere.
  */
 
-export type CustomKind = "text" | "plate" | "sketch";
+/**
+ * What a box holds. "quote" is a pull quote: a line lifted from the story and
+ * set large in the display face, dealt to quote boxes in order the way
+ * photographs are dealt to plates. It is not poured from the story, so the
+ * fitter never measures it.
+ */
+export type CustomKind = "text" | "plate" | "sketch" | "quote";
+
+/** The colour a quote is set on: a block of accent, a block of ink, or the page itself. */
+export type QuoteTone = "accent" | "ink" | "paper";
 
 export type CustomBox = {
   id: string;
@@ -22,15 +31,68 @@ export type CustomBox = {
   y: number;
   width: number;
   height: number;
+  /** Quote boxes only. */
+  tone?: QuoteTone;
+  /**
+   * Quote boxes only: a sign-off rather than a quotation — the issue's title
+   * set on a block of colour where the story ends, with no quotation marks.
+   */
+  signOff?: boolean;
 };
 
-export type CustomPage = { boxes: CustomBox[] };
+export type CustomPage = {
+  boxes: CustomBox[];
+  /**
+   * A photograph run to the trim, edge to edge, with no margin and no folio —
+   * the page's one plate fills the leaf and its quote, if it has one, is set
+   * over the picture.
+   */
+  bleed?: boolean;
+};
+
+/** Paper, ink and accent for a designed issue, drawn from its photographs. */
+export type Palette = { paper: string; ink: string; accent: string };
 
 /** The three pages a reader designs. */
 export type CustomSlot = "left" | "right" | "special";
-export type CustomDesign = Record<CustomSlot, CustomPage>;
+export type CustomDesign = Record<CustomSlot, CustomPage> & {
+  /**
+   * The issue's colours. Carried on the design because they belong to it —
+   * they came with the pages the editor drew — and because the design already
+   * goes everywhere they need to: every composition, the undo, the sign-in
+   * draft.
+   */
+  palette?: Palette;
+  /** Pull quotes from the story, dealt to quote boxes in order. */
+  quotes?: string[];
+};
 
 export const CUSTOM_SLOTS: CustomSlot[] = ["left", "right", "special"];
+
+/**
+ * Single pages the reader has redrawn on the proof, by page index.
+ *
+ * The three slots are the design every leaf is drawn from; a leaf here has
+ * been changed on its own and keeps its own boxes, so moving a box on the
+ * fifth left-hand page changes that page and no other. The slot is kept with
+ * it because page numbers move — a longer story can put a right-hand page
+ * where a left one was — and a left page's boxes must never be laid on a
+ * right page. When the slot at that index no longer matches, the leaf is
+ * ignored and the shared design stands.
+ */
+export type CustomLeaves = Record<
+  number,
+  {
+    slot: CustomSlot;
+    page: CustomPage;
+    /**
+     * Redrawn by the reader on the proof, as against planned by the editor.
+     * A page drawn by hand is set exactly as drawn; a planned one may still be
+     * made up to fit where the story ends.
+     */
+    hand?: boolean;
+  }
+>;
 
 export const SLOT_LABEL: Record<CustomSlot, string> = {
   left: "Left page",
@@ -57,6 +119,8 @@ export const MIN_BOX: Record<CustomKind, { width: number; height: number }> = {
   plate: { width: 56, height: 48 },
   // Smaller than a plate may be: a signature wants a strip, not a square.
   sketch: { width: 70, height: 40 },
+  // Room for a short line at the smallest size a quote is set.
+  quote: { width: 120, height: 60 },
 };
 
 let counter = 0;
@@ -104,6 +168,7 @@ export const plateBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter
  * several and each keep its own marks.
  */
 export const sketchBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "sketch"));
+export const quoteBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "quote"));
 
 const box = (kind: CustomKind, x: number, y: number, width: number, height: number): CustomBox => ({
   id: newBoxId(),

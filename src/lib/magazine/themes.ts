@@ -99,7 +99,7 @@ export type Surface = {
 export type PreviewCell = { span: number; kind: "plate" | "copy" | "head" };
 export type PreviewRow = { span: number; cells: PreviewCell[] };
 
-export type ThemeId = "atlas" | "custom" | "minimal" | "modernist" | "nocturne" | "zine";
+export type ThemeId = "atlas" | "custom" | "modernist" | "nocturne" | "zine";
 
 export type Theme = {
   id: ThemeId;
@@ -192,23 +192,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       { span: 3, cells: [plate()] },
       { span: 4, cells: [copy(), copy()] },
       { span: 2, cells: [copy(1.6), plate(1)] },
-    ],
-  },
-  minimal: {
-    id: "minimal",
-    name: "Minimalist grid",
-    blurb: "One column, one small photograph set low, and a great deal of air.",
-    cycle: ["minimal-grid", "plate-beside", "minimal-grid", "plate-beside-right"],
-    // The centred article is the quietest page in the issue, which is this
-    // theme's whole argument.
-    plain: ["two-column", "centred-article"],
-    rest: 0,
-    surface: HOUSE,
-    preview: [
-      { span: 1, cells: [head()] },
-      { span: 5, cells: [copy(), copy()] },
-      { span: 3, cells: [copy(), plate()] },
-      { span: 3, cells: [] },
     ],
   },
   modernist: {
@@ -343,7 +326,6 @@ export const DEFAULT_THEME: ThemeId = "atlas";
 export const THEME_LIST: Theme[] = [
   THEMES.atlas,
   THEMES.custom,
-  THEMES.minimal,
   THEMES.modernist,
   THEMES.nocturne,
   THEMES.zine,

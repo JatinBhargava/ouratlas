@@ -25,7 +25,8 @@ type PhotoPickerProps = {
 
 /**
  * Picks up to ten images. Previews are object URLs held in the tab — the files
- * are never uploaded anywhere.
+ * are never uploaded. The one exception is the editor, which sends small
+ * previews when asked (`lib/editor.ts`).
  *
  * Order matters and is the reason these can be dragged: the first photograph
  * becomes the cover and the rest are dealt through the issue in the order they

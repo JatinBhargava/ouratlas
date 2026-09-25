@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
-import { ArrowLeft, Download, Loader2, LogIn, Sparkles } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
+import { ArrowLeft, Download, Loader2, LogIn, PenLine, Sparkles } from "lucide-react";
 
 import { IssueView } from "@/components/magazine/issue-view";
 import { PrintSheet } from "@/components/magazine/print-sheet";
 import { FEED_MS, PressFeed } from "@/components/press-feed";
 import { PressInterlude } from "@/components/press-interlude";
 import { MAX_PHOTOS, PhotoPicker } from "@/components/photo-picker";
-import { MIN_WORDS, MAX_WORDS, StoryEditor } from "@/components/story-editor";
+import { MIN_WORDS, MAX_WORDS, StoryEditor, type StoryTab } from "@/components/story-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,11 @@ import { DEFAULT_THEME, themeOf, type ThemeId } from "@/lib/magazine/themes";
 import { ThemePicker, TiltControl } from "@/components/theme-picker";
 import { THEMES } from "@/lib/magazine/themes";
 import { LayoutDesigner } from "@/components/layout-designer";
+import { EditorPanel } from "@/components/editor-panel";
+import type { EditorResult } from "@/lib/editor";
 import { TypePanel } from "@/components/type-panel";
 import { clampType, DEFAULT_TYPE, type TypeChoice } from "@/lib/magazine/typography";
-import { defaultDesign, type CustomBox, type CustomDesign, type CustomSlot } from "@/lib/magazine/custom";
+import { defaultDesign, type CustomBox, type CustomDesign, type CustomLeaves, type CustomSlot } from "@/lib/magazine/custom";
 import type { Issue } from "@/lib/magazine/types";
 import type { ExportAllowance, Focus, Photo } from "@/types";
 
@@ -35,6 +37,20 @@ const countWords = (text: string) => (text.trim() ? text.trim().split(/\s+/).len
 
 export function Create() {
   const { ready, user, configured, signInWithGoogle } = useAuth();
+  /**
+   * Which view of a pressed issue is showing: the finished issue to read
+   * ("issue"), or the proof with its tools ("proof"). In the address rather
+   * than in state, so the browser's back button walks proof → issue → desk,
+   * and in a query rather than a path, so the page is never unmounted — the
+   * issue, its photographs and every choice made on it live here and nowhere
+   * else. A reload serves the desk, as it always has.
+   */
+  const [params, setParams] = useSearchParams();
+  const view = params.get("view");
+  const showView = (next: "issue" | "proof" | null) => {
+    setParams(next ? { view: next } : {});
+    window.scrollTo({ top: 0 });
+  };
   const [title, setTitle] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [story, setStory] = useState("");
@@ -102,6 +118,8 @@ export function Create() {
   const [composing, setComposing] = useState(false);
   // Recorded so the colophon can say the words were sent away to be edited.
   const [polished, setPolished] = useState(false);
+  /** The story tab to open on; "speak" after signing in from it, so the reader lands where they left. */
+  const [storyTab, setStoryTab] = useState<StoryTab | undefined>(undefined);
   /**
    * Plate sizes the reader has pulled, by page index and axis.
    *
@@ -145,6 +163,14 @@ export function Create() {
    * drawing away.
    */
   const [design, setDesign] = useState<CustomDesign>(defaultDesign);
+  /**
+   * Single pages redrawn on the proof. The design above is what every left,
+   * right and special page is drawn from; a box dragged on one page of the
+   * proof changes that page only, and is kept here by its page number. Kept
+   * across recompositions like the plate sizes, but not across a change of
+   * theme, which lays out every page afresh.
+   */
+  const [leaves, setLeaves] = useState<CustomLeaves>({});
   /**
    * The type the reader has chosen for their own pages.
    *
@@ -211,7 +237,14 @@ export function Create() {
       if (cancelled) return;
 
       if (draft) {
-        returning.current = true;
+        // A reader who signed in to record wanted the microphone, not the
+        // press: they go back to the Speak tab with the desk as they left it.
+        if (draft.resume === "speak") {
+          setStoryTab("speak");
+          setStaging(false);
+        } else {
+          returning.current = true;
+        }
         restoredSeed.current = draft.seed;
         setTitle(draft.title);
         setStory(draft.story);
@@ -225,12 +258,14 @@ export function Create() {
         if (draft.type) setType(clampType(draft.type));
         setWantsSketch(draft.wantsSketch ?? false);
         setSketches(draft.sketches ?? {});
+        setLeaves(draft.leaves ?? {});
         setPhotos(
           draft.photos.map(photo => ({
             id: photo.id,
             file: photo.file,
             url: URL.createObjectURL(photo.file),
             focus: photo.focus,
+            caption: photo.caption,
           })),
         );
       }
@@ -301,7 +336,7 @@ export function Create() {
     next[toIndex] = photos[fromIndex]!;
 
     setPhotos(next);
-    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch }));
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch, leaves }));
   };
 
   /**
@@ -318,7 +353,7 @@ export function Create() {
   const resizePlate = (index: number, axis: Axis, value: number) => {
     const next = { ...plateSizes, [index]: { ...plateSizes[index], [axis]: value } };
     setPlateSizes(next);
-    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed, theme, custom: design, type: ownType, sketch: wantsSketch }));
+    setIssue(composeIssue({ title, photos, story, polished, plateSizes: next, seed, theme, custom: design, type: ownType, sketch: wantsSketch, leaves }));
   };
 
   /**
@@ -337,7 +372,67 @@ export function Create() {
       photo.id === id ? { ...photo, focus: focus ?? undefined } : photo,
     );
     setPhotos(next);
-    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch }));
+    setIssue(composeIssue({ title, photos: next, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch, leaves }));
+  };
+
+  /**
+   * Makes the desk up the way the editor decided, and returns how to undo it.
+   *
+   * Only the desk changes — style, order, framing, lean, and the title when
+   * the reader has not written one. The issue itself is set when the reader
+   * sends it to press, like any other change made at the desk. Plate sizes go,
+   * as they do on any change of style: they belong to page numbers, and the
+   * pages are about to be different ones.
+   *
+   * A photograph added while the editor was looking was never shown to it, so
+   * it keeps its place at the end rather than being dropped.
+   */
+  const applyEditor = (plan: EditorResult): (() => void) => {
+    const before = { title, theme, tilt, photos, plateSizes, design, type, leaves };
+
+    const byId = new Map(photos.map(photo => [photo.id, photo]));
+    const placed = plan.order.flatMap(id => (byId.has(id) ? [byId.get(id)!] : []));
+    const unseen = photos.filter(photo => !plan.order.includes(photo.id));
+    setPhotos(
+      [...placed, ...unseen].map(photo => ({
+        ...photo,
+        focus: plan.focus[photo.id] ?? photo.focus,
+        caption: plan.captions[photo.id] ?? photo.caption,
+      })),
+    );
+    setTheme(plan.theme);
+    // A drawn issue arrives with its pages and its type; they land in the
+    // layout designer, where the reader can pull them about like their own.
+    if (plan.design) setDesign(plan.design);
+    // Its page-by-page plan, which varies the issue past the three shared
+    // pages; each can still be pulled about on the proof like any other.
+    setLeaves(plan.leaves);
+    if (plan.type) setType(plan.type);
+    setPlateSizes({});
+    // The lean only means anything on a theme that leans; elsewhere the
+    // theme's own (none) stands.
+    setTilt(THEMES[plan.theme].surface.tilt ? plan.tilt : null);
+    if (!title.trim() && plan.title) setTitle(plan.title);
+
+    return () => {
+      // Photographs removed since are not brought back, and ones added since
+      // are kept: undo restores the editor's changes, not the desk's history.
+      setPhotos(current => {
+        const present = new Map(current.map(photo => [photo.id, photo]));
+        const restored = before.photos.flatMap(photo =>
+          present.has(photo.id) ? [{ ...present.get(photo.id)!, focus: photo.focus, caption: photo.caption }] : [],
+        );
+        const added = current.filter(photo => !before.photos.some(old => old.id === photo.id));
+        return [...restored, ...added];
+      });
+      setTheme(before.theme);
+      setTilt(before.tilt);
+      setPlateSizes(before.plateSizes);
+      setDesign(before.design);
+      setLeaves(before.leaves);
+      setType(before.type);
+      setTitle(before.title);
+    };
   };
 
   /**
@@ -356,9 +451,10 @@ export function Create() {
     if (next === theme) return;
     setTheme(next);
     setPlateSizes({});
+    setLeaves({});
     // The lean belongs to the style it was chosen against.
     setTilt(null);
-    if (issue) setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme: next, custom: design, type: next === "custom" ? type : undefined, sketch: wantsSketch }));
+    if (issue) setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme: next, custom: design, type: next === "custom" ? type : undefined, sketch: wantsSketch, leaves: {} }));
   };
 
   /**
@@ -384,6 +480,7 @@ export function Create() {
           custom: next,
           type: ownType,
           sketch: wantsSketch,
+          leaves,
         }),
       );
       setPlateSizes({});
@@ -398,11 +495,33 @@ export function Create() {
    * with it. Anything else would mean the issue and the design disagreeing
    * about what a page is.
    */
-  const editBox = (slot: CustomSlot, box: CustomBox) =>
-    changeDesign({
-      ...design,
-      [slot]: { boxes: design[slot].boxes.map(b => (b.id === box.id ? box : b)) },
-    });
+  const editBox = (index: number, slot: CustomSlot, box: CustomBox) => {
+    // The page as it is now — its own boxes if it already has them, else the
+    // boxes it was drawn with (the shared design's, or the closing page the
+    // composer made up where the story ends) — with the one box changed.
+    const current =
+      leaves[index]?.slot === slot ? leaves[index]!.page : (issue?.pages[index]?.layout ?? design[slot]);
+    const next: CustomLeaves = {
+      ...leaves,
+      [index]: { slot, page: { boxes: current.boxes.map(b => (b.id === box.id ? box : b)) }, hand: true },
+    };
+    setLeaves(next);
+    if (issue) {
+      setIssue(
+        composeIssue({ title, photos, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch, leaves: next }),
+      );
+    }
+  };
+
+  /** Hands every redrawn page back to the shared design. */
+  const resetLeaves = () => {
+    setLeaves({});
+    if (issue) {
+      setIssue(
+        composeIssue({ title, photos, story, polished, plateSizes, seed, theme, custom: design, type: ownType, sketch: wantsSketch, leaves: {} }),
+      );
+    }
+  };
 
   /**
    * Sets the issue again in new type.
@@ -416,7 +535,7 @@ export function Create() {
     setType(next);
     if (issue && theme === "custom") {
       setIssue(
-        composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme, custom: design, type: next, sketch: wantsSketch }),
+        composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme, custom: design, type: next, sketch: wantsSketch, leaves }),
       );
       setPlateSizes({});
     }
@@ -452,6 +571,7 @@ export function Create() {
         custom: design,
         type: ownType,
         sketch: wantsSketch,
+        leaves,
       }),
     );
   };
@@ -480,6 +600,7 @@ export function Create() {
         custom: design,
         type: ownType,
         sketch: next,
+        leaves,
       }),
     );
   };
@@ -581,13 +702,14 @@ export function Create() {
 
   /**
    * Parks the whole desk, marked-up issue and all, then hands the reader to
-   * Google.
+   * Google. `resume` says where they come back to: the press, when they
+   * signed in to export, or the Speak tab, when they signed in to record.
    *
    * Written here rather than on every keystroke: this is the one moment the
    * page is knowingly about to be destroyed, so it is the only moment the
    * write is worth making.
    */
-  const signInToExport = async () => {
+  const signIn = async (resume: "press" | "speak") => {
     setSignInError(null);
     setSigningIn(true);
 
@@ -606,7 +728,9 @@ export function Create() {
       type,
       wantsSketch,
       sketches,
-      photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus })),
+      leaves,
+      photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus, caption: photo.caption })),
+      resume,
     });
 
     try {
@@ -618,6 +742,9 @@ export function Create() {
   };
 
   const sendToPress = async (reuseSeed?: string) => {
+    // Off the press, the issue opens to read. Set first, so there is never a
+    // moment with an issue and no view to show it in.
+    setParams({ view: "issue" });
     // Every route to the press goes behind the interlude — pressed from the
     // desk, or resumed after signing in. The desk is never left on screen
     // doing visible nothing while the type is set.
@@ -638,7 +765,7 @@ export function Create() {
       const pressing = reuseSeed ?? crypto.randomUUID();
       setSeed(pressing);
 
-      setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing, theme, custom: design, type: ownType, sketch: wantsSketch }));
+      setIssue(composeIssue({ title, photos, story, polished, plateSizes, seed: pressing, theme, custom: design, type: ownType, sketch: wantsSketch, leaves }));
       window.scrollTo({ top: 0 });
     } finally {
       setComposing(false);
@@ -730,7 +857,8 @@ export function Create() {
     return <PressInterlude onFinished={finishInterlude} />;
   }
 
-  if (issue) {
+  // The proof: the issue with every tool for changing it.
+  if (issue && view === "proof") {
     return (
       <>
         <div className="flex flex-col gap-6 print:hidden">
@@ -738,21 +866,21 @@ export function Create() {
             <div className="flex flex-col gap-2">
               <span className="flex items-center gap-3 text-[11px] font-medium tracking-[0.28em] text-white/70 uppercase drop-shadow-sm">
                 <span aria-hidden className="h-px w-6 bg-white/40" />
-                Off the press
+                The proof
               </span>
               <h1 className="font-editorial text-4xl tracking-tight text-white drop-shadow-md">{issue.title}</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" className="rounded-full" onClick={() => setIssue(null)}>
+              <Button variant="secondary" className="rounded-full" onClick={() => showView("issue")}>
                 <ArrowLeft className="size-4" />
-                Back to the desk
+                Back to the issue
               </Button>
               {/*
                 The one thing an account is needed for. Everything else on this
                 page — the plates, the placing, the sizes — works without one.
               */}
               {needsSignIn ? (
-                <Button className="rounded-full" disabled={signingIn} onClick={() => void signInToExport()}>
+                <Button className="rounded-full" disabled={signingIn} onClick={() => void signIn("press")}>
                   {signingIn ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
                   {signingIn ? "Opening Google" : "Sign in to export"}
                 </Button>
@@ -778,6 +906,24 @@ export function Create() {
             {theme === "custom" && (
               <>
                 <LayoutDesigner design={design} onChange={changeDesign} />
+                {/* The designer and the proof edit different things, and the
+                    difference is easy to miss: say which is which, and count
+                    the pages that have gone their own way. */}
+                <p className="text-xs text-stone-500">
+                  Changes here apply to every page of that kind. To change one page only, drag its boxes on the
+                  proof below.
+                  {Object.keys(leaves).length > 0 && (
+                    <>
+                      {" "}
+                      {Object.keys(leaves).length === 1
+                        ? "One page has a layout of its own."
+                        : `${Object.keys(leaves).length} pages have layouts of their own.`}{" "}
+                      <button type="button" onClick={resetLeaves} className="underline underline-offset-2">
+                        Use the shared design everywhere
+                      </button>
+                    </>
+                  )}
+                </p>
                 <TypePanel type={type} onChange={changeType} />
               </>
             )}
@@ -827,6 +973,114 @@ export function Create() {
             <span className="font-medium text-white">Swap</span> badge in its corner and drop it on the other.
           </p>
 
+          <p className="text-center text-xs text-white/70 drop-shadow-sm">
+            {needsSignIn
+              ? "Exporting needs an account — it is free, and your issue is kept exactly as you have it here while you sign in."
+              : printsToSize
+                ? "Export opens your print dialog — choose Save as PDF. The pages are already the right size, so leave the scale at 100%."
+                : "Export saves the issue as a PDF to your downloads. A long issue takes a little while to set."}
+          </p>
+        </div>
+
+        {/*
+          Only laid out when printing, and never before there is an account to
+          print for. Keeping the sheet out of the document is what stops Ctrl+P
+          walking straight past the sign-in; hiding the button alone would not.
+        */}
+        {exporting && <PressFeed />}
+
+        {!needsSignIn && !blocked && (
+          <PrintSheet
+            ref={sheet}
+            issue={issue}
+            tilt={tiltNow}
+            sketches={sketches}
+            offscreen={exporting && !printsToSize}
+          />
+        )}
+      </>
+    );
+  }
+
+  /**
+   * Off the press: the issue on a page of its own, to read before anything
+   * else — the way the portfolio shows a finished trip. A kicker, the title
+   * and the story's first line over the flip book, with the two things to do
+   * next (change it, or keep it) above it and nothing else in the way. Read
+   * only: the tools live one click away on the proof.
+   */
+  if (issue && view !== null) {
+    const opening = story.trim().split(/(?<=[.!?])\s+/)[0] ?? "";
+    const dek = opening.length > 180 ? `${opening.slice(0, 177).trimEnd()}…` : opening;
+    return (
+      <>
+        <div className="flex flex-col gap-8 print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button variant="secondary" className="rounded-full" onClick={() => {
+              setIssue(null);
+              showView(null);
+            }}>
+              <ArrowLeft className="size-4" />
+              Back to the desk
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" className="rounded-full" onClick={() => showView("proof")}>
+                <PenLine className="size-4" />
+                Edit the layout
+              </Button>
+              {needsSignIn ? (
+                <Button className="rounded-full" disabled={signingIn} onClick={() => void signIn("press")}>
+                  {signingIn ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
+                  {signingIn ? "Opening Google" : "Sign in to export"}
+                </Button>
+              ) : blocked ? (
+                <Button asChild className="rounded-full">
+                  <Link to="/pricing">See the plans</Link>
+                </Button>
+              ) : (
+                <Button className="rounded-full" disabled={exporting} onClick={exportIssue}>
+                  <Download className="size-4" />
+                  Export
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <header className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
+            <span className="flex items-center gap-3 text-[10px] font-medium tracking-[0.3em] text-white/75 uppercase drop-shadow-sm">
+              <span aria-hidden className="h-px w-6 bg-white/40" />
+              Vol. I · {issue.dateline}
+              <span aria-hidden className="h-px w-6 bg-white/40" />
+            </span>
+            <h1 className="font-editorial text-5xl leading-[1.05] tracking-tight text-balance text-white drop-shadow-md sm:text-6xl">
+              {issue.title}
+            </h1>
+            {dek && <p className="text-sm leading-relaxed text-white/85 italic drop-shadow-sm">{dek}</p>}
+            <p className="text-[11px] tracking-wide text-white/65 tabular-nums drop-shadow-sm">
+              {issue.pages.length} pages · {photos.length} {photos.length === 1 ? "photograph" : "photographs"} ·{" "}
+              {issue.words.toLocaleString()} words
+            </p>
+          </header>
+
+          <IssueView issue={issue} tilt={tiltNow} sketches={sketches} />
+
+          {(signInError ?? exportError) && (
+            <p className="text-center text-xs text-red-100 drop-shadow-sm" role="alert">
+              {signInError ?? exportError}
+            </p>
+          )}
+
+          {/* Shown only when there is an allowance to show; a paid plan has none. */}
+          {allowance?.remaining !== null && allowance !== null && !blocked && (
+            <p className="text-center text-xs text-white/70 drop-shadow-sm">
+              {allowance.remaining} of {allowance.limit} exports left this month on Wanderer.
+            </p>
+          )}
+
+
+          <p className="text-center text-sm text-white/80 drop-shadow-sm">
+            Set with Atlas. Laid out in your browser, and nothing of it was ever stored.
+          </p>
           <p className="text-center text-xs text-white/70 drop-shadow-sm">
             {needsSignIn
               ? "Exporting needs an account — it is free, and your issue is kept exactly as you have it here while you sign in."
@@ -920,13 +1174,18 @@ export function Create() {
               setStory(value);
               setPolished(true);
             }}
+            onSignIn={() => void signIn("speak")}
+            openOn={storyTab}
           />
+
+          <EditorPanel title={title} story={story} photos={photos} onApply={applyEditor} onUseTitle={setTitle} />
         </CardContent>
       </Card>
 
       <div className="sticky bottom-6 flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/50 bg-white/85 py-3 pr-3 pl-6 shadow-lg shadow-black/10 backdrop-blur-md">
         <p className="text-sm text-stone-600">
-          {blocker ?? "Ready for press."}
+          {/* A sign-in from the Speak tab that failed before leaving says so here, the only status line on the desk. */}
+          {signInError ? <span className="text-red-600">{signInError}</span> : (blocker ?? "Ready for press.")}
           <span className="text-stone-500">
             {" "}
             · {photos.length} photos · {wordCount.toLocaleString()} words

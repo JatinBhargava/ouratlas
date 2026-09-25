@@ -8,20 +8,23 @@ import { LEGAL } from "@/lib/legal";
  *
  * Written from the code rather than from a template: the claims here are
  * checkable against `src/pages/Create.tsx` (photographs and story text stay in
- * the browser), `api/routes/polish.ts` (the one thing that leaves), and
+ * the browser), `api/routes/polish.ts`, `api/routes/transcribe.ts` and
+ * `api/routes/editor.ts` (the things that leave, each only when asked), and
  * `api/schema.sql` (everything the database holds).
  */
 export function Privacy() {
   return (
     <LegalPage
       title="Privacy"
-      summary="Your photographs and your writing stay in your browser. This page says exactly what does reach us, and what happens to it."
+      summary="Your photographs and your writing are never stored. This page says exactly what does reach us, and what happens to it."
     >
       <Clause heading="The short version">
         <p>
-          Atlas composes your magazine in your browser. Your photographs are never uploaded to us — not to make the
-          issue, not to export it, not at any point. The only thing that ever leaves your device is the text of your
-          story, and only if you ask the copy desk to edit it.
+          Atlas composes your magazine in your browser, and never stores your photographs or your writing. Making the
+          issue and exporting it happen entirely on your device. Three things can leave it, each only when you ask:
+          the text of your story, if you ask the copy desk to edit it; your voice, if you record your story rather
+          than type it; and small previews of your photographs with your story, if you ask the editor to lay out the
+          issue.
         </p>
       </Clause>
 
@@ -70,6 +73,30 @@ export function Privacy() {
         </p>
       </Clause>
 
+      <Clause heading="Recording your story">
+        <p>
+          The Speak tab is optional. While you record, your voice is streamed from your browser straight to OpenAI,
+          transcribed, and the text comes back into your story as you speak; that audio never passes through our
+          servers. If you upload a recording instead, it is sent through our server to OpenAI a couple of minutes at a
+          time and held only in memory while each piece is transcribed. Either way, neither the audio nor the text is
+          stored by us — not logged, not written to a database, not kept in a file.
+        </p>
+        <p>
+          Your browser asks before Atlas can use the microphone, and the microphone is released the moment you press
+          stop.
+        </p>
+      </Clause>
+
+      <Clause heading="The editor">
+        <p>
+          The editor is optional and does nothing until you press it. When you do, your browser makes a small,
+          low-resolution preview of each photograph — enough to see what it shows, far too small to print — and sends
+          those with your story and title to an AI provider, which suggests a style, an order and a crop for your
+          issue. Your full-size photographs are never sent. Nothing is stored by us: not logged, not written to a
+          database, not kept in a file.
+        </p>
+      </Clause>
+
       <Clause heading="Who else is involved">
         <Points
           items={[
@@ -88,7 +115,9 @@ export function Privacy() {
               These are cookieless and do not identify you.
             </>,
             <>
-              <span className="font-medium">OpenAI or Anthropic</span> — the copy desk, and only when you use it.
+              <span className="font-medium">OpenAI or Anthropic</span> — the copy desk and the editor, and only when
+              you use them.
+              OpenAI also transcribes recordings from the Speak tab, only while you record.
             </>,
           ]}
         />

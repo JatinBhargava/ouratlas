@@ -38,16 +38,20 @@ prints what is on:
 
 ## Where the data goes
 
-**Photographs and story text never leave the browser.** Photos are read into the
-tab as object URLs and are never uploaded. The story is held in React state.
+**Photographs and story text are never stored.** Photos are read into the tab as
+object URLs, and composing and exporting never upload them. The story is held in React state.
 Composition and pagination happen in the browser, and export goes through the
 browser's own print dialog. None of it is written to a database, and there is
 no table it could go in.
 
-Two things do reach a server, both of them opt-in:
+Some things do reach a server, all of them opt-in:
 
-- The **copy desk** streams the story through Anthropic and writes nothing down
-  on the way (see below).
+- The **copy desk** streams the story through OpenAI or Anthropic and writes
+  nothing down on the way (see below).
+- **Voice** streams the microphone to OpenAI for transcription (or, for an
+  uploaded recording, sends it through the API in two-minute pieces).
+- The **editor** sends small previews of the photographs, with the story, to
+  OpenAI or Anthropic, which suggests a style, an order and a crop.
 - **Accounts, subscriptions and the waitlist** are stored in Supabase — an
   email address, a plan, and a Stripe customer id. That is the whole of it.
 

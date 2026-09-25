@@ -1,6 +1,5 @@
 # Everything here may be crawled. Nothing a crawler could reach exposes
-# anyone's photographs or writing — those never leave the browser they were
-# opened in.
+# anyone's photographs or writing — those are never stored on our side.
 #
 # /account is kept out of the index by a noindex in its own HTML rather than
 # by a Disallow here: a crawler barred from a page never sees its noindex, and

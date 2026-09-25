@@ -30,6 +30,8 @@ export type Photo = {
    * this rather than remembering a position nobody is using.
    */
   focus?: Focus;
+  /** A line set under the photograph, written by the editor; absent for a plain plate number. */
+  caption?: string;
 };
 
 // --- Accounts and billing ------------------------------------------------
@@ -56,6 +58,144 @@ export const COPY_DESK_PLANS: readonly Plan[] = ["traveller", "cartographer"];
 export function hasCopyDesk(plan: Plan): boolean {
   return COPY_DESK_PLANS.includes(plan);
 }
+
+/**
+ * Whether recording in the Speak tab needs an account.
+ *
+ * Off for now, so anyone can try voice before signing up. Both halves read
+ * it: the server decides whether `/api/transcribe` sits behind
+ * `authenticate`, and the Speak tab decides whether to offer sign-in first.
+ * Turning it back on is this one line; the sign-in path, which parks the desk
+ * and returns to the Speak tab, is still wired up and waiting.
+ */
+export const VOICE_NEEDS_SIGN_IN = false;
+
+/**
+ * `POST /api/transcribe/session`: a short-lived key that opens one live
+ * transcription session with OpenAI, straight from the browser.
+ */
+export type TranscribeSession = {
+  secret: string;
+  /** Unix seconds; the key must be used to connect before then. */
+  expiresAt: number;
+};
+
+/**
+ * The audio the live session expects: 16-bit mono PCM at this rate. The
+ * server declares it when opening the session and the browser resamples the
+ * microphone to it, so it lives here where both can see the same number.
+ */
+export const TRANSCRIBE_SAMPLE_RATE = 24_000;
+
+/**
+ * Largest piece of an uploaded recording the server accepts. The browser cuts
+ * files to fit: two minutes of 16 kHz 16-bit mono is 3.84 MB, which clears
+ * Vercel's 4.5 MB proxy limit with room for the WAV header.
+ */
+export const TRANSCRIBE_PIECE_BYTES = 4_400_000;
+
+/**
+ * Whether the editor (the agent that lays out an issue from the photographs
+ * and the story) needs an account. Off for now, like voice; both halves read
+ * it, the server to gate `/api/editor` and the desk to decide what to offer.
+ */
+export const EDITOR_NEEDS_SIGN_IN = false;
+
+/** Most photographs an issue holds, and so the most the editor is ever shown. */
+export const EDITOR_MAX_PHOTOS = 10;
+
+/** One photograph as the editor sees it: a small JPEG preview and its true shape. */
+export type EditorPhoto = {
+  /** A short label ("p1"), not the desk's id, so nothing on the desk leaks into a prompt. */
+  id: string;
+  /** A data URL: a JPEG a few hundred pixels across. */
+  preview: string;
+  width: number;
+  height: number;
+};
+
+/**
+ * A style the editor may choose, described by the desk that owns the list.
+ * `suits` says when to choose it; the blurb alone says only what it looks
+ * like, and the editor picked the most evocative-sounding one every time.
+ */
+export type EditorTheme = { id: string; name: string; blurb: string; suits: string };
+
+/** A typeface the editor may set a designed issue in. */
+export type EditorFace = { id: string; name: string; body: boolean };
+
+/** A page layout the editor may build a designed issue from (see `archetypes.ts`). */
+export type EditorLayout = {
+  id: string;
+  name: string;
+  description: string;
+  plates: number;
+  /** Pull quotes the page takes. */
+  quotes: number;
+  minShare: number;
+  maxShare: number;
+};
+
+export type EditorRequest = {
+  title: string;
+  story: string;
+  /** The words in the story, so the editor can judge how many pages it runs to. */
+  words: number;
+  /** The slot each body page is drawn from, in order: "special", "left" or "right". */
+  rhythm: string[];
+  photos: EditorPhoto[];
+  themes: EditorTheme[];
+  faces: EditorFace[];
+  layouts: EditorLayout[];
+};
+
+/**
+ * One designed page: which layout, and how much of the page's depth the
+ * photograph takes. The desk builds the boxes; the editor never places them.
+ */
+export type EditorPage = { layout: string; share: number };
+
+/**
+ * A designed issue. The three named pages are the shared design every page of
+ * that kind is drawn from; `pages` is the editor's plan for the body page by
+ * page, in reading order, so the issue changes its rhythm rather than
+ * repeating three pages. Pages past the end of the plan fall back to the
+ * shared design.
+ */
+export type EditorDesign = { special: EditorPage; left: EditorPage; right: EditorPage; pages: EditorPage[] };
+
+/** Type for a designed issue; the desk holds it inside what its controls allow. */
+export type EditorType = { display: string; body: string; size: number; leading: number; align: "justify" | "left" };
+
+/** What the editor decided, and why. */
+export type EditorPlan = {
+  /** A title for the issue, always offered; the desk decides whether to use it. */
+  title: string;
+  theme: string;
+  /** Every photograph's label, cover first. */
+  order: string[];
+  /** Where each photograph's subject is, as percentages across and down. */
+  focus: { id: string; x: number; y: number }[];
+  /** Degrees the snapshots lean, for the one theme that leans them. */
+  tilt: number;
+  /** Pages drawn by the editor, only when it chose the "custom" style. */
+  design: EditorDesign | null;
+  /** Type for those pages, likewise. */
+  type: EditorType | null;
+  /** A line under each photograph, by label: what it shows, in the magazine's voice. */
+  captions: { id: string; caption: string }[];
+  /** Paper, ink and accent as hex colours, drawn from the photographs; designed issues only. */
+  palette: { paper: string; ink: string; accent: string } | null;
+  /** Pull quotes lifted word for word from the story, in the order they are to appear. */
+  quotes: string[];
+  /** A few sentences to the reader, one per decision worth explaining. */
+  notes: string[];
+};
+
+/** `POST /api/transcribe/file`: the words in one piece of an uploaded recording. */
+export type TranscribeResponse = {
+  text: string;
+};
 
 /** What the signed-in person is entitled to, as the server sees it. */
 export type Billing = {

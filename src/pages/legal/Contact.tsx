@@ -47,8 +47,8 @@ export function Contact() {
           <Link to="/privacy" className="underline underline-offset-2">
             privacy policy
           </Link>{" "}
-          for what there is. Note that your photographs and your writing are not among it: they never leave your
-          browser, so there is nothing of them for us to send or delete.
+          for what there is. Note that your photographs and your writing are not among it: we never store them, so
+          there is nothing of them for us to send or delete.
         </p>
       </Clause>
 

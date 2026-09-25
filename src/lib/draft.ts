@@ -18,7 +18,7 @@
  */
 
 import type { PlateBox } from "@/lib/magazine/templates";
-import type { CustomDesign } from "@/lib/magazine/custom";
+import type { CustomDesign, CustomLeaves } from "@/lib/magazine/custom";
 import type { ThemeId } from "@/lib/magazine/themes";
 import type { TypeChoice } from "@/lib/magazine/typography";
 import type { Focus } from "@/types";
@@ -51,7 +51,7 @@ export type DeskDraft = {
   title: string;
   story: string;
   polished: boolean;
-  photos: { id: string; file: File; focus?: Focus }[];
+  photos: { id: string; file: File; focus?: Focus; caption?: string }[];
   plateSizes: Record<number, Partial<PlateBox>>;
   seed: string;
   /** The style it was set in, or absent on a draft parked before themes. */
@@ -65,6 +65,14 @@ export type DeskDraft = {
   /** Whether the issue carries a leaf to draw on, and what is drawn on it. */
   wantsSketch?: boolean;
   sketches?: Record<string, string>;
+  /** Single pages redrawn on the proof, which sign-in happens from. */
+  leaves?: CustomLeaves;
+  /**
+   * What the reader was doing when they left to sign in. "press" (and absent,
+   * on a draft parked before voice) resumes the export; "speak" goes back to
+   * the Speak tab and leaves the issue unpressed.
+   */
+  resume?: "press" | "speak";
 };
 
 /** True when `park` ran and `take` has not yet collected it. */

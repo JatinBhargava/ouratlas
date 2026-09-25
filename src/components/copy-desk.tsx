@@ -174,7 +174,7 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
             {chosen.blurb}{" "}
             <span className="text-stone-600">
               This is the one part of Atlas that sends anything out of your browser — your words go away and are not
-              kept. Your photos never leave this tab.
+              kept. The copy desk never sends your photos.
             </span>
           </p>
         </div>

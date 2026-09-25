@@ -22,8 +22,6 @@ import {
   CENTRED_WIDTH,
   ORNAMENT,
   ORNAMENT_HEAD,
-  MINIMAL_HEAD,
-  MINIMAL_ROW,
   OPENER_HEAD,
   plateAxes,
   STACK_GAP,
@@ -37,7 +35,17 @@ import {
   type TemplateId,
 } from "@/lib/magazine/templates";
 import { DEFAULT_THEME, THEMES, type Surface, type ThemeId } from "@/lib/magazine/themes";
-import { clampBox, plateBoxes, sketchBoxes, textBoxes, type CustomBox, type CustomSlot } from "@/lib/magazine/custom";
+import {
+  clampBox,
+  plateBoxes,
+  quoteBoxes,
+  sketchBoxes,
+  textBoxes,
+  type CustomBox,
+  type CustomSlot,
+  type Palette,
+  type QuoteTone,
+} from "@/lib/magazine/custom";
 import { surfaceOf, type TypeChoice } from "@/lib/magazine/typography";
 import type { Page, Plate } from "@/lib/magazine/types";
 import { CENTRED, type Focus, type Photo } from "@/types";
@@ -71,11 +79,11 @@ type PlateEdit = {
   /**
    * Moves or resizes one box on one of the reader's own pages.
    *
-   * The design is what these pages are made of, so editing a page here is
-   * editing the design — and every leaf drawn from that slot changes with it.
-   * That is the point of designing three pages rather than twenty.
+   * Changes that page alone, addressed by its index: the shared design is
+   * edited in the layout designer, and a reader dragging a box on the fifth
+   * left-hand page means the fifth, not every left-hand page in the issue.
    */
-  onEditBox?: (slot: CustomSlot, box: CustomBox) => void;
+  onEditBox?: (index: number, slot: CustomSlot, box: CustomBox) => void;
   /**
    * Replaces the run of story a box is showing with what was typed into it.
    *
@@ -164,7 +172,7 @@ const OVER = "outline-2 outline-offset-2 outline-emerald-500";
  * The grip has to be on the edge that actually moves, or the plate grows away
  * from the direction it is being pulled.
  */
-const FOOT_ANCHORED = new Set<TemplateId>(["plate-below", "minimal-grid"]);
+const FOOT_ANCHORED = new Set<TemplateId>(["plate-below"]);
 
 /**
  * The paper and ink of the issue being drawn.
@@ -571,6 +579,11 @@ function PlateFigure({ plate, width, height }: { plate: Plate | undefined; width
       </div>
       <figcaption className={cn(CAPTION_CLASS, "pt-[5px]")} style={{ height: CAPTION }}>
         {plate.label}
+        {/* The editor's line, set lighter and in sentence case after the
+            number so the two read as a credit and a caption, not one shout. */}
+        {plate.caption && (
+          <span className="ml-1.5 font-serif text-[8px] tracking-normal normal-case italic">{plate.caption}</span>
+        )}
       </figcaption>
     </figure>
   );
@@ -642,7 +655,7 @@ function Contents({ page, title, dateline }: PageProps) {
         <div className="mt-auto flex flex-col gap-1" style={{ width: COLUMN_WIDTH }}>
           <span className={cn(KICKER, "mb-1")}>Plates</span>
           {page.entries!.map(entry => (
-            <span key={entry.label} className="flex items-baseline gap-2 text-[9px] text-stone-500">
+            <span key={`${entry.label}-${entry.folio}`} className="flex items-baseline gap-2 text-[9px] text-stone-500">
               {entry.label}
               <span aria-hidden className="min-w-4 grow border-b border-dotted border-stone-300" />
               <span className="tabular-nums">{entry.folio}</span>
@@ -766,36 +779,6 @@ function PlateBand({ page }: { page: Page }) {
 }
 
 /**
- * The minimalist grid: a rule, one column, one plate, and a band of nothing.
- *
- * The plate is set against the bottom of its cell so the white space collects
- * above it and along the foot, in one continuous L rather than as two gaps.
- * Pulling the plate moves only the plate: its cell keeps its depth, so the
- * column beside it does not re-flow and the page holds its stillness.
- */
-function MinimalGrid({ page }: { page: Page }) {
-  const { size, grips } = usePlateSize(page);
-  const plate = page.plates[0];
-  return (
-    <div className="flex h-full flex-col" style={{ gap: STACK_GAP }}>
-      <div className="flex shrink-0 items-center" style={{ height: MINIMAL_HEAD }}>
-        <span className={KICKER}>{plate?.label ?? "Atlas"}</span>
-        <span aria-hidden className="ml-3 h-px grow bg-stone-200" />
-      </div>
-      <div className="flex shrink-0" style={{ gap: GUTTER, height: MINIMAL_ROW }}>
-        <Copy slice={page.slices[0]} width={COLUMN_WIDTH} height={MINIMAL_ROW} />
-        <div className="flex flex-col justify-end" style={{ width: COLUMN_WIDTH, height: MINIMAL_ROW }}>
-          <div className="group/plate relative" style={{ width: size.width, height: size.height }}>
-            <PlateFigure plate={plate} width={size.width} height={size.height} />
-            {grips}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Three bands down the leaf, each a narrow column of text against a wide
  * photograph, the two changing places row by row.
  *
@@ -903,10 +886,13 @@ const SLOT_OF: Partial<Record<TemplateId, CustomSlot>> = {
  * selectable, so neither can afford to have its middle claimed as well.
  */
 function DrawnBox({
+  index,
   slot,
   box,
   children,
 }: {
+  /** The page this box is on, so an edit lands on that page alone. */
+  index: number;
   slot: CustomSlot | undefined;
   box: CustomBox;
   children: (drawn: CustomBox) => ReactNode;
@@ -958,7 +944,7 @@ function DrawnBox({
       const settled = latest.current;
       latest.current = null;
       setLive(null);
-      if (settled) onEditBox(slot, settled);
+      if (settled) onEditBox(index, slot, settled);
     };
 
     window.addEventListener("pointermove", moved);
@@ -1028,16 +1014,18 @@ function DrawnBox({
  */
 function CustomLayout({ page, sketches }: { page: Page; sketches?: Record<string, string> }) {
   if (!page.layout) return <Columns page={page} height={TEXT_HEIGHT} />;
+  if (page.layout.bleed) return <BleedPage page={page} />;
 
   const slot = SLOT_OF[page.template];
   const texts = textBoxes(page.layout);
   const plates = plateBoxes(page.layout);
   const pads = sketchBoxes(page.layout);
+  const quotes = quoteBoxes(page.layout);
 
   return (
     <div className="relative" style={{ width: TEXT_WIDTH, height: TEXT_HEIGHT }}>
       {texts.map((box, n) => (
-        <DrawnBox key={box.id} slot={slot} box={box}>
+        <DrawnBox key={box.id} index={page.index} slot={slot} box={box}>
           {drawn => (
             <Copy
               slice={page.slices[n]}
@@ -1049,7 +1037,7 @@ function CustomLayout({ page, sketches }: { page: Page; sketches?: Record<string
         </DrawnBox>
       ))}
       {plates.map((box, n) => (
-        <DrawnBox key={box.id} slot={slot} box={box}>
+        <DrawnBox key={box.id} index={page.index} slot={slot} box={box}>
           {drawn => (
             <div className="group/plate size-full">
               <PlateFigure plate={page.plates[n]} width={drawn.width} height={drawn.height} />
@@ -1057,11 +1045,24 @@ function CustomLayout({ page, sketches }: { page: Page; sketches?: Record<string
           )}
         </DrawnBox>
       ))}
+      {quotes.map((box, n) => (
+        <DrawnBox key={box.id} index={page.index} slot={slot} box={box}>
+          {drawn => (
+            <QuoteBlock
+              text={page.quotes?.[n] ?? ""}
+              width={drawn.width}
+              height={drawn.height}
+              tone={box.tone}
+              signOff={box.signOff}
+            />
+          )}
+        </DrawnBox>
+      ))}
       {/* Nothing is poured into these and no photograph dealt to them: each
           holds only what was drawn on it, kept against its own id so a page
           may carry several and each keep its own marks. */}
       {pads.map(box => (
-        <DrawnBox key={box.id} slot={slot} box={box}>
+        <DrawnBox key={box.id} index={page.index} slot={slot} box={box}>
           {drawn => (
             <SketchPad
               id={box.id}
@@ -1219,6 +1220,118 @@ function FourColumn({ page, title }: { page: Page; title: string }) {
   );
 }
 
+/**
+ * The size a pull quote is set at: the largest that fits its block.
+ *
+ * Worked out from the length of the line and the block's shape rather than
+ * measured, because a quote is not the story — nothing is poured after it, so
+ * nothing downstream depends on its exact wrap, and a line of display type
+ * averages about half an em a character in every face offered here.
+ */
+function quoteSize(text: string, width: number, height: number): number {
+  for (let size = 40; size > 9; size -= 1) {
+    const perLine = Math.max(1, Math.floor(width / (size * 0.5)));
+    // Words do not break mid-line, so lines run short: allow for it.
+    const lines = Math.ceil((text.length * 1.12) / perLine);
+    // The opening mark takes most of a line above the quote.
+    if (lines * size * 1.14 + size * 0.8 <= height) return size;
+  }
+  return 9;
+}
+
+/**
+ * A pull quote: a line from the story, set large in the display face on a
+ * block of the issue's accent or ink, or straight onto the paper in accent.
+ */
+function QuoteBlock({
+  text,
+  width,
+  height,
+  tone = "accent",
+  signOff = false,
+}: {
+  text: string;
+  width: number;
+  height: number;
+  tone?: QuoteTone;
+  signOff?: boolean;
+}) {
+  const { accent, ink, paper } = use(SurfaceContext);
+  if (!text) return <div style={{ width, height }} />;
+
+  // Where the story ends: the title, centred, as the last thing on the leaf.
+  if (signOff) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-3 text-center"
+        style={{ width, height, background: accent, color: paper, padding: 24 }}
+      >
+        <span aria-hidden className="text-[8px] tracking-[0.3em] uppercase opacity-80">
+          The end
+        </span>
+        <p className={cn(HEADLINE, "text-balance")} style={{ color: "inherit", fontSize: Math.min(40, quoteSize(text, width - 48, height * 0.45)), lineHeight: 1.05 }}>
+          {text}
+        </p>
+        <span aria-hidden className="h-px w-10 opacity-60" style={{ background: paper }} />
+      </div>
+    );
+  }
+
+  const block = tone !== "paper";
+  const pad = block ? 16 : 4;
+  const size = quoteSize(text, width - pad * 2, height - pad * 2);
+  return (
+    <figure
+      className="flex flex-col justify-center overflow-hidden"
+      style={{
+        width,
+        height,
+        padding: pad,
+        background: tone === "accent" ? accent : tone === "ink" ? ink : "transparent",
+        color: block ? paper : accent,
+      }}
+    >
+      <span aria-hidden className={HEADLINE} style={{ color: "inherit", fontSize: size * 1.7, lineHeight: 0.55, opacity: 0.55 }}>
+        “
+      </span>
+      <blockquote className={cn(HEADLINE, "text-balance")} style={{ color: "inherit", fontSize: size, lineHeight: 1.12 }}>
+        {text}
+      </blockquote>
+    </figure>
+  );
+}
+
+/**
+ * A photograph run to the trim, with the page's pull quote set over its foot
+ * on a darkening gradient — the page a reader stops on. The picture keeps
+ * every gesture a full plate has (swap, pan); the words lie over it without
+ * catching the pointer.
+ */
+function BleedPage({ page }: { page: Page }) {
+  const quote = page.quotes?.[0];
+  return (
+    <div className="relative size-full">
+      <FullPlate page={page} />
+      {quote && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col justify-end bg-gradient-to-t from-black/75 via-black/35 to-transparent"
+          style={{ height: "46%", padding: MARGIN, paddingBottom: MARGIN + 34 }}
+        >
+          <span aria-hidden className={HEADLINE} style={{ color: "white", fontSize: 58, lineHeight: 0.5, opacity: 0.7 }}>
+            “
+          </span>
+          <blockquote
+            className={cn(HEADLINE, "text-balance")}
+            style={{ color: "white", fontSize: quoteSize(quote, TEXT_WIDTH, 170), lineHeight: 1.1 }}
+          >
+            {quote}
+          </blockquote>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** A plate given the whole page, run to the trim on every side. */
 function FullPlate({ page }: { page: Page }) {
   const plate = page.plates[0];
@@ -1244,6 +1357,7 @@ function FullPlate({ page }: { page: Page }) {
         style={{ marginLeft: MARGIN, marginBottom: MARGIN }}
       >
         {plate.label}
+        {plate.caption && <span className="ml-1.5 font-serif text-[8px] tracking-normal normal-case italic">{plate.caption}</span>}
       </span>
     </div>
   );
@@ -1297,8 +1411,8 @@ function Colophon({ title, dateline, polished }: PageProps) {
       <div className="my-2 h-px w-16 bg-stone-300" />
       <p className="max-w-[300px] text-[9px] leading-[1.6] text-stone-500">
         {polished
-          ? "Set with Atlas. The photographs never left your browser. The words were sent once to be copy-edited, and were not kept."
-          : "Set with Atlas. The photographs and the words were laid out in your browser and were never uploaded to us."}
+          ? "Set with Atlas. Laid out in your browser; the words were sent once to be copy-edited, and nothing of this issue was kept."
+          : "Set with Atlas. Laid out in your browser, and nothing of this issue — photographs or words — was ever stored by us."}
       </p>
     </div>
   );
@@ -1329,7 +1443,6 @@ const LAYOUTS: Record<TemplateId, (props: PageProps) => React.ReactNode> = {
   "plate-beside": ({ page }) => <PlateBeside page={page} />,
   "plate-beside-right": ({ page }) => <PlateBesideRight page={page} />,
   "plate-band": ({ page }) => <PlateBand page={page} />,
-  "minimal-grid": ({ page }) => <MinimalGrid page={page} />,
   "zine-collage": ({ page }) => <ZineCollage page={page} />,
   "zine-rows": ({ page }) => <ZineRows page={page} />,
   "four-column": ({ page, title }) => <FourColumn page={page} title={title} />,
@@ -1740,12 +1853,18 @@ export function MagazinePage({
   tilt,
   type,
   sketches,
-}: PageProps & { theme?: ThemeId; tilt?: number; type?: TypeChoice }) {
+  palette,
+}: PageProps & { theme?: ThemeId; tilt?: number; type?: TypeChoice; palette?: Palette }) {
   const Layout = LAYOUTS[page.template];
-  const bleeds = BLEEDS.has(page.template);
+  const bleeds = BLEEDS.has(page.template) || page.layout?.bleed === true;
   const themed = THEMES[theme ?? DEFAULT_THEME]?.surface ?? THEMES[DEFAULT_THEME].surface;
   // Exactly what the composer fitted against — same function, same input.
-  const base = type ? { ...themed, ...surfaceOf(type) } : themed;
+  const typed = type ? { ...themed, ...surfaceOf(type) } : themed;
+  // A designed issue's own colours. Only colours: the body face and size are
+  // what the fitter measured, and a palette changes neither.
+  const base = palette
+    ? { ...typed, paper: palette.paper, ink: palette.ink, accent: palette.accent, copy: { ...typed.copy, color: palette.ink } }
+    : typed;
   // The reader's lean wins over the theme's, and none at all is a real answer
   // rather than "unset" — hence the explicit undefined check.
   const surface = { ...leafOf(base, page.folio), tilt: tilt ?? base.tilt };

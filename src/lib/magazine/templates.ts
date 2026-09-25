@@ -21,7 +21,6 @@ export type TemplateId =
   | "plate-beside"
   | "plate-beside-right"
   | "plate-band"
-  | "minimal-grid"
   | "zine-collage"
   | "zine-rows"
   | "four-column"
@@ -55,19 +54,6 @@ export const STACK_GAP = 12;
  */
 export const BAND_PLATE = 176;
 export const BAND_ABOVE = 180;
-
-/**
- * The minimalist grid: one column of copy, one small plate, and air.
- *
- * The empty band at the foot is the layout, not space left over — so it is a
- * fixed measurement like any other. The plate sits in the bottom of its cell
- * with the air gathered above it, which is why the copy here does not re-flow
- * when the plate is pulled: the cell keeps its depth whatever fills it.
- */
-export const MINIMAL_HEAD = 44;
-export const MINIMAL_AIR = 120;
-export const MINIMAL_ROW = TEXT_HEIGHT - MINIMAL_HEAD - MINIMAL_AIR - STACK_GAP;
-export const MINIMAL_PLATE = 260;
 
 /**
  * The zine collage: a column of copy, and beside it two photographs pinned up
@@ -176,7 +162,6 @@ export const TEMPLATES: Record<TemplateId, Template> = {
   "plate-band": { id: "plate-band", plates: 1, boxes: [...pair(BAND_ABOVE), ...pair(bandBelow)] },
   // One box, and it does not move: the plate shares the row rather than
   // sitting above or below the copy, so its depth costs the copy nothing.
-  "minimal-grid": { id: "minimal-grid", plates: 1, boxes: [{ width: COLUMN_WIDTH, height: MINIMAL_ROW }] },
   // The collage column is not a text box, so the copy takes the other half of
   // the measure and the whole leaf, exactly as a beside plate does.
   "zine-collage": { id: "zine-collage", plates: 2, boxes: [column(TEXT_HEIGHT)] },
@@ -295,13 +280,6 @@ export const PLATE_SIZING = {
   "plate-above": { width: MEASURE_WIDTH, height: { default: HALF_PLATE, min: 150, max: 420 } },
   "plate-below": { width: MEASURE_WIDTH, height: { default: HALF_PLATE, min: 150, max: 420 } },
   "plate-band": { width: MEASURE_WIDTH, height: { default: BAND_PLATE, min: 110, max: 300 } },
-  // Alone among the resizable layouts this one takes nothing from the copy: it
-  // moves the plate inside a cell that keeps its depth either way.
-  "minimal-grid": {
-    // Its cell is one column wide, so that is as wide as it goes.
-    width: { default: COLUMN_WIDTH, min: 90, max: COLUMN_WIDTH },
-    height: { default: MINIMAL_PLATE, min: 150, max: MINIMAL_ROW },
-  },
   // The two ornament rules and the headline between them are the layout; only
   // the plate below them trades against the copy.
   "ornament-feature": { width: MEASURE_WIDTH, height: { default: ORNAMENT_PLATE, min: 110, max: 300 } },

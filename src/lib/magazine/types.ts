@@ -1,13 +1,18 @@
 import type { Slice } from "@/lib/magazine/copy";
 import type { Riddle } from "@/lib/magazine/diversions";
-import type { CustomPage } from "@/lib/magazine/custom";
+import type { CustomPage, Palette } from "@/lib/magazine/custom";
 import type { PlateBox, TemplateId } from "@/lib/magazine/templates";
 import type { TypeChoice } from "@/lib/magazine/typography";
 import type { ThemeId } from "@/lib/magazine/themes";
 import type { Photo } from "@/types";
 
 /** A photograph as it appears in the issue, with the label printed beside it. */
-export type Plate = { photo: Photo; label: string };
+export type Plate = {
+  photo: Photo;
+  label: string;
+  /** The photograph's own line, set after the plate number where there is one. */
+  caption?: string;
+};
 
 /** One printed page, with its copy already fitted to its boxes. */
 export type Page = {
@@ -35,6 +40,8 @@ export type Page = {
    * is set again.
    */
   layout?: CustomPage;
+  /** Pull quotes dealt to this page's quote boxes, in reading order. */
+  quotes?: string[];
   /** Printed page number, or null on the cover. */
   folio: number | null;
   /** Only the opening page of the feature takes a drop cap. */
@@ -77,4 +84,6 @@ export type Issue = {
    * measured in another face are two different magazines.
    */
   type?: TypeChoice;
+  /** Paper, ink and accent of a designed issue, where the editor chose them. */
+  palette?: Palette;
 };

@@ -9,6 +9,7 @@
  */
 
 import { versionOf } from "../scripts/versions";
+import { VOICE_NEEDS_SIGN_IN } from "@/types";
 
 /**
  * The version this process is running.
@@ -136,6 +137,35 @@ export const polish = {
 export type PolishProviderName = "openai" | "anthropic";
 
 /**
+ * The editor (`api/editor.ts`): the art director that lays out an issue from
+ * the photographs and the story.
+ *
+ * Its own provider and model, separate from the copy desk's. Laying out a
+ * magazine is judgement about pictures, pacing and tone rather than grammar,
+ * and it is worth the strongest model available — Claude Opus by default.
+ */
+export const editor = {
+  /** "anthropic" | "openai". Unset means Anthropic when there is a key for it. */
+  preference: process.env.EDITOR_PROVIDER?.trim().toLowerCase(),
+  anthropicModel: process.env.ANTHROPIC_EDITOR_MODEL?.trim() || "claude-opus-5",
+  openaiModel: process.env.OPENAI_EDITOR_MODEL?.trim() || "gpt-5.6-luna",
+} as const;
+
+/**
+ * Which provider the editor uses, or null when it is off. The same bargain as
+ * the copy desk: a named provider without a key is off, never a fallback to
+ * the other one.
+ */
+export function editorProvider(): PolishProviderName | null {
+  if (editor.preference === "anthropic") return polish.anthropic.key ? "anthropic" : null;
+  if (editor.preference === "openai") return polish.openai.key ? "openai" : null;
+
+  if (polish.anthropic.key) return "anthropic";
+  if (polish.openai.key) return "openai";
+  return null;
+}
+
+/**
  * Which provider the copy desk will actually use, or null when neither is
  * configured and the feature is off.
  *
@@ -151,6 +181,36 @@ export function polishProvider(): PolishProviderName | null {
   if (polish.openai.key) return "openai";
   if (polish.anthropic.key) return "anthropic";
   return null;
+}
+
+/**
+ * Voice: the Speak tab streams the microphone to OpenAI's Realtime
+ * transcription and the words come back live. The browser connects directly,
+ * with a short-lived key this server mints from the real one.
+ *
+ * OpenAI only, and independent of POLISH_PROVIDER. Naming Anthropic for the
+ * copy desk says nothing about who should hear the recording, and Anthropic
+ * has no transcription endpoint to fall back to anyway, so the one key is all
+ * that decides it.
+ */
+export const transcription = {
+  key: process.env.OPENAI_API_KEY,
+  /** Overridable, for the same reason as OPENAI_MODEL. */
+  model: process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || "gpt-4o-transcribe",
+  /**
+   * The language spoken, as an ISO-639-1 code, or null to let the model guess.
+   *
+   * English unless told otherwise, because guessing goes wrong here: the model
+   * judges each phrase on its own, and a phrase cut after two seconds is too
+   * little to judge — English came back in Urdu, Chinese and Afrikaans. "auto"
+   * restores the guess for a server that expects mixed languages.
+   */
+  language: languageSetting(process.env.OPENAI_TRANSCRIBE_LANGUAGE),
+} as const;
+
+function languageSetting(value: string | undefined): string | null {
+  const code = value?.trim().toLowerCase() || "en";
+  return code === "auto" ? null : code;
 }
 
 export const vercel = {
@@ -265,6 +325,31 @@ function copyDesk(): string {
   return `on (${chosen}, ${model})`;
 }
 
+/**
+ * When voice is behind sign-in it needs an account as well as a key: without
+ * Supabase nobody could reach it and "on" would be a lie. Open, the key is
+ * enough — and the line says so, since that is an endpoint spending money for
+ * anyone who finds it.
+ */
+function voice(): string {
+  if (!transcription.key) return "off (set OPENAI_API_KEY)";
+  const heard = `openai, ${transcription.model}, ${transcription.language ?? "any language"}`;
+  if (!VOICE_NEEDS_SIGN_IN) return `on (${heard}, open to everyone)`;
+  if (!supabaseConfigured) return "off (needs Supabase — recording is for signed-in readers)";
+  return `on (${heard})`;
+}
+
+/** Names the provider and model, which differ from the copy desk's. */
+function editorLine(): string {
+  const chosen = editorProvider();
+  if (!chosen) {
+    return editor.preference
+      ? `off (EDITOR_PROVIDER=${editor.preference} but its key is not set)`
+      : "off (set ANTHROPIC_API_KEY or OPENAI_API_KEY)";
+  }
+  return `on (${chosen}, ${chosen === "openai" ? editor.openaiModel : editor.anthropicModel})`;
+}
+
 /** One line per integration at boot, so a missing key is obvious. */
 export function describe(): string {
   const state = (on: boolean, missing: string) => (on ? "on" : `off (set ${missing})`);
@@ -274,6 +359,8 @@ export function describe(): string {
     `   billing   ${billing()}`,
     `   webhook   ${webhooks()}`,
     `   copy desk ${copyDesk()}`,
+    `   voice     ${voice()}`,
+    `   editor    ${editorLine()}`,
     `   exports   ${exportCap()}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");

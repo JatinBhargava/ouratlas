@@ -80,8 +80,8 @@ export function AppRoutes() {
           frontend only — the API is on Render and is not covered.
 
           Both are cookieless and collect no personal data, which matters here:
-          photographs and story text never leave the browser, and nothing about
-          them is measured. Both scripts are served from the deployment, so they
+          photographs and story text are never stored, and nothing about them is
+          measured. Both scripts are served from the deployment, so they
           are inert anywhere other than Vercel, development included.
 
           Inside the router on purpose — that is what lets them attribute views

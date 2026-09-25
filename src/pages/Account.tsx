@@ -218,7 +218,7 @@ export function Account() {
 
       <p className="flex items-start gap-2 text-sm text-white/75 drop-shadow-sm">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        We store your email, your plan and nothing else. Photographs and story text stay in your browser.
+        We store your email, your plan and nothing else. Photographs and story text are never stored.
       </p>
     </div>
   );

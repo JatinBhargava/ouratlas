@@ -14,8 +14,10 @@ import { errorHandler, notFound } from "@api/http";
 import { authRoutes } from "@api/routes/auth";
 import { billingRoutes } from "@api/routes/billing";
 import { dodoWebhookRoutes } from "@api/routes/dodo-webhook";
+import { EDITOR_BODY_LIMIT, editorRoutes } from "@api/routes/editor";
 import { exportRoutes } from "@api/routes/exports";
 import { polishRoutes } from "@api/routes/polish";
+import { transcribeRoutes } from "@api/routes/transcribe";
 import { visitsRoutes } from "@api/routes/visits";
 import { waitlistRoutes } from "@api/routes/waitlist";
 import { webhookRoutes } from "@api/routes/webhook";
@@ -40,6 +42,11 @@ export function createApp(): Express {
   app.use("/api/stripe/webhook", express.raw({ type: "application/json", limit: "1mb" }));
   app.use("/api/dodo/webhook", express.raw({ type: "application/json", limit: "1mb" }));
 
+  // Ten photograph previews and a story are more than the general limit
+  // allows, so the editor's parser goes first; like the webhooks above, a body
+  // it has read is left alone by the one below.
+  app.use("/api/editor", express.json({ limit: EDITOR_BODY_LIMIT }));
+
   // Generous enough for a 10,000-word story going to the copy desk.
   app.use(express.json({ limit: "1mb" }));
 
@@ -53,6 +60,8 @@ export function createApp(): Express {
   app.use("/api", visitsRoutes);
   app.use("/api", waitlistRoutes);
   app.use("/api", polishRoutes);
+  app.use("/api", transcribeRoutes);
+  app.use("/api", editorRoutes);
   app.use("/api", exportRoutes);
   app.use("/api", webhookRoutes);
   app.use("/api", dodoWebhookRoutes);

@@ -1,9 +1,27 @@
 import { riddleFor } from "@/lib/magazine/diversions";
 import { fitBox } from "@/lib/magazine/fit";
 import { isSpent, remaining, START, toParagraphs, wordCount, type Cursor, type Slice } from "@/lib/magazine/copy";
-import { boxesFor, PLAIN, plateSize, TEMPLATES, type PlateBox, type Template } from "@/lib/magazine/templates";
+import { boxesFor, PLAIN, plateSize, STACK_GAP, TEMPLATES, type PlateBox, type Template } from "@/lib/magazine/templates";
+import { COLUMN_WIDTH, GUTTER, TEXT_HEIGHT, TEXT_WIDTH } from "@/lib/magazine/geometry";
+import { buildArchetype, quoteSplit, textPage } from "@/lib/magazine/archetypes";
+
+/**
+ * Where the body of the issue begins: after the cover, the contents and the
+ * opener. The editor plans pages from here, so this and the three `add` calls
+ * that set those pages down have to agree.
+ */
+export const BODY_START = 3;
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@/lib/magazine/themes";
-import { plateBoxes, textBoxes, type CustomDesign, type CustomPage, type CustomSlot } from "@/lib/magazine/custom";
+import {
+  newBoxId,
+  plateBoxes,
+  quoteBoxes,
+  textBoxes,
+  type CustomDesign,
+  type CustomLeaves,
+  type CustomPage,
+  type CustomSlot,
+} from "@/lib/magazine/custom";
 import { surfaceOf, type TypeChoice } from "@/lib/magazine/typography";
 import type { Issue, Page, Plate } from "@/lib/magazine/types";
 import type { Photo } from "@/types";
@@ -78,6 +96,8 @@ type ComposeInput = {
    * which is what a theme chosen before anything was drawn should do.
    */
   custom?: CustomDesign;
+  /** Single pages redrawn on the proof, which win over the design for that page alone. */
+  leaves?: CustomLeaves;
   /**
    * Type chosen by the reader, replacing the theme's own.
    *
@@ -117,6 +137,7 @@ export function composeIssue({
   seed,
   theme = DEFAULT_THEME,
   custom,
+  leaves,
   type,
   sketch,
 }: ComposeInput): Issue {
@@ -143,6 +164,9 @@ export function composeIssue({
   // With a single photograph the cover is the only place it can go.
   const cover = photos[0];
   const pool = [...(photos.length > 1 ? photos.slice(1) : photos)];
+  // Pull quotes, dealt to quote boxes in order as photographs are to plates.
+  // Only a designed issue carries any; every other theme has no box for them.
+  const quotePool = theme === "custom" ? [...(custom?.quotes ?? [])] : [];
   let plateNumber = 0;
 
   // Fixed before anything is dealt: the pacing below measures progress against
@@ -150,7 +174,7 @@ export function composeIssue({
   const supply = pool.length;
 
   const nextPlates = (count: number): Plate[] =>
-    pool.splice(0, count).map(photo => ({ photo, label: `Plate ${roman(++plateNumber)}` }));
+    pool.splice(0, count).map(photo => ({ photo, label: `Plate ${roman(++plateNumber)}`, caption: photo.caption }));
 
   /**
    * The design behind one of the reader's own layouts, if that is what this is.
@@ -165,9 +189,13 @@ export function composeIssue({
     "custom-right": "right",
     "custom-special": "special",
   };
-  const designFor = (id: Template["id"]): CustomPage | undefined => {
+  // Always asked about the page about to be added, so its index is simply
+  // the number of pages set so far.
+  const designFor = (id: Template["id"], index = pages.length): CustomPage | undefined => {
     const slot = SLOT_OF[id];
-    return slot ? custom?.[slot] : undefined;
+    if (!slot) return undefined;
+    const own = leaves?.[index];
+    return own && own.slot === slot ? own.page : custom?.[slot];
   };
 
   /** How many photographs a layout wants, the reader's own included. */
@@ -197,22 +225,206 @@ export function composeIssue({
     return { slices, took };
   };
 
+  /**
+   * The last page of the story, made up to fit what is left of it.
+   *
+   * A drawn page is drawn for a full page of copy. On the page where the story
+   * ends there is usually a paragraph or two, and poured into boxes sized for
+   * twenty, it leaves a column standing empty and a hole under the picture —
+   * the white space a designed issue should never have. So when a drawn page
+   * with a photograph on it turns out to be the last, it is set again as a
+   * closing page: the photograph across the full width, and the last words
+   * beneath it in two columns cut to exactly the depth they need, found by
+   * measuring rather than guessing.
+   *
+   * Returns null, with the cursor put back, when the page is full enough as it
+   * is — the remainder is most of a page, and the drawn layout holds it well.
+   */
+  const closingPage = (start: Cursor, dropCap?: boolean): { layout: CustomPage; slices: Slice[] } | null => {
+    // Two balanced columns for a real paragraph or more; for the last few
+    // lines, one block across the full measure, so a short ending does not
+    // sit in one column beside an empty one.
+    const shapes = {
+      wide: (depth: number) => [{ width: TEXT_WIDTH, height: depth }],
+      columns: (depth: number) => [
+        { width: COLUMN_WIDTH, height: depth },
+        { width: COLUMN_WIDTH, height: depth },
+      ],
+    };
+    const fitsIn = (shape: keyof typeof shapes, depth: number) => {
+      cursor = start;
+      fill(shapes[shape](depth), dropCap);
+      return isSpent(paragraphs, cursor);
+    };
+    /** The shallowest depth that holds everything left, measured, or null if even a full page will not. */
+    const shallowest = (shape: keyof typeof shapes): number | null => {
+      let low = 12;
+      let high = TEXT_HEIGHT;
+      if (!fitsIn(shape, high)) return null;
+      while (high - low > 2) {
+        const mid = Math.floor((low + high) / 2);
+        if (fitsIn(shape, mid)) high = mid;
+        else low = mid;
+      }
+      // A line's grace, so rounding in the browser cannot push the last line off.
+      return Math.min(TEXT_HEIGHT, high + 6);
+    };
+
+    // Up to about six lines reads well across the full width; past that the
+    // measure is too long to follow and the text wants columns.
+    const WIDE_LIMIT = 90;
+    const wide = shallowest("wide");
+    const shape: keyof typeof shapes = wide !== null && wide <= WIDE_LIMIT ? "wide" : "columns";
+    const depth = shape === "wide" ? wide : shallowest("columns");
+    cursor = start;
+    if (depth === null) return null;
+
+    const photo = TEXT_HEIGHT - depth - STACK_GAP;
+    // Less than this and the page is mostly text already; leave it be.
+    if (photo < 200) return null;
+
+    const { slices } = fill(shapes[shape](depth), dropCap);
+    const at = photo + STACK_GAP;
+    const box = (kind: "text" | "plate", x: number, y: number, width: number, height: number) => ({
+      id: newBoxId(),
+      kind,
+      x,
+      y,
+      width,
+      height,
+    });
+    const words =
+      shape === "wide"
+        ? [box("text", 0, at, TEXT_WIDTH, depth)]
+        : [box("text", 0, at, COLUMN_WIDTH, depth), box("text", COLUMN_WIDTH + GUTTER, at, COLUMN_WIDTH, depth)];
+    return { layout: { boxes: [box("plate", 0, 0, TEXT_WIDTH, photo), ...words] }, slices };
+  };
+
+  /**
+   * The last page of a designed issue whose photographs ran out before its
+   * words: the remaining copy in two balanced columns, cut to the depth they
+   * need, and a block of accent colour filling the rest of the leaf. Returns
+   * null, with the cursor put back, when the copy fills most of the page
+   * anyway — a full page of reading needs no ending made up for it.
+   */
+  const endingPage = (start: Cursor, dropCap?: boolean): { layout: CustomPage; slices: Slice[] } | null => {
+    const columns = (depth: number) => [
+      { width: COLUMN_WIDTH, height: depth },
+      { width: COLUMN_WIDTH, height: depth },
+    ];
+    const fitsIn = (depth: number) => {
+      cursor = start;
+      fill(columns(depth), dropCap);
+      return isSpent(paragraphs, cursor);
+    };
+    let low = 12;
+    let high = TEXT_HEIGHT;
+    if (!fitsIn(high)) {
+      cursor = start;
+      return null;
+    }
+    while (high - low > 2) {
+      const mid = Math.floor((low + high) / 2);
+      if (fitsIn(mid)) high = mid;
+      else low = mid;
+    }
+    const depth = Math.min(TEXT_HEIGHT, high + 6);
+    const block = TEXT_HEIGHT - depth - STACK_GAP;
+    cursor = start;
+    if (block < 150) return null;
+
+    const { slices } = fill(columns(depth), dropCap);
+    return {
+      layout: {
+        boxes: [
+          { id: newBoxId(), kind: "text", x: 0, y: 0, width: COLUMN_WIDTH, height: depth },
+          { id: newBoxId(), kind: "text", x: COLUMN_WIDTH + GUTTER, y: 0, width: COLUMN_WIDTH, height: depth },
+          {
+            id: newBoxId(),
+            kind: "quote",
+            x: 0,
+            y: depth + STACK_GAP,
+            width: TEXT_WIDTH,
+            height: block,
+            tone: "accent",
+            signOff: quotePool.length === 0,
+          },
+        ],
+      },
+      slices,
+    };
+  };
+
   const add = (template: Template, options: { plates?: Plate[]; dropCap?: boolean } = {}) => {
     const index = pages.length;
 
     // The plate is settled before the copy is poured, because on these layouts
     // the plate is what decides how much room the copy has.
     const plate = plateSize(template.id, plateSizes?.[index]);
-    const design = designFor(template.id);
+    let design = designFor(template.id);
+    // A drawn page wants photographs the pool may no longer have. Rather than
+    // print empty frames — grey holes in the middle of a feature — it is set
+    // with what there is: a single photograph over two columns when one is
+    // left for a page that wanted more; once they are gone, text broken by a
+    // pull quote while quotes last, and plain columns after that.
+    if (design && !options.plates && plateBoxes(design).length > pool.length) {
+      design = {
+        boxes: pool.length > 0 ? buildArchetype("hero-top", 0.45) : quotePool.length > 0 ? quoteSplit() : textPage(),
+      };
+    }
+    // More quote boxes than quotes left: the spare boxes are set as text, so
+    // a band meant for a pull quote carries the story on rather than printing
+    // as an empty block of colour.
+    if (design && quoteBoxes(design).length > quotePool.length) {
+      const spare = new Set(quoteBoxes(design).slice(quotePool.length).map(b => b.id));
+      design = {
+        ...design,
+        boxes: design.boxes.map(b => (spare.has(b.id) ? { ...b, kind: "text" as const, tone: undefined } : b)),
+      };
+    }
     // A drawn page brings its own boxes; every other layout derives them.
     const boxes = design ? textBoxes(design) : boxesFor(template.id, plate);
-    const { slices } = fill(boxes, options.dropCap);
+    const start = cursor;
+    let { slices } = fill(boxes, options.dropCap);
+
+    // The story ended on a drawn page: make that page up to fit. Not on a page
+    // the reader redrew by hand on the proof — that one is theirs as drawn.
+    const redrawn = leaves?.[index]?.hand === true;
+    // The story ended on a page of plain text in a designed issue — the
+    // photographs ran out first. Its last few lines would stand at the head of
+    // an otherwise empty leaf, so the page is made up as an ending: the words
+    // in balanced columns, and the rest of the leaf a block of the issue's
+    // accent carrying one last pull quote, or the title as a sign-off.
+    let ending: string | null = null;
+    if (design && !redrawn && theme === "custom" && isSpent(paragraphs, cursor) && plateBoxes(design).length === 0) {
+      const closing = endingPage(start, options.dropCap);
+      if (closing) {
+        design = closing.layout;
+        slices = closing.slices;
+        ending = quotePool.shift() ?? title.trim();
+      } else {
+        cursor = start;
+        ({ slices } = fill(boxes, options.dropCap));
+      }
+    }
+    if (design && !redrawn && isSpent(paragraphs, cursor) && plateBoxes(design).length > 0 && pool.length > 0) {
+      const closing = closingPage(start, options.dropCap);
+      if (closing) {
+        design = closing.layout;
+        slices = closing.slices;
+      } else {
+        cursor = start;
+        ({ slices } = fill(boxes, options.dropCap));
+      }
+    }
 
     pages.push({
       id: `${template.id}-${index}`,
       index,
       template: template.id,
-      plates: options.plates ?? nextPlates(platesWanted(template)),
+      // Counted from the boxes actually on the page, which a closing page has
+      // fewer of than the design it replaced.
+      plates: options.plates ?? nextPlates(design ? plateBoxes(design).length : platesWanted(template)),
       plate,
       slices,
       folio: null,
@@ -220,6 +432,10 @@ export function composeIssue({
       // Kept on the page so the drawn issue survives the design being edited
       // underneath it.
       layout: design,
+      // Dealt from the final layout, so a page made up to close the story —
+      // which has no quote box — takes none. A bleed takes one to set over
+      // its picture when there is one to spare.
+      quotes: ending !== null ? [ending] : design ? quotePool.splice(0, design.bleed ? 1 : quoteBoxes(design).length) : undefined,
     });
   };
 
@@ -280,12 +496,12 @@ export function composeIssue({
     if (running) {
       const next = TEMPLATES[running[runningStep++ % running.length]!];
       const before = remaining(paragraphs, cursor);
+      const photosBefore = pool.length;
       add(next);
-      // A drawn page with no text box on it would take no copy, and the issue
-      // would never end. One with no boxes at all is not a page yet.
-      const boxes = designFor(next.id) ? textBoxes(designFor(next.id)!).length : next.boxes.length;
-      if (boxes > 0 && remaining(paragraphs, cursor) === before) break;
-      if (boxes === 0) break;
+      // A page that took neither copy nor a photograph would repeat for ever.
+      // A full-bleed picture takes no copy and is still a page; one with no
+      // boxes at all, or boxes too small for a word, is not.
+      if (remaining(paragraphs, cursor) === before && pool.length === photosBefore) break;
       continue;
     }
 
@@ -331,8 +547,10 @@ export function composeIssue({
   });
 
   // The contents can only be set once every plate knows its page number.
+  // Listed by caption where the editor wrote one: "The gull, and my pastry"
+  // is a contents line; "Plate IV" is an inventory.
   const entries = pages.flatMap(page =>
-    page.folio === null ? [] : page.plates.map(plate => ({ label: plate.label, folio: page.folio! })),
+    page.folio === null ? [] : page.plates.map(plate => ({ label: plate.caption ?? plate.label, folio: page.folio! })),
   );
   const contents = pages.find(page => page.template === "contents");
   if (contents) contents.entries = entries;
@@ -346,5 +564,6 @@ export function composeIssue({
     polished,
     theme,
     type,
+    palette: theme === "custom" ? custom?.palette : undefined,
   };
 }

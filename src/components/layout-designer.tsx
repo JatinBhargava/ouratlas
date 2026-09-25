@@ -31,9 +31,11 @@ const SKIN: Record<CustomKind, string> = {
   plate: "bg-stone-300 border-stone-500",
   // Dashed and empty, the way it prints if nothing is drawn on it.
   sketch: "border-dashed border-emerald-500 bg-emerald-50/60",
+  // A block of colour with a line in it, which is what a pull quote prints as.
+  quote: "bg-amber-200/80 border-amber-500",
 };
 
-const KIND_LABEL: Record<CustomKind, string> = { text: "Text", plate: "Photo", sketch: "Draw" };
+const KIND_LABEL: Record<CustomKind, string> = { text: "Text", plate: "Photo", sketch: "Draw", quote: "Quote" };
 
 type Drag =
   | { mode: "move"; id: string; fromX: number; fromY: number; box: CustomBox }
@@ -147,7 +149,8 @@ export function LayoutDesigner({
   const page = design[slot];
   const chosen = page.boxes.find(b => b.id === selected) ?? null;
 
-  const put = (boxes: CustomBox[]) => onChange({ ...design, [slot]: { boxes } });
+  // The rest of the page (a bleed, say) is kept; only its boxes change.
+  const put = (boxes: CustomBox[]) => onChange({ ...design, [slot]: { ...design[slot], boxes } });
 
   const add = (kind: CustomKind) => {
     const box = clampBox({

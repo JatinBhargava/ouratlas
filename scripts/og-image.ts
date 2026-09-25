@@ -128,7 +128,7 @@ function artwork(): string {
       <text x="0" y="436" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="21" fill="${INK.quiet}">A paginated issue out, ready to export.</text>
 
       <rect x="0" y="478" width="452" height="1" fill="${INK.rule}"/>
-      <text x="0" y="512" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="${INK.faint}">The photographs never leave your browser.</text>
+      <text x="0" y="512" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="${INK.faint}">Your photographs are never stored.</text>
     </g>
   </g>
 </svg>`;

@@ -53,7 +53,7 @@ export const ROUTES: Record<string, Head> = {
   "/": {
     title: "Atlas — your trip photos and words, set as a magazine",
     description:
-      "Ten trip photographs and your own words, typeset in the browser as a magazine issue and exported as a PDF. Free to start; photos never leave your device.",
+      "Ten trip photographs and your own words, typeset in the browser as a magazine issue and exported as a PDF. Free to start; your photos are never stored.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 1 },
   },
@@ -81,7 +81,7 @@ export const ROUTES: Record<string, Head> = {
   "/about": {
     title: "About Atlas — a magazine press for your own trips",
     description:
-      "Why Atlas typesets your trip in the browser: the photographs are never uploaded, the copy is measured against real type, and the issue is yours as a PDF.",
+      "Why Atlas typesets your trip in the browser: the photographs are never stored, the copy is measured against real type, and the issue is yours as a PDF.",
     index: true,
     sitemap: { changefreq: "yearly", priority: 0.5, updated: LEGAL.updated },
   },
@@ -95,7 +95,7 @@ export const ROUTES: Record<string, Head> = {
   "/privacy": {
     title: "Privacy policy — Atlas",
     description:
-      "Your photographs and writing stay in your browser. Exactly what does reach Atlas — account, billing, the opt-in copy desk — and what happens to it.",
+      "Your photographs and writing are never stored. Exactly what reaches Atlas — account, billing, the opt-in AI tools — and what happens to it.",
     index: true,
     sitemap: { changefreq: "yearly", priority: 0.3, updated: LEGAL.updated },
   },

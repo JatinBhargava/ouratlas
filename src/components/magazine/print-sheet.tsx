@@ -56,6 +56,7 @@ export function PrintSheet({
             theme={issue.theme}
             tilt={tilt}
             type={issue.type}
+            palette={issue.palette}
             sketches={sketches}
           />
         </div>
