@@ -65,9 +65,9 @@ export const ROUTES: Record<string, Head> = {
     sitemap: { changefreq: "monthly", priority: 0.8 },
   },
   "/pricing": {
-    title: "Pricing — Atlas: free, ₹499 or ₹1,199 a month",
+    title: "Pricing — Atlas: free, ₹99 or ₹199 a month",
     description:
-      "Wanderer is free. Traveller, ₹499 a month, adds print-quality PDFs and every theme; Cartographer, ₹1,199 a month, adds editable layouts and custom fonts.",
+      "Wanderer is free. Traveller, ₹99 a month, adds print-quality PDFs and every theme; Cartographer, ₹199 a month, adds editable layouts and custom fonts.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.9 },
   },

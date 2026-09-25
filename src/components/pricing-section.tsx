@@ -41,7 +41,7 @@ const PLANS: Plan[] = [
     id: "traveller",
     name: "Traveller",
     icon: Compass,
-    price: "₹499",
+    price: "₹99",
     cadence: "per month",
     description: "For more than one story a year.",
     features: [
@@ -58,7 +58,7 @@ const PLANS: Plan[] = [
     id: "cartographer",
     name: "Cartographer",
     icon: Map,
-    price: "₹1,199",
+    price: "₹199",
     cadence: "per month",
     description: "Full control of how it looks.",
     features: [
