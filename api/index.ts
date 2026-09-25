@@ -16,6 +16,8 @@ const app = createApp();
 app.listen(PORT, () => {
   const role = serveStatic ? "site and API" : "API only — run `bun dev` for the frontend";
   console.log(`\n  Atlas ${role}  v${APP_VERSION}\n  http://localhost:${PORT}\n`);
+  // One line to search a host's deploy log for: which build just came up.
+  console.log(`   version   api v${APP_VERSION}`);
   console.log(describe());
 
   // Started after the server is listening, so the first keep-alive ping cannot

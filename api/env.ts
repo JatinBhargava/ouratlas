@@ -22,7 +22,11 @@ import { VOICE_NEEDS_SIGN_IN } from "@/types";
  */
 // `||`, not `??`: APP_VERSION set to an empty string is a misconfiguration,
 // not a deliberate empty version, and should fall back rather than report "".
-export const APP_VERSION = process.env.APP_VERSION || versionOf("api");
+// "dev" falls back too: it is `Dockerfile.api`'s default for a build given no
+// version, which is how Render builds the image. versions.json is in that
+// image and is the version it was built from, so it is the better answer.
+const stamped = process.env.APP_VERSION;
+export const APP_VERSION = stamped && stamped !== "dev" ? stamped : versionOf("api");
 
 /**
  * Port the Express API listens on.
