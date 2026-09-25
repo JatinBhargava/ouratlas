@@ -1,0 +1,19 @@
+{
+  "board": {
+    "name": "Atlas — Team Board",
+    "url": "https://app.notion.com/p/2ccd0c5f145e4b6ebbbc5f564a63085f",
+    "databaseId": "2ccd0c5f-145e-4b6e-bbbc-5f564a63085f",
+    "dataSourceUrl": "collection://77f180d5-1f58-4c3a-98b3-ad9c269da725",
+    "dataSourceId": "77f180d5-1f58-4c3a-98b3-ad9c269da725"
+  },
+  "parentPage": {
+    "name": "Atlas Engineering",
+    "url": "https://app.notion.com/p/3e67b497118f81d6908ced06fbbc15d4",
+    "id": "3e67b497-118f-81d6-908c-ed06fbbc15d4"
+  },
+  "propertyNames": {
+    "note": "The story-ID column is addressed as 'userDefined:ID' in the SQLite view of this data source, because 'ID' collides with Notion's own column name.",
+    "id": "userDefined:ID"
+  },
+  "nextId": 1
+}
