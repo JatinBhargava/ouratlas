@@ -16,6 +16,7 @@ import { billingRoutes } from "@api/routes/billing";
 import { dodoWebhookRoutes } from "@api/routes/dodo-webhook";
 import { EDITOR_BODY_LIMIT, editorRoutes } from "@api/routes/editor";
 import { exportRoutes } from "@api/routes/exports";
+import { issueRoutes } from "@api/routes/issues";
 import { polishRoutes } from "@api/routes/polish";
 import { transcribeRoutes } from "@api/routes/transcribe";
 import { visitsRoutes } from "@api/routes/visits";
@@ -63,6 +64,7 @@ export function createApp(): Express {
   app.use("/api", transcribeRoutes);
   app.use("/api", editorRoutes);
   app.use("/api", exportRoutes);
+  app.use("/api", issueRoutes);
   app.use("/api", webhookRoutes);
   app.use("/api", dodoWebhookRoutes);
   app.use("/api/billing", billingRoutes);

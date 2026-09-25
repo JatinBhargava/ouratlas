@@ -252,6 +252,12 @@ export const exportLimit = {
 export const supabaseConfigured = Boolean(supabase.url && supabase.serviceRoleKey);
 
 /**
+ * The storage bucket saved issues live in, created by `schema.sql`. Saving
+ * needs nothing beyond Supabase, so it is on exactly when accounts are.
+ */
+export const issuesBucket = process.env.ISSUES_BUCKET?.trim() || "issues";
+
+/**
  * Billing needs a payment provider *and* Supabase: a subscription is worth
  * nothing if there is no account to attach it to.
  */
@@ -362,6 +368,7 @@ export function describe(): string {
     `   voice     ${voice()}`,
     `   editor    ${editorLine()}`,
     `   exports   ${exportCap()}`,
+    `   saving    ${supabaseConfigured ? `on (bucket ${issuesBucket})` : "off (needs Supabase)"}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");
 }

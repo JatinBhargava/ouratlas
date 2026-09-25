@@ -135,6 +135,8 @@ console.log(` dist/*.html  modulepreload ${[...firstLoad].join(", ") || "none"}`
 const LAZY_PAGES: Record<string, string> = {
   "/create": "src/pages/Create.tsx",
   "/account": "src/pages/Account.tsx",
+  "/magazines": "src/pages/Magazines.tsx",
+  "/read": "src/pages/Read.tsx",
 };
 
 async function lazyPreloads(source: string): Promise<string> {

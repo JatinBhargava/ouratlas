@@ -54,31 +54,46 @@ export async function pressPdf(leaves: HTMLElement[], title: string): Promise<Bl
 
   const drawn: JpegLeaf[] = [];
   for (const leaf of leaves) {
-    const letters = tagFirstLetters(leaf);
-    try {
-      const canvas = await domToCanvas(leaf, {
-        scale: SCALE,
-        backgroundColor: "#ffffff",
-        onCreateForeignObjectSvg: svg => {
-          if (!letters.css) return;
-          const style = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "style");
-          style.append(letters.css);
-          // First, which is where modern-screenshot puts its own `::before` and `::after` rules.
-          svg.prepend(style);
-        },
-      });
-      drawn.push({ bytes: await jpegOf(canvas), width: canvas.width, height: canvas.height });
-      // Give the backing store back now, not whenever the collector gets round to it.
-      canvas.width = 0;
-      canvas.height = 0;
-    } finally {
-      letters.untag();
-    }
+    const canvas = await drawLeaf(leaf, SCALE);
+    const bytes = new Uint8Array(await (await jpegOf(canvas, QUALITY)).arrayBuffer());
+    drawn.push({ bytes, width: canvas.width, height: canvas.height });
+    releaseCanvas(canvas);
   }
 
   // CSS pixels are 1/96 inch and PDF points 1/72, so a point is 4/3 of a pixel:
   // 520 × 693 comes out 390 × 519.75, the same sheet the print stylesheet asks for.
   return writePdf(drawn, { width: PAGE.width * 0.75, height: PAGE.height * 0.75 }, title);
+}
+
+/**
+ * Draws one leaf to a canvas at `scale` pixels per CSS pixel.
+ *
+ * Shared by the PDF and the carousel, so a slide is the same drawing as the
+ * printed page, drop cap and all, only at another size.
+ */
+export async function drawLeaf(leaf: HTMLElement, scale: number): Promise<HTMLCanvasElement> {
+  const letters = tagFirstLetters(leaf);
+  try {
+    return await domToCanvas(leaf, {
+      scale,
+      backgroundColor: "#ffffff",
+      onCreateForeignObjectSvg: svg => {
+        if (!letters.css) return;
+        const style = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "style");
+        style.append(letters.css);
+        // First, which is where modern-screenshot puts its own `::before` and `::after` rules.
+        svg.prepend(style);
+      },
+    });
+  } finally {
+    letters.untag();
+  }
+}
+
+/** Gives a canvas's backing store back now, not whenever the collector gets round to it. */
+export function releaseCanvas(canvas: HTMLCanvasElement) {
+  canvas.width = 0;
+  canvas.height = 0;
 }
 
 /**
@@ -129,10 +144,15 @@ function tagFirstLetters(leaf: HTMLElement): { css: string; untag: () => void } 
  * URL revoked first is a download that fails with nothing to show for it.
  */
 export function saveIssue(pdf: Blob, title: string) {
-  const url = URL.createObjectURL(pdf);
+  saveBlob(pdf, `${slugOf(title)}.pdf`);
+}
+
+/** Hands any file over as a download, on the same terms as the PDF. */
+export function saveBlob(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = fileNameOf(title);
+  link.download = name;
   document.body.append(link);
   link.click();
   link.remove();
@@ -140,28 +160,26 @@ export function saveIssue(pdf: Blob, title: string) {
 }
 
 /**
- * `atlas-kodaikanal.pdf`. Letters and their marks from any script are kept —
- * without `\p{M}` a Tamil or Hindi title would lose every vowel sign to a hyphen.
+ * `atlas-kodaikanal`, the stem every file of an issue is named from. Letters
+ * and their marks from any script are kept — without `\p{M}` a Tamil or Hindi
+ * title would lose every vowel sign to a hyphen.
  */
-function fileNameOf(title: string): string {
+export function slugOf(title: string): string {
   const slug = title
     .trim()
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
-  return `atlas-${slug || "issue"}.pdf`;
+  return `atlas-${slug || "issue"}`;
 }
 
 /** `toBlob` hands back null when the canvas is too large to encode — on a phone, the likeliest failure. */
-function jpegOf(canvas: HTMLCanvasElement): Promise<Uint8Array<ArrayBuffer>> {
+export function jpegOf(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      blob => {
-        if (!blob) return reject(new Error("A page could not be encoded."));
-        blob.arrayBuffer().then(buffer => resolve(new Uint8Array(buffer)), reject);
-      },
+      blob => (blob ? resolve(blob) : reject(new Error("A page could not be encoded."))),
       "image/jpeg",
-      QUALITY,
+      quality,
     );
   });
 }

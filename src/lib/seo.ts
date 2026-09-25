@@ -78,6 +78,17 @@ export const ROUTES: Record<string, Head> = {
     // the page never reads the noindex, and can still list the bare address.
     index: false,
   },
+  "/magazines": {
+    title: "My magazines — Atlas",
+    description: "The magazines you saved with Atlas, and the links that open them.",
+    index: false,
+  },
+  "/read": {
+    title: "A magazine made with Atlas",
+    description: "A travel magazine made from someone's own photographs and words. Turn the pages.",
+    // A saved issue is private to whoever holds its link; none of them belong in search.
+    index: false,
+  },
   "/about": {
     title: "About Atlas — a magazine press for your own trips",
     description:

@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { MagazinePage, PlateEditProvider } from "@/components/magazine/pages";
@@ -86,6 +94,12 @@ type IssueViewProps = {
   /** What has been drawn, by surface id, and how to keep a new stroke. */
   sketches?: Record<string, string>;
   onSketch?: (id: string, dataUrl: string) => void;
+  /**
+   * Draws a page in place of setting it, for an issue that arrives as
+   * finished pictures — a saved one, opened from its link. The book, the
+   * turn and the controls are the same either way.
+   */
+  drawPage?: (page: Page) => ReactNode;
 };
 
 export function IssueView({
@@ -99,6 +113,7 @@ export function IssueView({
   sketches,
   onSketch,
   tilt,
+  drawPage,
 }: IssueViewProps) {
   const spreads = useMemo(() => toSpreads(issue.pages), [issue.pages]);
   const [index, setIndex] = useState(0);
@@ -350,7 +365,9 @@ export function IssueView({
   };
 
   const draw = (page: Page | undefined) =>
-    page ? (
+    page && drawPage ? (
+      drawPage(page)
+    ) : page ? (
       <MagazinePage
         page={page}
         title={issue.title}

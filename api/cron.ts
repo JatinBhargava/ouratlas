@@ -1,16 +1,17 @@
 /**
  * Scheduled work inside the API process.
  *
- * There is one job today — a keep-alive ping — but it is written as a small
- * scheduler rather than a bare `setInterval` so a second job (pruning, a
- * digest, a reconciliation sweep) is a few lines rather than a refactor.
+ * Two jobs: a keep-alive ping, and the sweep that deletes expired saved
+ * issues. Written as a small scheduler rather than bare `setInterval`s so a
+ * third is a few lines rather than a refactor.
  *
  * Deliberately no cron library. Every job here runs on a fixed interval, and a
  * dependency that parses "* /10 * * * *" would earn its place only once a job
  * needs to run at a wall-clock time rather than every N minutes.
  */
 
-import { KEEPALIVE_INTERVAL_MS, keepAliveUrl } from "@api/env";
+import { KEEPALIVE_INTERVAL_MS, keepAliveUrl, supabaseConfigured } from "@api/env";
+import { pruneIssues } from "@api/routes/issues";
 
 type Job = {
   name: string;
@@ -81,6 +82,20 @@ export function startCron(): string[] {
       name: "keep-alive",
       everyMs: KEEPALIVE_INTERVAL_MS,
       run: () => keepAlive(url),
+    });
+  }
+
+  // Saved issues past their expiry are already unreachable; this frees the
+  // space they take. Hourly, and once at boot so a restart catches up.
+  if (supabaseConfigured) {
+    jobs.push({
+      name: "prune-issues",
+      everyMs: 60 * 60_000,
+      immediate: true,
+      run: async () => {
+        const gone = await pruneIssues();
+        if (gone > 0) console.log(`[cron] prune-issues removed ${gone}`);
+      },
     });
   }
 

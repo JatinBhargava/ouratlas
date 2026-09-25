@@ -246,3 +246,72 @@ export type VisitsResponse = {
   visitors: number;
   pageviews: number;
 };
+
+// --- Saved issues ----------------------------------------------------------
+//
+// A saved issue is its pages as pictures, sealed in the browser with a key
+// the server never sees in the link. The server keeps sealed bytes, a page
+// count and an expiry; the title, the pages and everything on them are inside
+// the seal.
+
+/** How long a saved issue lasts. "forever" is for paid plans only. */
+export type Keep = "1d" | "7d" | "30d" | "forever";
+
+/** In the order the save panel offers them. */
+export const KEEPS: readonly Keep[] = ["1d", "7d", "30d", "forever"];
+
+/** The most pages a saved issue may have: the composer's own ceiling. */
+export const SAVED_MAX_PAGES = 96;
+
+/**
+ * The most one sealed file may weigh. A slide is a few hundred kilobytes;
+ * this is headroom, not a target, and the bucket enforces it as well.
+ */
+export const SAVED_MAX_FILE_BYTES = 2 * 1024 * 1024;
+
+/** `POST /api/issues`: what is about to be uploaded. */
+export type SaveRequest = {
+  pages: number;
+  keep: Keep;
+  /**
+   * The issue's key, when it is to be kept in My magazines. Absent, the only
+   * copy is in the link, and the issue can be opened by no one without it.
+   */
+  key?: string;
+};
+
+/** One signed place to put one sealed file. */
+export type UploadSlot = { path: string; url: string };
+
+export type SaveResponse = {
+  id: string;
+  /** The sealed manifest's slot first, then one per page in order. */
+  manifest: UploadSlot;
+  pages: UploadSlot[];
+  /** ISO time, or null for forever. */
+  expiresAt: string | null;
+};
+
+/** `GET /api/issues/:id`: where to fetch a saved issue's sealed files. */
+export type SavedFiles = {
+  id: string;
+  pages: number;
+  expiresAt: string | null;
+  manifest: string;
+  urls: string[];
+};
+
+/** One row of My magazines. */
+export type SavedIssue = {
+  id: string;
+  pages: number;
+  createdAt: string;
+  expiresAt: string | null;
+  /** The key, where the issue was kept in My magazines; null when the link holds the only copy. */
+  key: string | null;
+  /** Signed, short-lived: the sealed manifest and the sealed cover, for the card. */
+  manifest: string;
+  cover: string;
+};
+
+export type SavedList = { issues: SavedIssue[]; canKeepForever: boolean };

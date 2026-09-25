@@ -310,3 +310,44 @@ begin
   return query select spent, true;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- issues: magazines saved to share by link, and kept in My magazines
+-- ---------------------------------------------------------------------------
+--
+-- A row is an owner, a page count and an expiry. The pages themselves are in
+-- the `issues` storage bucket, sealed in the browser (AES-GCM) before upload:
+-- the title, the pictures and the words are all inside the seal, so nothing
+-- here or in the bucket says what a magazine is about.
+--
+-- `key` is the issue's key, stored only when the reader chose to keep it in My
+-- magazines, so their list opens on any device. Left null, the only copy is in
+-- the link they shared, after the `#` — the part of an address a browser never
+-- sends — and the issue can be opened by nobody who does not hold that link.
+--
+-- No policies: only the API (service role) reads or writes this table, as with
+-- `waitlist`. The browser uploads straight to storage through signed URLs the
+-- API hands out, so the bucket has no policies either.
+create table if not exists public.issues (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  pages       integer not null check (pages between 1 and 96),
+  key         text,
+  -- Null is forever, which only a paid plan may choose.
+  expires_at  timestamptz,
+  -- False until every file is up; an unfinished save is never served or listed.
+  ready       boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists issues_user_created on public.issues (user_id, created_at desc);
+create index if not exists issues_expires on public.issues (expires_at) where expires_at is not null;
+
+alter table public.issues enable row level security;
+
+-- Private: files are reached only through short-lived signed URLs. 2 MB a file
+-- is headroom over a sealed 1080 × 1440 page, and stops the bucket being used
+-- as general storage through a signed upload URL.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('issues', 'issues', false, 2097152)
+on conflict (id) do nothing;

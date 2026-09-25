@@ -1,4 +1,4 @@
-import { Loader2, LogIn } from "lucide-react";
+import { Library, Loader2, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -19,9 +19,11 @@ function initials(name: string | null, email: string | null): string {
 /**
  * Sign-in for the nav bar.
  *
- * There is deliberately no dropdown: the only things to offer a signed-in
- * person are their plan and a way out, and both live on `/account`. The avatar
- * is a link there.
+ * There is deliberately no dropdown: a signed-in person gets their saved
+ * magazines, and the avatar, which links to `/account` for their plan and a
+ * way out. The archive link is an icon alone on a phone, and on the cover at
+ * every width: there the pill also carries the route and the masthead note,
+ * and the word pushed "Start a story" off its end.
  */
 export function AuthMenu({ className }: { className?: string }) {
   const { ready, configured, user, signInWithGoogle } = useAuth();
@@ -38,21 +40,35 @@ export function AuthMenu({ className }: { className?: string }) {
 
   if (user) {
     return (
-      <Link
-        to="/account"
-        aria-label="Your account"
-        title={user.name ?? user.email ?? "Your account"}
-        className={cn(
-          "flex size-8 items-center justify-center overflow-hidden rounded-full border border-stone-300 bg-white text-xs font-medium text-stone-700 transition-colors hover:border-stone-400",
-          className,
+      <>
+        <Link
+          to="/magazines"
+          aria-label="My magazines"
+          title="My magazines"
+          className={cn(
+          "flex h-8 items-center gap-1.5 rounded-full px-2 text-sm text-stone-600 transition-colors hover:text-stone-900",
+          pathname !== "/" && "sm:px-3",
         )}
-      >
-        {user.avatarUrl ? (
-          <img src={user.avatarUrl} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
-        ) : (
-          initials(user.name, user.email)
-        )}
-      </Link>
+        >
+          <Library className="size-4" />
+          <span className={cn("hidden", pathname !== "/" && "sm:inline")}>My magazines</span>
+        </Link>
+        <Link
+          to="/account"
+          aria-label="Your account"
+          title={user.name ?? user.email ?? "Your account"}
+          className={cn(
+            "flex size-8 items-center justify-center overflow-hidden rounded-full border border-stone-300 bg-white text-xs font-medium text-stone-700 transition-colors hover:border-stone-400",
+            className,
+          )}
+        >
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
+          ) : (
+            initials(user.name, user.email)
+          )}
+        </Link>
+      </>
     );
   }
 

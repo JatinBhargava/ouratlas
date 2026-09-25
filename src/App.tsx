@@ -35,6 +35,9 @@ import "@/styles/globals.css";
  */
 const Create = lazy(() => import("@/pages/Create").then(module => ({ default: module.Create })));
 const Account = lazy(() => import("@/pages/Account").then(module => ({ default: module.Account })));
+// A shared magazine and the archive: the book and the sealing, nothing more.
+const Read = lazy(() => import("@/pages/Read").then(module => ({ default: module.Read })));
+const Magazines = lazy(() => import("@/pages/Magazines").then(module => ({ default: module.Magazines })));
 
 /**
  * Everything inside the router, so a router can be chosen from outside.
@@ -59,6 +62,8 @@ export function AppRoutes() {
               <Route path="/create" element={<Create />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/magazines" element={<Magazines />} />
+              <Route path="/read" element={<Read />} />
 
               {/* Real pages, not placeholders: a merchant of record checks that
                   these exist and are reachable before it will process payments. */}

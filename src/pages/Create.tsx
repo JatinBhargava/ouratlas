@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ArrowLeft, Download, Loader2, LogIn, PenLine, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, Images, Link2, Loader2, LogIn, PenLine, Sparkles } from "lucide-react";
 
+import { CarouselPanel } from "@/components/carousel-panel";
 import { IssueView } from "@/components/magazine/issue-view";
 import { PrintSheet } from "@/components/magazine/print-sheet";
 import { FEED_MS, PressFeed } from "@/components/press-feed";
 import { PressInterlude } from "@/components/press-interlude";
+import { SavePanel } from "@/components/save-panel";
 import { MAX_PHOTOS, PhotoPicker } from "@/components/photo-picker";
 import { MIN_WORDS, MAX_WORDS, StoryEditor, type StoryTab } from "@/components/story-editor";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,12 @@ import type { Issue } from "@/lib/magazine/types";
 import type { ExportAllowance, Focus, Photo } from "@/types";
 
 const countWords = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
+
+/** The story's first sentence, cut to fit under a title: the reader's dek, and a saved issue's. */
+function dekOf(story: string): string {
+  const opening = story.trim().split(/(?<=[.!?])\s+/)[0] ?? "";
+  return opening.length > 180 ? `${opening.slice(0, 177).trimEnd()}…` : opening;
+}
 
 export function Create() {
   const { ready, user, configured, signInWithGoogle } = useAuth();
@@ -222,6 +230,16 @@ export function Create() {
    * one composed asks again.
    */
   const [blocked, setBlocked] = useState(false);
+  /** The carousel panel, over whichever view of the issue is showing. */
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  /** The save panel, likewise. */
+  const [saveOpen, setSaveOpen] = useState(false);
+  /**
+   * The issue an export was last granted for. Sending the same magazine out
+   * again — as a carousel after the PDF, or the PDF twice — spends nothing
+   * more; any change recomposes a new issue, and that one asks again.
+   */
+  const claimedFor = useRef<Issue | null>(null);
 
   /**
    * Brings back the desk that was put away before signing in.
@@ -622,6 +640,49 @@ export function Create() {
           : null;
 
   /**
+   * Spends one export on the issue about to go out, or says it may not.
+   *
+   * Claimed before anything is printed. A print dialog gives no reliable
+   * signal that a file was saved, so waiting for one would mean either never
+   * counting or counting things that never happened.
+   *
+   * Only a refusal stops the export. Every other failure — an older server
+   * with no such route, a timeout, an API that is simply down — lets it
+   * through: the limit exists to hold back people who have had their share,
+   * not to make the export depend on a second service being reachable.
+   */
+  const claim = async (): Promise<boolean> => {
+    if (issue && claimedFor.current === issue) return true;
+    if (allowance === null || allowance.limit !== null) {
+      try {
+        setAllowance(await claimExport());
+      } catch (cause) {
+        if (cause instanceof HttpError && cause.status === 402) {
+          setExportError(cause.message);
+          setBlocked(true);
+          return false;
+        }
+      }
+    }
+    claimedFor.current = issue;
+    return true;
+  };
+
+  /** The carousel's and the save panel's turn at the same question; a refusal closes the panel so the reason shows. */
+  const claimCarousel = async () => {
+    setExportError(null);
+    const granted = await claim();
+    if (!granted) setCarouselOpen(false);
+    return granted;
+  };
+  const claimSave = async () => {
+    setExportError(null);
+    const granted = await claim();
+    if (!granted) setSaveOpen(false);
+    return granted;
+  };
+
+  /**
    * Opens the print dialog — or, on a phone, makes the PDF itself — but not
    * before every photograph has decoded.
    *
@@ -641,28 +702,7 @@ export function Create() {
     const started = Date.now();
 
     try {
-
-    /*
-     * Claimed before anything is printed. A print dialog gives no reliable
-     * signal that a file was saved, so waiting for one would mean either never
-     * counting or counting things that never happened.
-     *
-     * Only a refusal stops the export. Every other failure — an older server
-     * with no such route, a timeout, an API that is simply down — lets it
-     * through: the limit exists to hold back people who have had their share,
-     * not to make the export depend on a second service being reachable.
-     */
-      if (allowance === null || allowance.limit !== null) {
-        try {
-          setAllowance(await claimExport());
-        } catch (cause) {
-          if (cause instanceof HttpError && cause.status === 402) {
-            setExportError(cause.message);
-            setBlocked(true);
-            return;
-          }
-        }
-      }
+      if (!(await claim())) return;
 
       await Promise.all(
         photos.map(async photo => {
@@ -889,10 +929,20 @@ export function Create() {
                   <Link to="/pricing">See the plans</Link>
                 </Button>
               ) : (
-                <Button className="rounded-full" disabled={exporting} onClick={exportIssue}>
-                  <Download className="size-4" />
-                  Export
-                </Button>
+                <>
+                  <Button variant="secondary" className="rounded-full" onClick={() => setSaveOpen(true)}>
+                    <Link2 className="size-4" />
+                    Save &amp; share
+                  </Button>
+                  <Button variant="secondary" className="rounded-full" onClick={() => setCarouselOpen(true)}>
+                    <Images className="size-4" />
+                    Carousel
+                  </Button>
+                  <Button className="rounded-full" disabled={exporting} onClick={exportIssue}>
+                    <Download className="size-4" />
+                    Export
+                  </Button>
+                </>
               )}
             </div>
           </header>
@@ -990,13 +1040,33 @@ export function Create() {
         {exporting && <PressFeed />}
 
         {!needsSignIn && !blocked && (
-          <PrintSheet
-            ref={sheet}
-            issue={issue}
-            tilt={tiltNow}
-            sketches={sketches}
-            offscreen={exporting && !printsToSize}
-          />
+          <>
+            <PrintSheet
+              ref={sheet}
+              issue={issue}
+              tilt={tiltNow}
+              sketches={sketches}
+              offscreen={exporting && !printsToSize}
+            />
+            <CarouselPanel
+              issue={issue}
+              tilt={tiltNow}
+              sketches={sketches}
+              open={carouselOpen}
+              onOpenChange={setCarouselOpen}
+              onPress={claimCarousel}
+            />
+            <SavePanel
+              issue={issue}
+              tilt={tiltNow}
+              sketches={sketches}
+              photographs={photos.length}
+              dek={dekOf(story)}
+              open={saveOpen}
+              onOpenChange={setSaveOpen}
+              onPress={claimSave}
+            />
+          </>
         )}
       </>
     );
@@ -1010,8 +1080,7 @@ export function Create() {
    * only: the tools live one click away on the proof.
    */
   if (issue && view !== null) {
-    const opening = story.trim().split(/(?<=[.!?])\s+/)[0] ?? "";
-    const dek = opening.length > 180 ? `${opening.slice(0, 177).trimEnd()}…` : opening;
+    const dek = dekOf(story);
     return (
       <>
         <div className="flex flex-col gap-8 print:hidden">
@@ -1038,10 +1107,20 @@ export function Create() {
                   <Link to="/pricing">See the plans</Link>
                 </Button>
               ) : (
-                <Button className="rounded-full" disabled={exporting} onClick={exportIssue}>
-                  <Download className="size-4" />
-                  Export
-                </Button>
+                <>
+                  <Button variant="secondary" className="rounded-full" onClick={() => setSaveOpen(true)}>
+                    <Link2 className="size-4" />
+                    Save &amp; share
+                  </Button>
+                  <Button variant="secondary" className="rounded-full" onClick={() => setCarouselOpen(true)}>
+                    <Images className="size-4" />
+                    Carousel
+                  </Button>
+                  <Button className="rounded-full" disabled={exporting} onClick={exportIssue}>
+                    <Download className="size-4" />
+                    Export
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -1079,7 +1158,7 @@ export function Create() {
 
 
           <p className="text-center text-sm text-white/80 drop-shadow-sm">
-            Set with Atlas. Laid out in your browser, and nothing of it was ever stored.
+            Set with Atlas. Laid out in your browser, and nothing of it is stored unless you save it — sealed, with the key in its link.
           </p>
           <p className="text-center text-xs text-white/70 drop-shadow-sm">
             {needsSignIn
@@ -1098,13 +1177,33 @@ export function Create() {
         {exporting && <PressFeed />}
 
         {!needsSignIn && !blocked && (
-          <PrintSheet
-            ref={sheet}
-            issue={issue}
-            tilt={tiltNow}
-            sketches={sketches}
-            offscreen={exporting && !printsToSize}
-          />
+          <>
+            <PrintSheet
+              ref={sheet}
+              issue={issue}
+              tilt={tiltNow}
+              sketches={sketches}
+              offscreen={exporting && !printsToSize}
+            />
+            <CarouselPanel
+              issue={issue}
+              tilt={tiltNow}
+              sketches={sketches}
+              open={carouselOpen}
+              onOpenChange={setCarouselOpen}
+              onPress={claimCarousel}
+            />
+            <SavePanel
+              issue={issue}
+              tilt={tiltNow}
+              sketches={sketches}
+              photographs={photos.length}
+              dek={dekOf(story)}
+              open={saveOpen}
+              onOpenChange={setSaveOpen}
+              onPress={claimSave}
+            />
+          </>
         )}
       </>
     );
