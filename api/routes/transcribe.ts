@@ -19,6 +19,7 @@ import express, { Router, type RequestHandler } from "express";
 
 import { transcription } from "@api/env";
 import { asyncRoute, HttpError, unconfigured } from "@api/http";
+import { burst, daily } from "@api/limits";
 import { authenticate } from "@api/supabase";
 import {
   TRANSCRIBE_PIECE_BYTES,
@@ -85,8 +86,12 @@ function explain(status: number, detail?: string): HttpError {
 transcribeRoutes.post(
   "/transcribe/session",
   // Every session costs money. For now it is open to anyone, signed in or
-  // not; the plan never matters.
+  // not; the plan never matters. So it is limited per person instead: a
+  // session is one press of the record button, and nobody presses it ten
+  // times in ten minutes or forty times in a day by hand.
   gate,
+  burst("voice-session", 10, 10 * 60_000),
+  daily("voice-session", 40, "recording limit"),
   asyncRoute(async (_req, res) => {
     if (!transcription.key) throw unconfigured("Voice transcription is", "OPENAI_API_KEY");
 
@@ -163,6 +168,11 @@ function contextOf(header: string | string[] | undefined): string | null {
 transcribeRoutes.post(
   "/transcribe/file",
   gate,
+  // A piece is at most two minutes of audio and a file is sent a piece at a
+  // time, so 45 in ten minutes lets a 90-minute recording through at once, and
+  // 90 a day is three hours of uploaded audio.
+  burst("voice-file", 45, 10 * 60_000),
+  daily("voice-file", 90, "three hours of uploaded audio"),
   readPiece,
   asyncRoute(async (req, res) => {
     if (!transcription.key) throw unconfigured("Voice transcription is", "OPENAI_API_KEY");

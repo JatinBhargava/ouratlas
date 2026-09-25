@@ -70,9 +70,10 @@ export type DeskDraft = {
   /**
    * What the reader was doing when they left to sign in. "press" (and absent,
    * on a draft parked before voice) resumes the export; "speak" goes back to
-   * the Speak tab and leaves the issue unpressed.
+   * the Speak tab and leaves the issue unpressed; "editor" goes back to the
+   * desk, where the editor now has an account to count against.
    */
-  resume?: "press" | "speak";
+  resume?: "press" | "speak" | "editor";
 };
 
 /** True when `park` ran and `take` has not yet collected it. */

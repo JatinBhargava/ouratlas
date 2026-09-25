@@ -22,9 +22,14 @@
  */
 
 import { polish, polishProvider, type PolishProviderName } from "@api/env";
+import { MAX_STORY_WORDS } from "@/types";
 
-/** Longest story we will accept, well above the 10,000-word editor cap. */
-export const MAX_CHARS = 80_000;
+/**
+ * Longest story we will accept, in characters: the longest plan's word limit
+ * at a generous eight characters a word. The plan's own limit is checked in
+ * words by the route.
+ */
+export const MAX_CHARS = MAX_STORY_WORDS * 8;
 
 /**
  * Words per request. The whole story in one call risks running past the output

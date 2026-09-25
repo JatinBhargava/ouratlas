@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
 import { startCheckout } from "@/lib/billing";
 import { cn } from "@/lib/utils";
-import type { PaidPlan, Plan as PlanId } from "@/types";
+import { PLAN_LIMITS, type PaidPlan, type Plan as PlanId } from "@/types";
 
 type Plan = {
   /** Matches the plan names the API and Stripe use. */
@@ -23,6 +23,9 @@ type Plan = {
   featured?: boolean;
 };
 
+/** "10,000", as the cards print a plan's word limit. */
+const words = (plan: keyof typeof PLAN_LIMITS) => PLAN_LIMITS[plan].words.toLocaleString("en");
+
 const PLANS: Plan[] = [
   {
     id: "free",
@@ -33,8 +36,15 @@ const PLANS: Plan[] = [
     description: "A keepsake from a single trip.",
     // "Three" must match EXPORT_LIMIT_FREE on the API. The server owns the
     // count; this line only reports it, and a page that promises a different
-    // number from the one enforced is worse than no number at all.
-    features: ["10 photos per story", "Up to 5,000 words", "Three exports a month", "Two layout themes"],
+    // number from the one enforced is worse than no number at all. The words
+    // and the AI allowances are read from PLAN_LIMITS, which the API enforces.
+    features: [
+      "10 photos per story",
+      `Up to ${words("free")} words`,
+      `${PLAN_LIMITS.free.editor} AI layouts a month`,
+      "Three exports a month",
+      "Two layout themes",
+    ],
     cta: "Start your first story",
   },
   {
@@ -46,7 +56,8 @@ const PLANS: Plan[] = [
     description: "For more than one story a year.",
     features: [
       "Unlimited stories",
-      "Up to 10,000 words",
+      `Up to ${words("traveller")} words`,
+      `${PLAN_LIMITS.traveller.editor} AI layouts and ${PLAN_LIMITS.traveller.polish} copy-desk passes a month`,
       "Print-quality PDF export",
       "All layout themes",
       "Voice transcription",
@@ -63,6 +74,8 @@ const PLANS: Plan[] = [
     description: "Full control of how it looks.",
     features: [
       "Everything in Traveller",
+      `Up to ${words("cartographer")} words`,
+      `${PLAN_LIMITS.cartographer.editor} AI layouts and ${PLAN_LIMITS.cartographer.polish} copy-desk passes a month`,
       "Custom fonts and palettes",
       "Editable page layouts",
       "Bulk export",

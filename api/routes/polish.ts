@@ -10,8 +10,9 @@ import { Router } from "express";
 
 import { asyncRoute, HttpError } from "@api/http";
 import { activeProvider, editPass, isMode, MAX_CHARS, toPasses, UpstreamError } from "@api/polish";
+import { burst, claimAi, releaseAi } from "@api/limits";
 import { authenticate, getActiveSubscription } from "@api/supabase";
-import { hasCopyDesk } from "@/types";
+import { countWords, hasCopyDesk, PLAN_LIMITS } from "@/types";
 
 export const polishRoutes = Router();
 
@@ -20,6 +21,7 @@ polishRoutes.post(
   // The only route in the app that costs money per call, so it is the only
   // one that needs to know who is asking.
   authenticate,
+  burst("polish", 3, 10 * 60_000),
   asyncRoute(async (req, res) => {
     // Entitlement before configuration: someone on the free plan should be
     // told about their plan, not about this server's API keys.
@@ -53,6 +55,15 @@ polishRoutes.post(
     if (typeof story !== "string" || story.trim().length === 0) throw new HttpError(400, "Nothing to edit.");
     if (story.length > MAX_CHARS) throw new HttpError(413, "That story is too long to edit in one go.");
 
+    const words = countWords(story);
+    if (words > PLAN_LIMITS[subscription.plan].words) {
+      throw new HttpError(413, `Your plan sets stories of up to ${PLAN_LIMITS[subscription.plan].words.toLocaleString("en")} words; this one has ${words.toLocaleString("en")}.`);
+    }
+
+    // Claimed once the request is known to be sound, and given back below if
+    // the provider fails before a word has streamed.
+    await claimAi(req.user!.id, subscription.plan, "polish");
+
     const passes = toPasses(story, mode);
 
     // Run the first pass far enough to know it works. A bad key or a rate
@@ -64,6 +75,8 @@ polishRoutes.post(
     try {
       head = await opening.next();
     } catch (error) {
+      // Nothing has streamed, so the pass is given back.
+      await releaseAi(req.user!.id, "polish");
       if (error instanceof UpstreamError) throw new HttpError(error.status === 429 ? 429 : 502, error.message);
       throw new HttpError(502, "The copy desk could not be reached.");
     }

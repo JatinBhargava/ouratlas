@@ -9,7 +9,7 @@
  */
 
 import { versionOf } from "../scripts/versions";
-import { VOICE_NEEDS_SIGN_IN } from "@/types";
+import { EDITOR_NEEDS_SIGN_IN, PLAN_LIMITS, VOICE_NEEDS_SIGN_IN } from "@/types";
 
 /**
  * The version this process is running.
@@ -357,7 +357,11 @@ function editorLine(): string {
       ? `off (EDITOR_PROVIDER=${editor.preference} but its key is not set)`
       : "off (set ANTHROPIC_API_KEY or OPENAI_API_KEY)";
   }
-  return `on (${chosen}, ${chosen === "openai" ? editor.openaiModel : editor.anthropicModel})`;
+  // Behind sign-in, the editor needs accounts to count its allowance against.
+  if (EDITOR_NEEDS_SIGN_IN && !supabaseConfigured) return "off (needs Supabase — the editor is for signed-in readers)";
+  const model = chosen === "openai" ? editor.openaiModel : editor.anthropicModel;
+  const allowance = Object.values(PLAN_LIMITS).map(limits => limits.editor).join("/");
+  return `on (${chosen}, ${model}, ${allowance} designs a month)`;
 }
 
 /** One line per integration at boot, so a missing key is obvious. */

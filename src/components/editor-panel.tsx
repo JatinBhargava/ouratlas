@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Loader2, Undo2, WandSparkles } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
+import { Loader2, LogIn, Undo2, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { readAiAllowance } from "@/lib/ai";
 import { askEditor, type EditorResult } from "@/lib/editor";
-import type { Photo } from "@/types";
+import { PLAN_LIMITS, type AiAllowance, type Photo } from "@/types";
 
 type EditorPanelProps = {
   title: string;
@@ -13,6 +15,12 @@ type EditorPanelProps = {
   onApply: (plan: EditorResult) => () => void;
   /** Takes the suggested title when the reader had already written one. */
   onUseTitle: (title: string) => void;
+  /** The editor wants an account and there is none yet. */
+  needsSignIn: boolean;
+  /** There is an account, so there is an allowance to show. */
+  signedIn: boolean;
+  /** Signs in from here, putting the desk away first so it comes back. */
+  onSignIn: () => void;
 };
 
 /**
@@ -23,8 +31,25 @@ type EditorPanelProps = {
  * choices lean on each other: the cover it picks is the cover for the style it
  * picks. Undo puts every one of them back.
  */
-export function EditorPanel({ title, story, photos, onApply, onUseTitle }: EditorPanelProps) {
+export function EditorPanel({ title, story, photos, onApply, onUseTitle, needsSignIn, signedIn, onSignIn }: EditorPanelProps) {
   const [working, setWorking] = useState(false);
+  /** This month's designs, as the server counts them; null until asked or when it cannot say. */
+  const [allowance, setAllowance] = useState<AiAllowance | null>(null);
+
+  const refresh = useCallback(() => {
+    readAiAllowance()
+      .then(setAllowance)
+      // An older server, or accounts switched off: the button still works and
+      // the server still refuses when it must, so the count is simply not shown.
+      .catch(() => setAllowance(null));
+  }, []);
+
+  useEffect(() => {
+    if (signedIn) refresh();
+    else setAllowance(null);
+  }, [signedIn, refresh]);
+
+  const spent = allowance !== null && allowance.editor.remaining === 0;
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [suggested, setSuggested] = useState<string | null>(null);
@@ -47,6 +72,8 @@ export function EditorPanel({ title, story, photos, onApply, onUseTitle }: Edito
       setError(cause instanceof Error ? cause.message : "The editor could not be reached.");
     } finally {
       setWorking(false);
+      // After a failure too: a design that failed upstream is given back.
+      if (signedIn) refresh();
     }
   };
 
@@ -71,17 +98,44 @@ export function EditorPanel({ title, story, photos, onApply, onUseTitle }: Edito
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-full"
-          onClick={() => void run()}
-          disabled={working || photos.length === 0}
-        >
-          {working ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
-          {working ? "Making up your issue…" : notes.length > 0 ? "Ask again" : "Lay it out for me"}
-        </Button>
+        {needsSignIn ? (
+          <Button variant="outline" size="sm" className="rounded-full" onClick={onSignIn}>
+            <LogIn className="size-4" />
+            Sign in to use the editor
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => void run()}
+            disabled={working || photos.length === 0 || spent}
+          >
+            {working ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
+            {working ? "Making up your issue…" : notes.length > 0 ? "Ask again" : "Lay it out for me"}
+          </Button>
+        )}
       </div>
+
+      {needsSignIn && (
+        <p className="text-xs text-stone-500">
+          Free with an account: {PLAN_LIMITS.free.editor} designs a month on Wanderer, and your desk is kept exactly as
+          it is while you sign in.
+        </p>
+      )}
+      {allowance && (
+        <p className={`text-xs tabular-nums ${spent ? "text-red-600" : "text-stone-500"}`}>
+          {spent ? "This month's designs are used" : `${allowance.editor.remaining} of ${allowance.editor.limit} designs left this month`}
+          {allowance.plan !== "cartographer" && (
+            <>
+              {" · "}
+              <Link to="/pricing" className="underline underline-offset-2">
+                {allowance.plan === "free" ? `Traveller includes ${PLAN_LIMITS.traveller.editor}` : `Cartographer includes ${PLAN_LIMITS.cartographer.editor}`}
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       {photos.length === 0 && <p className="text-xs text-stone-500">Add a photograph first — the editor starts from those.</p>}
       {working && (

@@ -9,7 +9,7 @@ import { FEED_MS, PressFeed } from "@/components/press-feed";
 import { PressInterlude } from "@/components/press-interlude";
 import { SavePanel } from "@/components/save-panel";
 import { MAX_PHOTOS, PhotoPicker } from "@/components/photo-picker";
-import { MIN_WORDS, MAX_WORDS, StoryEditor, type StoryTab } from "@/components/story-editor";
+import { MIN_WORDS, StoryEditor, type StoryTab } from "@/components/story-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,8 @@ import { TypePanel } from "@/components/type-panel";
 import { clampType, DEFAULT_TYPE, type TypeChoice } from "@/lib/magazine/typography";
 import { defaultDesign, type CustomBox, type CustomDesign, type CustomLeaves, type CustomSlot } from "@/lib/magazine/custom";
 import type { Issue } from "@/lib/magazine/types";
-import type { ExportAllowance, Focus, Photo } from "@/types";
+import { countWords, EDITOR_NEEDS_SIGN_IN, PLAN_LIMITS, type ExportAllowance, type Focus, type Photo } from "@/types";
 
-const countWords = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
 
 /** The story's first sentence, cut to fit under a title: the reader's dek, and a saved issue's. */
 function dekOf(story: string): string {
@@ -44,7 +43,12 @@ function dekOf(story: string): string {
 }
 
 export function Create() {
-  const { ready, user, configured, signInWithGoogle } = useAuth();
+  const { ready, user, configured, signInWithGoogle, billing } = useAuth();
+  /**
+   * The longest story this reader's plan sends to press. Signed out, that is
+   * Wanderer's; the paid limits arrive with the plan from `/api/me`.
+   */
+  const maxWords = PLAN_LIMITS[billing.plan].words;
   /**
    * Which view of a pressed issue is showing: the finished issue to read
    * ("issue"), or the proof with its tools ("proof"). In the address rather
@@ -257,8 +261,8 @@ export function Create() {
       if (draft) {
         // A reader who signed in to record wanted the microphone, not the
         // press: they go back to the Speak tab with the desk as they left it.
-        if (draft.resume === "speak") {
-          setStoryTab("speak");
+        if (draft.resume === "speak" || draft.resume === "editor") {
+          if (draft.resume === "speak") setStoryTab("speak");
           setStaging(false);
         } else {
           returning.current = true;
@@ -635,8 +639,8 @@ export function Create() {
       ? "Add at least one photo"
       : wordCount < MIN_WORDS
         ? `Write about ${(MIN_WORDS - wordCount).toLocaleString()} more words`
-        : wordCount > MAX_WORDS
-          ? "Trim the story to 10,000 words"
+        : wordCount > maxWords
+          ? `Trim the story to ${maxWords.toLocaleString()} words${billing.plan === "cartographer" ? "" : ", or see the plans for longer ones"}`
           : null;
 
   /**
@@ -749,7 +753,7 @@ export function Create() {
    * page is knowingly about to be destroyed, so it is the only moment the
    * write is worth making.
    */
-  const signIn = async (resume: "press" | "speak") => {
+  const signIn = async (resume: "press" | "speak" | "editor") => {
     setSignInError(null);
     setSigningIn(true);
 
@@ -1269,6 +1273,7 @@ export function Create() {
             story={story}
             onChange={setStory}
             wordCount={wordCount}
+            maxWords={maxWords}
             onPolish={value => {
               setStory(value);
               setPolished(true);
@@ -1277,7 +1282,16 @@ export function Create() {
             openOn={storyTab}
           />
 
-          <EditorPanel title={title} story={story} photos={photos} onApply={applyEditor} onUseTitle={setTitle} />
+          <EditorPanel
+            title={title}
+            story={story}
+            photos={photos}
+            onApply={applyEditor}
+            onUseTitle={setTitle}
+            needsSignIn={EDITOR_NEEDS_SIGN_IN && configured && !user}
+            signedIn={!!user}
+            onSignIn={() => void signIn("editor")}
+          />
         </CardContent>
       </Card>
 

@@ -96,10 +96,14 @@ export const TRANSCRIBE_PIECE_BYTES = 4_400_000;
 
 /**
  * Whether the editor (the agent that lays out an issue from the photographs
- * and the story) needs an account. Off for now, like voice; both halves read
- * it, the server to gate `/api/editor` and the desk to decide what to offer.
+ * and the story) needs an account. Both halves read it, the server to gate
+ * `/api/editor` and the desk to decide what to offer.
+ *
+ * On, because every design is a paid call to the strongest model there is and
+ * the monthly allowance below has to be counted against someone. Open to
+ * anyone, one script could spend the month's budget in an afternoon.
  */
-export const EDITOR_NEEDS_SIGN_IN = false;
+export const EDITOR_NEEDS_SIGN_IN = true;
 
 /** Most photographs an issue holds, and so the most the editor is ever shown. */
 export const EDITOR_MAX_PHOTOS = 10;
@@ -237,6 +241,54 @@ export type ExportAllowance = {
   limit: number | null;
   remaining: number | null;
 };
+
+// --- What each plan allows --------------------------------------------------
+//
+// One table for the pricing card, the desk and the server, so the three cannot
+// promise, show and enforce different numbers. The server enforces; the desk
+// only reads it to say how much is left.
+
+/** The AI calls counted against a monthly allowance. */
+export type AiKind = "editor" | "polish";
+
+export type PlanLimits = {
+  /** Longest story the desk will send to press. */
+  words: number;
+  /** Designs from the editor ("Lay it out for me") a calendar month. */
+  editor: number;
+  /** Passes through the copy desk a calendar month. Zero means not included. */
+  polish: number;
+};
+
+/**
+ * Sized to one trip a month with room to change your mind.
+ *
+ * A design costs roughly ₹18–35 in model time and a copy-desk pass on a long
+ * story about ₹10, so the paid allowances cap the worst case at about twice
+ * the plan's price while an ordinary month — one issue, two or three designs,
+ * one polish — stays well inside it. Wanderer gets enough to feel the editor,
+ * not enough to run a travel blog on it.
+ */
+export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
+  free: { words: 5_000, editor: 2, polish: 0 },
+  traveller: { words: 10_000, editor: 5, polish: 5 },
+  cartographer: { words: 15_000, editor: 12, polish: 15 },
+};
+
+/** The longest story any plan allows: what the API's size checks are set from. */
+export const MAX_STORY_WORDS = Math.max(...Object.values(PLAN_LIMITS).map(limits => limits.words));
+
+/** Words in a story, counted the same way on both halves. */
+export function countWords(text: string): number {
+  const trimmed = text.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
+/** One month's use of one allowance. */
+export type Meter = { used: number; limit: number; remaining: number };
+
+/** `GET /api/ai/allowance`: what this account has left this month. */
+export type AiAllowance = { plan: Plan; words: number; editor: Meter; polish: Meter };
 
 /** `POST /api/waitlist` */
 export type WaitlistResponse = { ok: true; alreadySubscribed: boolean };

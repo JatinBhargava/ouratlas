@@ -9,12 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 
 export const MIN_WORDS = 500;
-export const MAX_WORDS = 10000;
 
 type StoryEditorProps = {
   story: string;
   onChange: (value: string) => void;
   wordCount: number;
+  /** The longest story the reader's plan allows (`PLAN_LIMITS`). */
+  maxWords: number;
   /** Called when an edited version is kept, so the colophon can say so. */
   onPolish: (value: string) => void;
   /** Signs in from the Speak tab, putting the desk away first so it comes back. */
@@ -26,8 +27,8 @@ type StoryEditorProps = {
 export type StoryTab = "write" | "speak";
 
 
-export function StoryEditor({ story, onChange, wordCount, onPolish, onSignIn, openOn }: StoryEditorProps) {
-  const over = wordCount > MAX_WORDS;
+export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, onSignIn, openOn }: StoryEditorProps) {
+  const over = wordCount > maxWords;
 
   const [tab, setTab] = useState<StoryTab>(openOn ?? "write");
   useEffect(() => {
@@ -78,7 +79,7 @@ export function StoryEditor({ story, onChange, wordCount, onPolish, onSignIn, op
       <div className="flex items-baseline justify-between">
         <h2 className="font-editorial text-2xl text-stone-900">The copy</h2>
         <p className={`text-sm tabular-nums ${over ? "text-red-600" : "text-stone-500"}`}>
-          {wordCount.toLocaleString()} / {MAX_WORDS.toLocaleString()} words
+          {wordCount.toLocaleString()} / {maxWords.toLocaleString()} words
         </p>
       </div>
 
@@ -130,7 +131,7 @@ export function StoryEditor({ story, onChange, wordCount, onPolish, onSignIn, op
             dictation={{ ...dictation, start: startDictation }}
             upload={{ ...upload, start: startUpload }}
             onSignIn={onSignIn}
-            full={wordCount >= MAX_WORDS}
+            full={wordCount >= maxWords}
           />
         </TabsContent>
       </Tabs>

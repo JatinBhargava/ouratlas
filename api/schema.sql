@@ -271,7 +271,9 @@ create policy "exports: read own"
 -- The check and the increment are one statement so two clicks cannot both read
 -- "two spent" and both write "three". Doing it in the API would mean a read,
 -- a decision and a write with a gap in the middle, and the gap is exactly
--- where a double-click lands.
+-- where a double-click lands. The check lives in the upsert's WHERE, which
+-- runs against the locked row; an earlier version read the count first and
+-- had that same gap inside the function.
 --
 -- The limit is passed in rather than stored: it belongs to the server's
 -- configuration (`EXPORT_LIMIT_FREE`), and a plan can change between one
@@ -286,16 +288,8 @@ declare
   month_start date := date_trunc('month', now() at time zone 'utc')::date;
   spent integer;
 begin
-  select e.times into spent
-    from public.exports e
-   where e.user_id = p_user and e.period_start = month_start;
-
-  spent := coalesce(spent, 0);
-
-  -- At the limit: report the count and change nothing, so a refused attempt
-  -- does not quietly cost the reader an export.
-  if spent >= p_limit then
-    return query select spent, false;
+  if p_limit < 1 then
+    return query select 0, false;
     return;
   end if;
 
@@ -305,9 +299,18 @@ begin
      set times = case when e.period_start = month_start then e.times + 1 else 1 end,
          period_start = month_start,
          updated_at = now()
+   where e.period_start <> month_start or e.times < p_limit
   returning e.times into spent;
 
-  return query select spent, true;
+  if found then
+    return query select spent, true;
+    return;
+  end if;
+
+  -- At the limit: report the count and change nothing, so a refused attempt
+  -- does not quietly cost the reader an export.
+  select e.times into spent from public.exports e where e.user_id = p_user;
+  return query select coalesce(spent, 0), false;
 end;
 $$;
 
@@ -351,3 +354,87 @@ alter table public.issues enable row level security;
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('issues', 'issues', false, 2097152)
 on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- ai_usage: this month's AI calls per account, per kind
+-- ---------------------------------------------------------------------------
+--
+-- The same shape and the same reasoning as `exports`: a counter, not a ledger,
+-- with the month stored beside it so a spent month reads as zero and the next
+-- claim overwrites it. A row is an account, a kind ('editor' or 'polish'), a
+-- number and a month. Nothing about what was sent is recorded.
+--
+-- The limit is passed in by the API from `PLAN_LIMITS` in `src/types`, so the
+-- pricing card and the enforcement read one table.
+create table if not exists public.ai_usage (
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  kind         text not null check (kind in ('editor', 'polish')),
+  used         integer not null default 0,
+  period_start date not null,
+  updated_at   timestamptz not null default now(),
+  primary key (user_id, kind)
+);
+
+alter table public.ai_usage enable row level security;
+
+drop policy if exists "ai_usage: read own" on public.ai_usage;
+create policy "ai_usage: read own"
+  on public.ai_usage for select
+  using (auth.uid() = user_id);
+
+-- Spend one, or refuse. The limit is decided inside the upsert, in its WHERE,
+-- which Postgres evaluates against the row it has locked: two tabs pressing
+-- "Lay it out for me" at once queue on that lock, and the second sees the
+-- first's increment. Reading the count first and writing it after would let
+-- both read "four used" and both write — twenty concurrent claims against a
+-- limit of five granted six that way.
+create or replace function public.claim_ai(p_user uuid, p_kind text, p_limit integer)
+returns table (used integer, granted boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  month_start date := date_trunc('month', now() at time zone 'utc')::date;
+  spent integer;
+begin
+  if p_limit < 1 then
+    return query select 0, false;
+    return;
+  end if;
+
+  insert into public.ai_usage as a (user_id, kind, used, period_start, updated_at)
+  values (p_user, p_kind, 1, month_start, now())
+  on conflict (user_id, kind) do update
+     set used = case when a.period_start = month_start then a.used + 1 else 1 end,
+         period_start = month_start,
+         updated_at = now()
+   where a.period_start <> month_start or a.used < p_limit
+  returning a.used into spent;
+
+  if found then
+    return query select spent, true;
+    return;
+  end if;
+
+  -- Refused: report the count and change nothing.
+  select a.used into spent from public.ai_usage a where a.user_id = p_user and a.kind = p_kind;
+  return query select coalesce(spent, 0), false;
+end;
+$$;
+
+-- Gives one back when the call it paid for failed before the reader got
+-- anything: an outage at the provider should not cost them a design. Never
+-- below zero, and only within the month it was claimed in.
+create or replace function public.release_ai(p_user uuid, p_kind text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.ai_usage
+     set used = greatest(used - 1, 0), updated_at = now()
+   where user_id = p_user
+     and kind = p_kind
+     and period_start = date_trunc('month', now() at time zone 'utc')::date;
+$$;
