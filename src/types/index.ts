@@ -371,5 +371,27 @@ export type SavedIssue = {
 
 export type SavedList = { issues: SavedIssue[]; canKeepForever: boolean };
 
+/**
+ * `GET /api/admin/stats`: the editors' dashboard. Counts and sums only — no
+ * email, name, photograph or word of anyone's appears here. A figure the
+ * server could not read (a table not yet created, say) is null rather than
+ * failing the whole page.
+ */
+export type AdminStats = {
+  generatedAt: string;
+  readers: { total: number | null; last7: number | null; last30: number | null; daily: { day: string; count: number }[] };
+  subscriptions: { active: number; traveller: number; cartographer: number; cancelling: number } | null;
+  /** Amounts in the currency's minor unit (paise, cents), one row per currency. */
+  revenue: { currency: string; thisMonth: number; last30: number; allTime: number }[] | null;
+  recentPayments: { amount: number; currency: string; at: string; provider: string; status: string }[] | null;
+  magazines: { saved: number | null; last30: number | null; keptForever: number | null };
+  exportsThisMonth: number | null;
+  ai: { editor: number; polish: number } | null;
+  layouts: { pending: number; accepted: number; rejected: number; likes: number } | null;
+  waitlist: { total: number | null; last30: number | null };
+  /** The API's own boot report: one line per integration, on or off. */
+  system: string[];
+};
+
 /** Layouts readers submit to the directory, and the sanitizer every submission passes through. */
 export * from "./layouts";

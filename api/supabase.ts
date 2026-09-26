@@ -11,7 +11,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { RequestHandler } from "express";
 
-import { supabase as config, supabaseConfigured, type BillingProvider } from "@api/env";
+import { isAdmin, supabase as config, supabaseConfigured, type BillingProvider } from "@api/env";
 import { HttpError, unconfigured } from "@api/http";
 
 let client: SupabaseClient | null = null;
@@ -55,6 +55,15 @@ export const authenticate: RequestHandler = (req, _res, next) => {
       next();
     })
     .catch(next);
+};
+
+/**
+ * Lets through only the editors (`ADMIN_EMAILS`); mounted after
+ * `authenticate`, which is what puts the email here to check. The browser is
+ * told who is an editor only so it can decide what to show.
+ */
+export const requireAdmin: RequestHandler = (req, _res, next) => {
+  next(isAdmin(req.user?.email) ? undefined : new HttpError(403, "This is for the Atlas editors only."));
 };
 
 /** The row mirroring an account, created by the trigger in `schema.sql`. */
@@ -109,7 +118,7 @@ export type Subscription = {
  * Dodo's `paused` is a deliberate suspension, and its `pending` is a mandate
  * that has not been confirmed — neither has been paid for.
  */
-const LIVE = new Set(["active", "trialing", "past_due", "on_hold"]);
+export const LIVE = new Set(["active", "trialing", "past_due", "on_hold"]);
 
 /**
  * The subscription that decides what someone can do, or null for a free

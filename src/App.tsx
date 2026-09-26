@@ -45,6 +45,7 @@ const EditorInChief = lazy(() => import("@/pages/Poster").then(module => ({ defa
 // The layout directory and the editors' queue behind it.
 const Layouts = lazy(() => import("@/pages/Layouts").then(module => ({ default: module.Layouts })));
 const AdminLayouts = lazy(() => import("@/pages/AdminLayouts").then(module => ({ default: module.AdminLayouts })));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then(module => ({ default: module.AdminDashboard })));
 
 /**
  * Everything inside the router, so a router can be chosen from outside.
@@ -75,6 +76,7 @@ export function AppRoutes() {
               <Route path="/editor-in-chief" element={<EditorInChief />} />
               <Route path="/layouts" element={<Layouts />} />
               <Route path="/admin/layouts" element={<AdminLayouts />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
               {/* Real pages, not placeholders: a merchant of record checks that
                   these exist and are reachable before it will process payments. */}

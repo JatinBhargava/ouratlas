@@ -141,6 +141,7 @@ const LAZY_PAGES: Record<string, string> = {
   "/editor-in-chief": "src/pages/Poster.tsx",
   "/layouts": "src/pages/Layouts.tsx",
   "/admin/layouts": "src/pages/AdminLayouts.tsx",
+  "/admin/dashboard": "src/pages/AdminDashboard.tsx",
 };
 
 async function lazyPreloads(source: string): Promise<string> {

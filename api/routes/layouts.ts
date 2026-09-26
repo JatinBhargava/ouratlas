@@ -22,7 +22,7 @@ import { APP_URL, isAdmin, layoutsBucket, supabaseConfigured } from "@api/env";
 import { asyncRoute, HttpError } from "@api/http";
 import { burst } from "@api/limits";
 import { escapeHtml, sendMail } from "@api/mail";
-import { admin, authenticate } from "@api/supabase";
+import { admin, authenticate, requireAdmin } from "@api/supabase";
 import {
   LAYOUT_KINDS,
   LAYOUT_LIMITS,
@@ -95,10 +95,6 @@ const identify: RequestHandler = (req, _res, next) => {
       next();
     })
     .catch(() => next());
-};
-
-const requireAdmin: RequestHandler = (req, _res, next) => {
-  next(isAdmin(req.user?.email) ? undefined : new HttpError(403, "Only the editors can review layouts."));
 };
 
 function idParam(req: Request): string {

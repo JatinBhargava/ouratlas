@@ -1,4 +1,4 @@
-import { Library, Loader2, LogIn } from "lucide-react";
+import { Gauge, Library, Loader2, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -26,7 +26,7 @@ function initials(name: string | null, email: string | null): string {
  * and the word pushed "Start a story" off its end.
  */
 export function AuthMenu({ className }: { className?: string }) {
-  const { ready, configured, user, signInWithGoogle } = useAuth();
+  const { ready, configured, user, admin, signInWithGoogle } = useAuth();
   const [busy, setBusy] = useState(false);
   const { pathname, hash } = useLocation();
 
@@ -41,6 +41,17 @@ export function AuthMenu({ className }: { className?: string }) {
   if (user) {
     return (
       <>
+        {/* The editors only. The API checks for itself; this only decides whether the door is drawn. */}
+        {admin && (
+          <Link
+            to="/admin/dashboard"
+            aria-label="Dashboard"
+            title="Dashboard"
+            className="flex size-8 items-center justify-center rounded-full text-stone-600 transition-colors hover:text-stone-900"
+          >
+            <Gauge className="size-4" />
+          </Link>
+        )}
         <Link
           to="/magazines"
           aria-label="My magazines"

@@ -85,6 +85,11 @@ export const ROUTES: Record<string, Head> = {
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.6 },
   },
+  "/admin/dashboard": {
+    title: "Dashboard — Atlas",
+    description: "How Atlas is doing, for the editors.",
+    index: false,
+  },
   "/admin/layouts": {
     title: "Review queue — Atlas",
     description: "Where the editors review submitted layouts.",

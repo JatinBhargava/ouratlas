@@ -194,9 +194,14 @@ export function Layouts() {
           would use again.
         </p>
         {admin && (
-          <Link to="/admin/layouts" className="flex w-fit items-center gap-1.5 text-sm text-white underline underline-offset-2 drop-shadow-sm">
-            <ShieldCheck className="size-4" /> Review queue
-          </Link>
+          <div className="flex gap-4">
+            <Link to="/admin/layouts" className="flex w-fit items-center gap-1.5 text-sm text-white underline underline-offset-2 drop-shadow-sm">
+              <ShieldCheck className="size-4" /> Review queue
+            </Link>
+            <Link to="/admin/dashboard" className="w-fit text-sm text-white underline underline-offset-2 drop-shadow-sm">
+              Dashboard
+            </Link>
+          </div>
         )}
       </header>
 

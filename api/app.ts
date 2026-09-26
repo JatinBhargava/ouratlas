@@ -11,6 +11,7 @@ import path from "node:path";
 
 import { APP_VERSION, serveStatic } from "@api/env";
 import { errorHandler, notFound } from "@api/http";
+import { adminRoutes } from "@api/routes/admin";
 import { authRoutes } from "@api/routes/auth";
 import { billingRoutes } from "@api/routes/billing";
 import { dodoWebhookRoutes } from "@api/routes/dodo-webhook";
@@ -69,6 +70,7 @@ export function createApp(): Express {
   app.use("/api", exportRoutes);
   app.use("/api", issueRoutes);
   app.use("/api", layoutRoutes);
+  app.use("/api", adminRoutes);
   app.use("/api", webhookRoutes);
   app.use("/api", dodoWebhookRoutes);
   app.use("/api/billing", billingRoutes);
