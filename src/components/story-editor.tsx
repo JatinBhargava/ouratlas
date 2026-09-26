@@ -7,6 +7,7 @@ import { RecordingBar, SpeakPanel, UploadBar, useDictation, useFileTranscription
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { SAMPLE_STORY } from "@/lib/sample-story";
 
 export const MIN_WORDS = 500;
 
@@ -20,6 +21,8 @@ type StoryEditorProps = {
   onPolish: (value: string) => void;
   /** Signs in from the Speak tab, putting the desk away first so it comes back. */
   onSignIn: () => void;
+  /** Signs in from the copy desk, coming back to the Write tab rather than Speak. */
+  onSignInToEdit: () => void;
   /** Which tab to show; the page sets "speak" when a reader returns from signing in to record. */
   openOn?: StoryTab;
 };
@@ -27,7 +30,7 @@ type StoryEditorProps = {
 export type StoryTab = "write" | "speak";
 
 
-export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, onSignIn, openOn }: StoryEditorProps) {
+export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, onSignIn, onSignInToEdit, openOn }: StoryEditorProps) {
   const over = wordCount > maxWords;
 
   const [tab, setTab] = useState<StoryTab>(openOn ?? "write");
@@ -52,12 +55,14 @@ export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, on
   };
   const dictation = useDictation(setAfterBase);
   const upload = useFileTranscription(setAfterBase);
+  // The sample is only there to try the press with; a recording replaces it rather than following it.
+  const baseFrom = (current: string) => (current === SAMPLE_STORY ? "" : current.trimEnd());
   const startDictation = () => {
-    base.current = latest.current.trimEnd();
+    base.current = baseFrom(latest.current);
     return dictation.start();
   };
   const startUpload = (file: File) => {
-    base.current = latest.current.trimEnd();
+    base.current = baseFrom(latest.current);
     return upload.start(file);
   };
   const transcribing = upload.name !== null;
@@ -111,6 +116,28 @@ export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, on
             placeholder="Where did you go, who were you with, and what do you want to remember about it?"
             className="min-h-64 resize-y bg-white/70 text-base leading-relaxed"
           />
+          {/* Only one of the two at a time: the sample never lands on top of the
+              reader's words, and clearing asks first unless all it loses is the sample. */}
+          {!listening &&
+            (story.trim() ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (story === SAMPLE_STORY || window.confirm("Clear the whole story? This can't be undone.")) onChange("");
+                }}
+                className="self-start text-sm font-medium text-stone-600 underline underline-offset-2 hover:text-stone-900"
+              >
+                Clear all
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onChange(SAMPLE_STORY)}
+                className="self-start text-sm font-medium text-stone-600 underline underline-offset-2 hover:text-stone-900"
+              >
+                Try it with a sample story
+              </button>
+            ))}
           <Progress
             value={Math.min(100, (wordCount / MIN_WORDS) * 100)}
             aria-label={`Story length: ${wordCount.toLocaleString()} of ${MIN_WORDS.toLocaleString()} words`}
@@ -123,7 +150,7 @@ export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, on
           </p>
 
           {/* Out of the way while recording: an edit kept now would be written over by the next phrase. */}
-          {!listening && <CopyDesk story={story} onAccept={onPolish} />}
+          {!listening && <CopyDesk story={story} onAccept={onPolish} onSignIn={onSignInToEdit} />}
         </TabsContent>
 
         <TabsContent value="speak" className="mt-4">

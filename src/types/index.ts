@@ -46,17 +46,17 @@ export type PaidPlan = "traveller" | "cartographer";
 export type Plan = "free" | PaidPlan;
 
 /**
- * Plans that include the copy desk.
+ * Whether a plan includes the copy desk at all: any monthly allowance of
+ * passes in `PLAN_LIMITS` (below) does.
  *
- * The one entitlement both halves of the app have to agree on, so it lives
- * here rather than being spelt out twice. The server enforces it in
- * `api/routes/polish.ts`; the browser uses it only to decide what to show,
- * because a check made in the browser is a check the browser could skip.
+ * Read from the allowance rather than a separate list so the two cannot
+ * disagree — Wanderer was once paid-only here while its allowance said
+ * otherwise. The server enforces the count in `api/limits.ts`; the browser
+ * uses this only to decide what to show, because a check made in the browser
+ * is a check the browser could skip.
  */
-export const COPY_DESK_PLANS: readonly Plan[] = ["traveller", "cartographer"];
-
 export function hasCopyDesk(plan: Plan): boolean {
-  return COPY_DESK_PLANS.includes(plan);
+  return PLAN_LIMITS[plan].polish > 0;
 }
 
 /**
@@ -266,11 +266,12 @@ export type PlanLimits = {
  * A design costs roughly ₹18–35 in model time and a copy-desk pass on a long
  * story about ₹10, so the paid allowances cap the worst case at about twice
  * the plan's price while an ordinary month — one issue, two or three designs,
- * one polish — stays well inside it. Wanderer gets enough to feel the editor,
- * not enough to run a travel blog on it.
+ * one polish — stays well inside it. Wanderer gets two of each: enough to feel
+ * the editor and the copy desk on a trip, not enough to run a travel blog on
+ * them.
  */
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
-  free: { words: 5_000, editor: 2, polish: 0 },
+  free: { words: 5_000, editor: 2, polish: 2 },
   traveller: { words: 10_000, editor: 5, polish: 5 },
   cartographer: { words: 15_000, editor: 12, polish: 15 },
 };

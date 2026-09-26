@@ -51,7 +51,7 @@ export function About() {
 
       <Clause heading="What it costs">
         <p>
-          Wanderer is free and exports a magazine. Traveller and Cartographer add longer issues and the copy desk. The{" "}
+          Wanderer is free and exports a magazine. Traveller and Cartographer add longer issues and more from the editor and the copy desk. The{" "}
           <Link to="/pricing" className="underline underline-offset-2">
             pricing page
           </Link>{" "}

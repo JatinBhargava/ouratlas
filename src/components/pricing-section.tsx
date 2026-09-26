@@ -41,7 +41,7 @@ const PLANS: Plan[] = [
     features: [
       "10 photos per story",
       `Up to ${words("free")} words`,
-      `${PLAN_LIMITS.free.editor} AI layouts a month`,
+      `${PLAN_LIMITS.free.editor} AI layouts and ${PLAN_LIMITS.free.polish} copy-desk passes a month`,
       "Three exports a month",
       "Two layout themes",
     ],

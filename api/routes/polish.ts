@@ -10,8 +10,8 @@ import { Router } from "express";
 
 import { asyncRoute, HttpError } from "@api/http";
 import { activeProvider, editPass, isMode, MAX_CHARS, toPasses, UpstreamError } from "@api/polish";
-import { burst, claimAi, releaseAi } from "@api/limits";
-import { authenticate, getActiveSubscription } from "@api/supabase";
+import { burst, claimAi, planOf, releaseAi } from "@api/limits";
+import { authenticate } from "@api/supabase";
 import { countWords, hasCopyDesk, PLAN_LIMITS } from "@/types";
 
 export const polishRoutes = Router();
@@ -23,14 +23,15 @@ polishRoutes.post(
   authenticate,
   burst("polish", 3, 10 * 60_000),
   asyncRoute(async (req, res) => {
-    // Entitlement before configuration: someone on the free plan should be
-    // told about their plan, not about this server's API keys.
+    // Entitlement before configuration: someone whose plan has no passes
+    // should be told about their plan, not about this server's API keys.
     //
     // Checked here against the database rather than trusted from the request,
     // because the browser is told the same thing only so it can grey a button
-    // out — the copy desk itself is bought and sold here.
-    const subscription = await getActiveSubscription(req.user!.id);
-    if (!subscription || !hasCopyDesk(subscription.plan)) {
+    // out. Every plan has passes today (Wanderer two a month); the count
+    // itself is spent in `claimAi` below.
+    const plan = await planOf(req.user!.id);
+    if (!hasCopyDesk(plan)) {
       throw new HttpError(
         402,
         "The copy desk comes with Traveller and Cartographer. Everything else — the pages, the layout, the export — stays yours on Wanderer.",
@@ -56,13 +57,13 @@ polishRoutes.post(
     if (story.length > MAX_CHARS) throw new HttpError(413, "That story is too long to edit in one go.");
 
     const words = countWords(story);
-    if (words > PLAN_LIMITS[subscription.plan].words) {
-      throw new HttpError(413, `Your plan sets stories of up to ${PLAN_LIMITS[subscription.plan].words.toLocaleString("en")} words; this one has ${words.toLocaleString("en")}.`);
+    if (words > PLAN_LIMITS[plan].words) {
+      throw new HttpError(413, `Your plan sets stories of up to ${PLAN_LIMITS[plan].words.toLocaleString("en")} words; this one has ${words.toLocaleString("en")}.`);
     }
 
     // Claimed once the request is known to be sound, and given back below if
     // the provider fails before a word has streamed.
-    await claimAi(req.user!.id, subscription.plan, "polish");
+    await claimAi(req.user!.id, plan, "polish");
 
     const passes = toPasses(story, mode);
 

@@ -1,17 +1,20 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { Loader2, Lock, Sparkles, Undo2 } from "lucide-react";
+import { Loader2, Lock, LogIn, Sparkles, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { readAiAllowance } from "@/lib/ai";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { streamPolish, type PolishMode } from "@/lib/polish";
-import { hasCopyDesk } from "@/types";
+import { hasCopyDesk, PLAN_LIMITS, type AiAllowance } from "@/types";
 
 type CopyDeskProps = {
   story: string;
   onAccept: (story: string) => void;
+  /** Signs in from here, putting the desk away first so it comes back as it was. */
+  onSignIn: () => void;
 };
 
 /**
@@ -44,13 +47,30 @@ const MODES: { id: PolishMode; label: string; action: string; blurb: string }[] 
  * plainly rather than burying it: the words are sent away, the reply comes
  * back, and you choose whether to keep it. Photographs are never part of it.
  */
-export function CopyDesk({ story, onAccept }: CopyDeskProps) {
+export function CopyDesk({ story, onAccept, onSignIn }: CopyDeskProps) {
   // The server decides this too, and its answer is the one that counts. This
   // is only so a plan that does not include the desk says so before somebody
-  // writes 2,000 words and then hits a 402.
+  // writes 2,000 words and then hits a 402. Every plan has passes now, so the
+  // lock is kept for a plan set back to none; the usual gate is signing in,
+  // because the passes are counted against an account.
   const { user, billing, loadingBilling } = useAuth();
-  const subscribed = Boolean(user) && hasCopyDesk(billing.plan);
-  const locked = !loadingBilling && !subscribed;
+  const signedOut = !user;
+  const locked = !signedOut && !loadingBilling && !hasCopyDesk(billing.plan);
+
+  /** This month's passes, as the server counts them; null until asked or when it cannot say. */
+  const [allowance, setAllowance] = useState<AiAllowance | null>(null);
+  const refresh = useCallback(() => {
+    readAiAllowance()
+      .then(setAllowance)
+      // An older server: the button still works and the server still refuses
+      // when it must, so the count is simply not shown.
+      .catch(() => setAllowance(null));
+  }, []);
+  useEffect(() => {
+    if (user) refresh();
+    else setAllowance(null);
+  }, [user, refresh]);
+  const spent = allowance !== null && allowance.polish.remaining === 0;
 
   const [mode, setMode] = useState<PolishMode>("edit");
   const [draft, setDraft] = useState("");
@@ -78,6 +98,8 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
     } finally {
       setWorking(false);
       abort.current = null;
+      // After a failure too: a pass that failed before any text arrived is given back.
+      refresh();
     }
   };
 
@@ -105,7 +127,12 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
    * a span the tooltip can hang off — and the reason is worth reading, since
    * nothing else in the magazine is behind a plan.
    */
-  const action = locked ? (
+  const action = signedOut ? (
+    <Button variant="outline" size="sm" className="rounded-full" onClick={onSignIn}>
+      <LogIn className="size-4" />
+      Sign in to use the copy desk
+    </Button>
+  ) : locked ? (
     <Tooltip>
       <TooltipTrigger asChild>
         <span
@@ -137,7 +164,7 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
       size="sm"
       className="rounded-full"
       onClick={run}
-      disabled={loadingBilling || story.trim().length === 0}
+      disabled={loadingBilling || spent || story.trim().length === 0}
     >
       <Sparkles className="size-4" />
       {draft ? "Try again" : chosen.action}
@@ -156,7 +183,7 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
                 key={option.id}
                 type="button"
                 onClick={() => choose(option.id)}
-                disabled={working || locked}
+                disabled={working || locked || signedOut}
                 aria-pressed={option.id === mode}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs transition-colors disabled:opacity-50",
@@ -181,6 +208,26 @@ export function CopyDesk({ story, onAccept }: CopyDeskProps) {
 
         {action}
       </div>
+
+      {signedOut && (
+        <p className="text-xs text-stone-500">
+          Free with an account: {PLAN_LIMITS.free.polish} passes a month on Wanderer, and your desk is kept exactly as it
+          is while you sign in.
+        </p>
+      )}
+      {allowance && allowance.polish.limit > 0 && (
+        <p className={`text-xs tabular-nums ${spent ? "text-red-600" : "text-stone-500"}`}>
+          {spent ? "This month's passes are used" : `${allowance.polish.remaining} of ${allowance.polish.limit} passes left this month`}
+          {allowance.plan !== "cartographer" && (
+            <>
+              {" · "}
+              <Link to="/pricing" className="underline underline-offset-2">
+                {allowance.plan === "free" ? `Traveller includes ${PLAN_LIMITS.traveller.polish}` : `Cartographer includes ${PLAN_LIMITS.cartographer.polish}`}
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 

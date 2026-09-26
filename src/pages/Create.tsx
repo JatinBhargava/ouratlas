@@ -1279,6 +1279,8 @@ export function Create() {
               setPolished(true);
             }}
             onSignIn={() => void signIn("speak")}
+            // "editor" is the resume that means "back to the desk, unpressed", which is where the copy desk lives.
+            onSignInToEdit={() => void signIn("editor")}
             openOn={storyTab}
           />
 
