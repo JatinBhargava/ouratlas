@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router";
 
+import { PageErrorBoundary } from "@/components/page-error";
 import { AuthProvider } from "@/lib/auth";
 import { RootLayout } from "@/layouts/RootLayout";
 import { Home } from "@/pages/Home";
@@ -64,33 +65,35 @@ export function AppRoutes() {
           {/* No fallback drawn: the nav and the scene are already on screen,
               the wait is one small request, and there is nothing below the
               page for a placeholder's removal to shift. */}
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/create" element={<Create />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/magazines" element={<Magazines />} />
-              <Route path="/read" element={<Read />} />
-              <Route path="/poster" element={<Poster />} />
-              <Route path="/editor-in-chief" element={<EditorInChief />} />
-              <Route path="/layouts" element={<Layouts />} />
-              <Route path="/admin/layouts" element={<AdminLayouts />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <PageErrorBoundary>
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/create" element={<Create />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/magazines" element={<Magazines />} />
+                <Route path="/read" element={<Read />} />
+                <Route path="/poster" element={<Poster />} />
+                <Route path="/editor-in-chief" element={<EditorInChief />} />
+                <Route path="/layouts" element={<Layouts />} />
+                <Route path="/admin/layouts" element={<AdminLayouts />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
-              {/* Real pages, not placeholders: a merchant of record checks that
-                  these exist and are reachable before it will process payments. */}
-              <Route path="/about" element={<About />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/refunds" element={<Refunds />} />
-              <Route path="/contact" element={<Contact />} />
-              {/* Last, and matching anything left: an address with no page of
-                  its own arrives as 404.html, and React Router still has to
-                  draw something for it. */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+                {/* Real pages, not placeholders: a merchant of record checks that
+                    these exist and are reachable before it will process payments. */}
+                <Route path="/about" element={<About />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/refunds" element={<Refunds />} />
+                <Route path="/contact" element={<Contact />} />
+                {/* Last, and matching anything left: an address with no page of
+                    its own arrives as 404.html, and React Router still has to
+                    draw something for it. */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </PageErrorBoundary>
         </RootLayout>
 
         {/*

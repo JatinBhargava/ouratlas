@@ -41,9 +41,16 @@ import type { Issue } from "@/lib/magazine/types";
 import { countWords, EDITOR_NEEDS_SIGN_IN, PLAN_LIMITS, sanitizeDesign, type ExportAllowance, type Focus, type Photo } from "@/types";
 
 
-/** The story's first sentence, cut to fit under a title: the reader's dek, and a saved issue's. */
+/**
+ * The story's first sentence, cut to fit under a title: the reader's dek, and a saved issue's.
+ *
+ * Matched forwards rather than split on a lookbehind. Safari before iOS 16.4
+ * cannot parse a lookbehind at all, and a regex it cannot parse is not one
+ * failed match but a syntax error that stops this whole page's code loading.
+ */
 function dekOf(story: string): string {
-  const opening = story.trim().split(/(?<=[.!?])\s+/)[0] ?? "";
+  const text = story.trim();
+  const opening = /^[\s\S]*?[.!?](?=\s)/.exec(text)?.[0] ?? text;
   return opening.length > 180 ? `${opening.slice(0, 177).trimEnd()}…` : opening;
 }
 

@@ -58,6 +58,19 @@ for (const output of result.outputs) {
   console.log(` ${path.relative(process.cwd(), output.path)}  ${(output.size / 1024).toFixed(1)} KB`);
 }
 
+// No regex lookbehind in anything the browser runs. Safari before iOS 16.4
+// cannot parse one, and a pattern it cannot parse is a syntax error that stops
+// the whole chunk loading: the desk once went blank on those iPhones for one
+// `(?<=` picking a sentence out of the story. Bun does not rewrite regexes for
+// older targets, so the check is here. Match forwards instead.
+for (const output of result.outputs) {
+  if (!output.path.endsWith(".js")) continue;
+  const code = await Bun.file(output.path).text();
+  if (/\(\?<[=!]/.test(code)) {
+    throw new Error(`build.ts: ${path.basename(output.path)} contains a regex lookbehind, which Safari before iOS 16.4 cannot parse`);
+  }
+}
+
 // One HTML file per route, each carrying its own head.
 //
 // The app renders every route in the browser, but crawlers that run no
