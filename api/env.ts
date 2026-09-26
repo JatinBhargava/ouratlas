@@ -262,6 +262,41 @@ export const supabaseConfigured = Boolean(supabase.url && supabase.serviceRoleKe
 export const issuesBucket = process.env.ISSUES_BUCKET?.trim() || "issues";
 
 /**
+ * Submitted layouts: the bucket their sample pictures live in (private,
+ * created by `schema.sql`), and who may review them.
+ *
+ * Reviewers are named by email rather than by a role column because there
+ * are a handful of them and they change by redeploy, not by anyone signing
+ * up; a column would need its own way in to be set. Compared lower-cased,
+ * since Google hands back whatever case the address was registered in.
+ */
+export const layoutsBucket = process.env.LAYOUTS_BUCKET?.trim() || "layouts";
+export const adminEmails = new Set(
+  (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map(entry => entry.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+export function isAdmin(email: string | null | undefined): boolean {
+  return Boolean(email) && adminEmails.has(email!.toLowerCase());
+}
+
+/**
+ * Email, through Resend: today only the note a submitter gets when their
+ * layout is reviewed. Both values are needed — Resend refuses to send from an
+ * address on a domain it has not verified, so a key alone would fail on the
+ * first send rather than at boot. Off, a review still lands and the status
+ * shows on the submitter's own page; only the email is skipped.
+ */
+export const mail = {
+  resendKey: process.env.RESEND_API_KEY?.trim() || null,
+  /** e.g. `Atlas <layouts@ouratlas.co.in>`, on a domain verified in Resend. */
+  from: process.env.EMAIL_FROM?.trim() || null,
+};
+export const mailConfigured = Boolean(mail.resendKey && mail.from);
+
+/**
  * Billing needs a payment provider *and* Supabase: a subscription is worth
  * nothing if there is no account to attach it to.
  */
@@ -377,6 +412,8 @@ export function describe(): string {
     `   editor    ${editorLine()}`,
     `   exports   ${exportCap()}`,
     `   saving    ${supabaseConfigured ? `on (bucket ${issuesBucket})` : "off (needs Supabase)"}`,
+    `   layouts   ${supabaseConfigured ? `on (bucket ${layoutsBucket}, ${adminEmails.size} reviewer${adminEmails.size === 1 ? "" : "s"})` : "off (needs Supabase)"}`,
+    `   mail      ${mailConfigured ? `on (resend, from ${mail.from})` : "off (set RESEND_API_KEY and EMAIL_FROM)"}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
   ].join("\n");
 }

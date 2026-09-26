@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,14 +17,19 @@ import {
   Square,
   SquareDashed,
   Trash2,
+  Send,
   Undo2,
 } from "lucide-react";
 
+import { SubmitLayout } from "@/components/layouts/submit-layout";
 import { Sheet } from "@/components/poster/box-view";
 import { PosterCanvas } from "@/components/poster/canvas";
 import { Inspector, type Edits, type Layer, type PageAlign } from "@/components/poster/inspector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth";
+import { popRecord, putRecord } from "@/lib/draft";
+import { canvasToSample, getLayout } from "@/lib/layouts";
 import { useHistory } from "@/lib/poster/history";
 import {
   blankPage,
@@ -59,7 +65,7 @@ async function loadPhoto(file: File): Promise<Photo> {
     URL.revokeObjectURL(url);
     throw new Error(`${file.name} could not be opened. Try a JPEG or PNG.`);
   }
-  return { id: newId("ph"), url, width: image.naturalWidth, height: image.naturalHeight, name: file.name };
+  return { id: newId("ph"), url, width: image.naturalWidth, height: image.naturalHeight, name: file.name, file };
 }
 
 /** A name for the downloaded file, from the first words on the first page that has any. */
@@ -101,6 +107,22 @@ const MODES = {
 
 type Mode = keyof typeof MODES;
 
+/** Where the studio is parked across the sign-in redirect, beside the desk's own record. */
+const PARKED = "studio";
+
+type Parked = {
+  mode: Mode;
+  doc: PosterDoc;
+  photos: Omit<Photo, "url">[];
+  /** Reopen the submit panel on the way back. */
+  submit: boolean;
+};
+
+function isParked(value: unknown): value is Parked {
+  const parked = value as Partial<Parked> | null;
+  return Boolean(parked && typeof parked.mode === "string" && Array.isArray(parked.doc?.pages) && Array.isArray(parked.photos));
+}
+
 /** The next free spot for a new box, stepped so a second one never lands exactly on the first. */
 function spot(count: number) {
   return { x: 60 + (count % 5) * 18, y: 80 + (count % 7) * 22 };
@@ -124,7 +146,12 @@ function Studio({ mode }: { mode: Mode }) {
   const [photos, setPhotos] = useState<Record<string, Photo>>({});
   const [showGuides, setShowGuides] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "png" | "sample" | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const { signInWithGoogle } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const current = Math.min(index, doc.pages.length - 1);
   const page = doc.pages[current]!;
@@ -398,9 +425,77 @@ function Studio({ mode }: { mode: Mode }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  /* ------------------------------------------- arriving and leaving */
+
+  // Back from signing in (the page was parked, photographs and all), or sent
+  // here from the directory with a layout to start from. Once, on arrival.
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (arrived.current) return;
+    arrived.current = true;
+    const layout = new URLSearchParams(location.search).get("layout");
+
+    void popRecord(PARKED).then(async value => {
+      if (isParked(value) && value.mode === mode) {
+        const restored = Object.fromEntries(value.photos.map(photo => [photo.id, { ...photo, url: URL.createObjectURL(photo.file) }]));
+        setPhotos(restored);
+        history.reset(value.doc);
+        setIndex(0);
+        if (value.submit) setSubmitting(true);
+        return;
+      }
+      if (!layout) return;
+      try {
+        const found = await getLayout(layout);
+        if (found.kind !== "poster" || !("pages" in found.design)) throw new Error("That is a magazine layout; it opens on the desk.");
+        const pages = found.design.pages.map(item => clonePage(item as unknown as PosterPage));
+        history.reset({ pages: config.pages ? pages : pages.slice(0, 1) });
+        setIndex(0);
+        setNotice(`Started from “${found.title}”${found.author ? ` by ${found.author}` : ""}. Every box is yours to change.`);
+      } catch (problem) {
+        setError((problem as Error).message);
+      } finally {
+        navigate(location.pathname, { replace: true });
+      }
+    });
+    // Once, on arrival: the address and the parked record are read a single time.
+  }, []);
+
+  /** Puts the page away with its photographs, signs in, and comes back to the submit panel. */
+  const signInToSubmit = async () => {
+    const parked: Parked = { mode, doc, photos: Object.values(photos).map(({ url: _url, ...photo }) => photo), submit: true };
+    await putRecord(PARKED, parked);
+    await signInWithGoogle(location.pathname);
+  };
+
   /* ---------------------------------------------------------- export */
 
   const sheets = useRef<HTMLDivElement>(null);
+
+  /**
+   * The sample a submission carries: this page, drawn with its photographs
+   * and words exactly as the press would draw it.
+   */
+  const makeSample = useCallback(async () => {
+    setSelected(null);
+    setEditing(null);
+    setExporting("sample");
+    try {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const holder = sheets.current;
+      if (!holder) throw new Error("The page could not be prepared.");
+      await Promise.all(Array.from(holder.querySelectorAll("img")).map(image => image.decode().catch(() => undefined)));
+      const press = await import("@/lib/magazine/press");
+      const canvas = await press.drawLeaf(holder.children[current] as HTMLElement, 2);
+      try {
+        return canvasToSample(canvas);
+      } finally {
+        press.releaseCanvas(canvas);
+      }
+    } finally {
+      setExporting(null);
+    }
+  }, [current]);
 
   /**
    * Draws the pages with the magazine's own press, so a poster comes out
@@ -492,6 +587,16 @@ function Studio({ mode }: { mode: Mode }) {
               <Button variant="ghost" size="sm" className={tool} disabled={exporting !== null} onClick={() => void download("png")} title="This page as a picture">
                 {exporting === "png" ? <Loader2 className="size-4 animate-spin" /> : <FileImage className="size-4" />} PNG
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={tool}
+                disabled={!hasWork}
+                onClick={() => setSubmitting(true)}
+                title="Send this layout to the directory"
+              >
+                <Send className="size-4" /> Submit layout
+              </Button>
               <Button size="sm" className="h-9 rounded-full px-4" disabled={exporting !== null} onClick={() => void download("pdf")}>
                 {exporting === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                 Download PDF
@@ -499,6 +604,14 @@ function Studio({ mode }: { mode: Mode }) {
             </div>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
+          {notice && (
+            <p className="text-sm text-emerald-800">
+              {notice}{" "}
+              <Link to="/layouts?kind=poster" className="underline underline-offset-2">
+                More layouts
+              </Link>
+            </p>
+          )}
 
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             {/* The page */}
@@ -639,7 +752,17 @@ function Studio({ mode }: { mode: Mode }) {
         }}
       />
 
-      {/* Full-size pages for the press, laid out only while a download is being made. */}
+      {submitting && (
+        <SubmitLayout
+          kind="poster"
+          design={{ pages: config.pages ? doc.pages : [page] }}
+          makeSample={makeSample}
+          onSignIn={() => void signInToSubmit()}
+          onClose={() => setSubmitting(false)}
+        />
+      )}
+
+      {/* Full-size pages for the press, laid out only while a download or a sample is being made. */}
       {exporting && (
         <div ref={sheets} aria-hidden style={{ position: "fixed", top: 0, left: -10000, width: SHEET.width, pointerEvents: "none" }}>
           {doc.pages.map(item => (

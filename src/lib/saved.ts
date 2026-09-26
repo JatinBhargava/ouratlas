@@ -109,6 +109,11 @@ export async function openManifest(url: string, keyText: string): Promise<Manife
   return JSON.parse(new TextDecoder().decode(await unseal(key, await fetchSealed(url)))) as Manifest;
 }
 
+/** Opens one sealed page as the JPEG it was before it was sealed. */
+export async function openPageBlob(url: string, key: CryptoKey): Promise<Blob> {
+  return new Blob([await unseal(key, await fetchSealed(url))], { type: "image/jpeg" });
+}
+
 /** Opens one sealed page as an object URL the caller revokes. */
 export async function openPage(url: string, key: CryptoKey): Promise<string> {
   const bytes = await unseal(key, await fetchSealed(url));

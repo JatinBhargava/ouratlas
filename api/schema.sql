@@ -438,3 +438,89 @@ as $$
      and kind = p_kind
      and period_start = date_trunc('month', now() at time zone 'utc')::date;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- layouts: templates readers submit to the directory
+-- ---------------------------------------------------------------------------
+--
+-- The one place a reader's work is kept by design, and only a template of it:
+-- the API rebuilds every submission through `sanitizeDesign` (src/types/
+-- layouts.ts), which drops every photograph and replaces every word, before
+-- it is written here. The sample picture the submitter attached lives in the
+-- private `layouts` bucket, reached through short-lived signed URLs; a
+-- rejected one is cleared a month after the decision (api/cron.ts).
+--
+-- No policies: only the API (service role) reads or writes, as with `issues`.
+create table if not exists public.layouts (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  kind         text not null check (kind in ('poster', 'magazine')),
+  title        text not null check (char_length(title) between 1 and 60),
+  description  text not null default '' check (char_length(description) <= 280),
+  design       jsonb not null,
+  sample_path  text,
+  status       text not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
+  review_note  text check (char_length(review_note) <= 500),
+  reviewed_at  timestamptz,
+  -- Set when the decision email went out; null when mail is off or it failed.
+  notified_at  timestamptz,
+  -- Kept in step by `toggle_layout_like`, so the directory can sort without counting.
+  likes        integer not null default 0 check (likes >= 0),
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists layouts_directory_top on public.layouts (kind, likes desc, created_at desc) where status = 'accepted';
+create index if not exists layouts_directory_new on public.layouts (kind, created_at desc) where status = 'accepted';
+create index if not exists layouts_owner on public.layouts (user_id, created_at desc);
+create index if not exists layouts_queue on public.layouts (status, created_at);
+
+alter table public.layouts enable row level security;
+
+-- One like per account per layout: the primary key is what enforces it.
+create table if not exists public.layout_likes (
+  layout_id   uuid not null references public.layouts (id) on delete cascade,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (layout_id, user_id)
+);
+
+alter table public.layout_likes enable row level security;
+
+-- Likes a layout, or takes the like back, and returns where it now stands.
+-- One function so the like row and the count cannot disagree: the insert or
+-- delete decides, and the count moves by exactly what it did. Only accepted
+-- layouts can be liked.
+create or replace function public.toggle_layout_like(p_layout uuid, p_user uuid)
+returns table (liked boolean, likes integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  total integer;
+begin
+  if not exists (select 1 from public.layouts l where l.id = p_layout and l.status = 'accepted') then
+    raise exception 'layout not found';
+  end if;
+
+  delete from public.layout_likes ll where ll.layout_id = p_layout and ll.user_id = p_user;
+  if found then
+    update public.layouts l set likes = greatest(l.likes - 1, 0) where l.id = p_layout returning l.likes into total;
+    return query select false, total;
+    return;
+  end if;
+
+  insert into public.layout_likes (layout_id, user_id) values (p_layout, p_user) on conflict do nothing;
+  if found then
+    update public.layouts l set likes = l.likes + 1 where l.id = p_layout returning l.likes into total;
+  else
+    select l.likes into total from public.layouts l where l.id = p_layout;
+  end if;
+  return query select true, total;
+end;
+$$;
+
+-- Private, like `issues`. 2 MB is headroom over the 1.5 MB the API accepts.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('layouts', 'layouts', false, 2097152)
+on conflict (id) do nothing;

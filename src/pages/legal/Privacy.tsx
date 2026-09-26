@@ -97,6 +97,21 @@ export function Privacy() {
         </p>
       </Clause>
 
+      <Clause heading="Layouts you submit to the directory">
+        <p>
+          Submitting a layout is the one time we keep something you made, and only because you ask us to. We store the
+          design as a template — its boxes, fonts and colours, with every photograph removed and every word replaced by
+          placeholder text before it is saved — together with the name and description you give it, and the sample
+          picture you attach, which does show your own photographs and words.
+        </p>
+        <p>
+          The sample is private while the editors review it. If the layout is accepted, the template and the sample are
+          shown to everyone in the directory with your first name; if it is not, the sample is deleted a month after the
+          decision. We email you the decision at your account address. You can withdraw a layout at any time, which
+          deletes it and its sample straight away.
+        </p>
+      </Clause>
+
       <Clause heading="Who else is involved">
         <Points
           items={[
@@ -113,6 +128,10 @@ export function Privacy() {
             <>
               <span className="font-medium">Vercel</span> — hosting, plus visitor counts and page-speed measurements.
               These are cookieless and do not identify you.
+            </>,
+            <>
+              <span className="font-medium">Resend</span> — sends the email telling you whether a layout you submitted
+              was accepted.
             </>,
             <>
               <span className="font-medium">OpenAI or Anthropic</span> — the copy desk and the editor, and only when

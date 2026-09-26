@@ -47,6 +47,15 @@ export function Terms() {
         </p>
       </Clause>
 
+      <Clause heading="Layouts you submit">
+        <p>
+          When you submit a layout to the directory, you let us show it there and let other Atlas users start their own
+          pages from it, for as long as it stays in the directory. You keep your rights in it, and in the sample you
+          attach; withdraw it and we stop showing it. Submit only designs and samples you have the right to share. The
+          editors decide what goes in the directory and may take a layout out at any time.
+        </p>
+      </Clause>
+
       <Clause heading="Plans and payment">
         <Points
           items={[

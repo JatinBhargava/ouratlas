@@ -38,6 +38,8 @@ type AuthValue = {
   signOut: () => Promise<void>;
   /** Re-reads the plan — used after returning from Stripe. */
   refreshBilling: () => Promise<void>;
+  /** Whether this account reviews submitted layouts. Only decides what is shown; the API checks for itself. */
+  admin: boolean;
 };
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -112,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!authConfigured);
   const [billing, setBilling] = useState<Billing>(FREE);
+  const [admin, setAdmin] = useState(false);
   const [loadingBilling, setLoadingBilling] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
@@ -199,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!userId) {
       setBilling(FREE);
+      setAdmin(false);
       setLoadingBilling(false);
       return;
     }
@@ -206,7 +210,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoadingBilling(true);
     try {
       const me = await api.get<MeResponse>("/api/me");
-      if (id === requestId.current) setBilling(me.billing);
+      if (id === requestId.current) {
+        setBilling(me.billing);
+        setAdmin(me.admin === true);
+      }
     } catch {
       // The session is still good; only the plan is unknown. Treating that as
       // free is the safe way to be wrong — it withholds a paid feature rather
@@ -259,8 +266,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       signOut,
       refreshBilling,
+      admin,
     }),
-    [ready, session, billing, loadingBilling, signInError, signInWithGoogle, signOut, refreshBilling],
+    [ready, session, billing, loadingBilling, signInError, signInWithGoogle, signOut, refreshBilling, admin],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

@@ -9,6 +9,7 @@
 
 import { Router } from "express";
 
+import { isAdmin } from "@api/env";
 import { asyncRoute } from "@api/http";
 import { authenticate, getActiveSubscription } from "@api/supabase";
 import type { Billing, MeResponse, SessionUser } from "@/types";
@@ -49,6 +50,6 @@ authRoutes.get(
         }
       : FREE;
 
-    res.json({ user: toSessionUser(user), billing } satisfies MeResponse);
+    res.json({ user: toSessionUser(user), billing, admin: isAdmin(user.email) } satisfies MeResponse);
   }),
 );

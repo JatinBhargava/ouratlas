@@ -12,6 +12,7 @@
 
 import { KEEPALIVE_INTERVAL_MS, keepAliveUrl, supabaseConfigured } from "@api/env";
 import { pruneIssues } from "@api/routes/issues";
+import { pruneLayoutSamples } from "@api/routes/layouts";
 
 type Job = {
   name: string;
@@ -95,6 +96,19 @@ export function startCron(): string[] {
       run: async () => {
         const gone = await pruneIssues();
         if (gone > 0) console.log(`[cron] prune-issues removed ${gone}`);
+      },
+    });
+  }
+
+  // A rejected layout's sample is kept a month so its submitter can see what
+  // was decided on, then cleared; the row and the decision stay.
+  if (supabaseConfigured) {
+    jobs.push({
+      name: "prune-layout-samples",
+      everyMs: 6 * 60 * 60_000,
+      run: async () => {
+        const gone = await pruneLayoutSamples();
+        if (gone > 0) console.log(`[cron] prune-layout-samples cleared ${gone}`);
       },
     });
   }

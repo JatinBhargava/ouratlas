@@ -47,8 +47,12 @@ export function useHistory<T>(initial: () => T) {
     );
   }, []);
 
+  /** Starts over from `value` with no history: a restored draft or a layout from the directory is a new beginning, not a step. */
+  const reset = useCallback((value: T) => setState({ past: [], present: value, future: [] }), []);
+
   return {
     value: state.present,
+    reset,
     commit,
     checkpoint,
     preview,

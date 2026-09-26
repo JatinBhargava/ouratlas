@@ -121,3 +121,80 @@ export async function shareSlides(files: File[]): Promise<boolean> {
     throw cause;
   }
 }
+
+/** Instagram's story size: a phone screen, 9:16. */
+export const STORY = { width: 1080, height: 1920 };
+
+/**
+ * The cover as an Instagram story: the page itself, large, over a blurred
+ * and darkened copy of it filling the screen, with a line underneath saying
+ * there is a whole magazine behind it.
+ *
+ * The band under that line is left empty on purpose. A story's only link is
+ * the one Instagram's own Link sticker carries, which the poster places by
+ * hand; this is where it goes, and nothing drawn here should sit under it.
+ */
+export async function pressStory(cover: HTMLElement, title: string): Promise<File> {
+  await Promise.all([...cover.querySelectorAll("img")].map(image => image.decode().catch(() => undefined)));
+  const page = await drawLeaf(cover, 2);
+  try {
+    return await storyOf(page, title);
+  } finally {
+    releaseCanvas(page);
+  }
+}
+
+/**
+ * The same story from a picture of the cover rather than the live page: a
+ * saved issue's cover, unsealed, which is already a 1080 × 1440 slide.
+ */
+export async function storyFromImage(cover: Blob, title: string): Promise<File> {
+  const bitmap = await createImageBitmap(cover);
+  try {
+    return await storyOf(bitmap, title);
+  } finally {
+    bitmap.close();
+  }
+}
+
+async function storyOf(page: HTMLCanvasElement | ImageBitmap, title: string): Promise<File> {
+  // The line under the cover is set in the house face; drawn before it loads, it would be Georgia.
+  await document.fonts.ready;
+  const story = document.createElement("canvas");
+  story.width = STORY.width;
+  story.height = STORY.height;
+  const context = story.getContext("2d")!;
+
+  // The cover again, scaled to fill the screen, as the backdrop. Browsers
+  // without canvas filters get it sharp, and the wash below still darkens it.
+  const fill = Math.max(STORY.width / page.width, STORY.height / page.height);
+  context.filter = "blur(40px) brightness(0.6)";
+  context.drawImage(page, (STORY.width - page.width * fill) / 2, (STORY.height - page.height * fill) / 2, page.width * fill, page.height * fill);
+  context.filter = "none";
+  context.fillStyle = "rgba(12, 10, 9, 0.35)";
+  context.fillRect(0, 0, STORY.width, STORY.height);
+
+  // The page, whole, at the page's own 3:4.
+  const width = 860;
+  const height = Math.round((width * PAGE.height) / PAGE.width);
+  const left = (STORY.width - width) / 2;
+  const top = 230;
+  context.save();
+  context.shadowColor = "rgba(0, 0, 0, 0.5)";
+  context.shadowBlur = 48;
+  context.shadowOffsetY = 18;
+  context.drawImage(page, left, top, width, height);
+  context.restore();
+
+  context.fillStyle = "#ffffff";
+  context.textAlign = "center";
+  context.font = '58px "Instrument Serif", Georgia, serif';
+  context.fillText("Read the whole magazine", STORY.width / 2, top + height + 110);
+  context.fillStyle = "rgba(255, 255, 255, 0.72)";
+  context.font = '30px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  context.fillText("Made with Atlas · ouratlas.co.in", STORY.width / 2, STORY.height - 70);
+
+  const blob = await jpegOf(story, QUALITY);
+  releaseCanvas(story);
+  return new File([blob], `${slugOf(title)}-story.jpg`, { type: "image/jpeg" });
+}

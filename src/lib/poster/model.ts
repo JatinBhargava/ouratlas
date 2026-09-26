@@ -1,4 +1,5 @@
 import { PAGE } from "@/lib/magazine/geometry";
+import type { PosterFontId } from "@/types";
 
 /**
  * The poster studio's document: pages the reader lays out by hand, box by box.
@@ -104,7 +105,7 @@ export type PosterPage = {
 export type PosterDoc = { pages: PosterPage[] };
 
 /** A picture the reader brought, kept in memory by the page and never sent anywhere. */
-export type Photo = { id: string; url: string; width: number; height: number; name: string };
+export type Photo = { id: string; url: string; width: number; height: number; name: string; file: File };
 
 let counter = 0;
 /** Short, unique within a session, and never derived from anything the reader wrote or chose. */
@@ -145,7 +146,8 @@ export const FONTS = {
   mono: { name: "Mono", stack: 'ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace' },
   script: { name: "Script", stack: '"Snell Roundhand", "Brush Script MT", "Segoe Script", "URW Chancery L", cursive' },
   marker: { name: "Marker", stack: '"Marker Felt", "Segoe Print", "Comic Sans MS", "Comic Neue", cursive' },
-} as const;
+  // Checked against the ids the API accepts for a submitted layout, so the two lists cannot drift.
+} as const satisfies Record<PosterFontId, { name: string; stack: string }>;
 
 export type FontId = keyof typeof FONTS;
 export const FONT_IDS = Object.keys(FONTS) as FontId[];

@@ -134,6 +134,61 @@ export async function park(draft: DeskDraft): Promise<void> {
 }
 
 /**
+ * Any other page's state, parked across the sign-in redirect under its own
+ * key in the same store: the poster studio uses it. The same rules as the
+ * desk's: never throws, read once, deleted as it is read.
+ */
+export async function putRecord(key: string, value: unknown): Promise<void> {
+  let db: IDBDatabase | null = null;
+  try {
+    db = await open();
+    const database = db;
+    await new Promise<void>((resolve, reject) => {
+      const tx = database.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } catch {
+    // As with the desk: losing the record is better than refusing the sign-in.
+  } finally {
+    db?.close();
+  }
+}
+
+const popping = new Map<string, Promise<unknown>>();
+
+/** Reads and deletes a parked record, shared across React's double mount the way `take` is. */
+export function popRecord(key: string): Promise<unknown> {
+  let pending = popping.get(key);
+  if (!pending) {
+    pending = (async () => {
+      let db: IDBDatabase | null = null;
+      try {
+        db = await open();
+        const database = db;
+        return await new Promise<unknown>((resolve, reject) => {
+          const tx = database.transaction(STORE, "readwrite");
+          const store = tx.objectStore(STORE);
+          const read = store.get(key);
+          store.delete(key);
+          tx.oncomplete = () => resolve(read.result ?? null);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        });
+      } catch {
+        return null;
+      } finally {
+        db?.close();
+      }
+    })().finally(() => setTimeout(() => popping.delete(key), 0));
+    popping.set(key, pending);
+  }
+  return pending;
+}
+
+/**
  * Collects the parked desk, once.
  *
  * The read below is destructive, and React mounts an effect twice in

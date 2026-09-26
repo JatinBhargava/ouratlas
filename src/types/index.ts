@@ -224,6 +224,8 @@ export type SessionUser = {
 export type MeResponse = {
   user: SessionUser;
   billing: Billing;
+  /** Whether this account may review submitted layouts (`ADMIN_EMAILS` on the API). Only decides what the site shows. */
+  admin?: boolean;
 };
 
 /** `POST /api/billing/checkout` and `/api/billing/portal` both answer with a URL to visit. */
@@ -368,3 +370,6 @@ export type SavedIssue = {
 };
 
 export type SavedList = { issues: SavedIssue[]; canKeepForever: boolean };
+
+/** Layouts readers submit to the directory, and the sanitizer every submission passes through. */
+export * from "./layouts";

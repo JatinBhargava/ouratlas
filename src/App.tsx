@@ -42,6 +42,9 @@ const Magazines = lazy(() => import("@/pages/Magazines").then(module => ({ defau
 // and (on download) the press, none of which any other page uses. One chunk, two routes.
 const Poster = lazy(() => import("@/pages/Poster").then(module => ({ default: module.Poster })));
 const EditorInChief = lazy(() => import("@/pages/Poster").then(module => ({ default: module.EditorInChief })));
+// The layout directory and the editors' queue behind it.
+const Layouts = lazy(() => import("@/pages/Layouts").then(module => ({ default: module.Layouts })));
+const AdminLayouts = lazy(() => import("@/pages/AdminLayouts").then(module => ({ default: module.AdminLayouts })));
 
 /**
  * Everything inside the router, so a router can be chosen from outside.
@@ -70,6 +73,8 @@ export function AppRoutes() {
               <Route path="/read" element={<Read />} />
               <Route path="/poster" element={<Poster />} />
               <Route path="/editor-in-chief" element={<EditorInChief />} />
+              <Route path="/layouts" element={<Layouts />} />
+              <Route path="/admin/layouts" element={<AdminLayouts />} />
 
               {/* Real pages, not placeholders: a merchant of record checks that
                   these exist and are reachable before it will process payments. */}

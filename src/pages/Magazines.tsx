@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Check, Copy, Loader2, Lock, LogIn, PenLine, Share2, Trash2 } from "lucide-react";
+import { Dialog } from "radix-ui";
+import { Check, Copy, Loader2, Lock, LogIn, Megaphone, PenLine, Share2, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
+import { SavedSocialShare } from "@/components/social-share";
 import { deleteSaved, linkFor, listSaved, openManifest, openPage, type Manifest } from "@/lib/saved";
 import { readKey } from "@/lib/vault";
 import type { SavedIssue } from "@/types";
@@ -125,6 +127,7 @@ function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => v
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
   const link = issue.key ? linkFor(issue.id, issue.key) : null;
 
   useEffect(() => {
@@ -223,6 +226,10 @@ function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => v
                 <Share2 className="size-3.5" />
               </Button>
             )}
+            <Button size="sm" variant="secondary" className="h-7 rounded-full px-2.5 text-xs" onClick={() => setPosting(true)}>
+              <Megaphone className="size-3.5" />
+              Post
+            </Button>
           </>
         )}
         <Button
@@ -238,6 +245,32 @@ function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => v
       </div>
 
       {failed && <p className="text-[11px] text-red-100">{failed}</p>}
+
+      {/* Instagram and X, from the saved pages themselves. Only for an issue whose key is kept here: a sealed one cannot be opened to post. */}
+      {link && issue.key && (
+        <Dialog.Root open={posting} onOpenChange={setPosting}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" />
+            <Dialog.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[90dvh] w-[min(calc(100vw-2rem),460px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-5 text-stone-800 shadow-2xl sm:p-6">
+              <header className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-medium tracking-[0.28em] text-stone-500 uppercase">Post it</span>
+                  <Dialog.Title className="font-editorial text-2xl tracking-tight">{manifest?.title ?? "Your magazine"}</Dialog.Title>
+                  <Dialog.Description className="text-sm text-stone-600">
+                    As an Instagram carousel or story, or a post on X. The pictures are made on this device from your saved pages.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0 rounded-full" aria-label="Close">
+                    <X className="size-4" />
+                  </Button>
+                </Dialog.Close>
+              </header>
+              <SavedSocialShare id={issue.id} keyText={issue.key} cover={issue.cover} title={manifest?.title ?? "Untitled"} link={link} />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
     </div>
   );
 }

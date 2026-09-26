@@ -17,6 +17,7 @@ import { dodoWebhookRoutes } from "@api/routes/dodo-webhook";
 import { EDITOR_BODY_LIMIT, editorRoutes } from "@api/routes/editor";
 import { exportRoutes } from "@api/routes/exports";
 import { issueRoutes } from "@api/routes/issues";
+import { LAYOUT_BODY_LIMIT, layoutRoutes } from "@api/routes/layouts";
 import { polishRoutes } from "@api/routes/polish";
 import { transcribeRoutes } from "@api/routes/transcribe";
 import { visitsRoutes } from "@api/routes/visits";
@@ -47,6 +48,8 @@ export function createApp(): Express {
   // allows, so the editor's parser goes first; like the webhooks above, a body
   // it has read is left alone by the one below.
   app.use("/api/editor", express.json({ limit: EDITOR_BODY_LIMIT }));
+  // A submitted layout carries its sample picture, which is past the general limit too.
+  app.use("/api/layouts", express.json({ limit: LAYOUT_BODY_LIMIT }));
 
   // Generous enough for a 10,000-word story going to the copy desk.
   app.use(express.json({ limit: "1mb" }));
@@ -65,6 +68,7 @@ export function createApp(): Express {
   app.use("/api", editorRoutes);
   app.use("/api", exportRoutes);
   app.use("/api", issueRoutes);
+  app.use("/api", layoutRoutes);
   app.use("/api", webhookRoutes);
   app.use("/api", dodoWebhookRoutes);
   app.use("/api/billing", billingRoutes);

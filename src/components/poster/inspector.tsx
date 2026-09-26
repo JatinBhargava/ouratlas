@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import {
   AlignCenter,
   AlignCenterHorizontal,
@@ -686,6 +687,15 @@ function PagePanel({
           </div>
         </Section>
       )}
+
+      <Section title="Layout directory">
+        <p className="text-[11px] leading-relaxed text-stone-500">
+          Pages other Atlas readers designed, reviewed by the editors. Open one to start from it, or submit your own from the toolbar.
+        </p>
+        <Link to="/layouts?kind=poster" className="text-xs font-medium text-stone-800 underline underline-offset-2 hover:text-stone-950">
+          Browse layouts →
+        </Link>
+      </Section>
 
       <Section title="Shortcuts">
         <ul className="flex flex-col gap-1 text-[11px] leading-relaxed text-stone-500">

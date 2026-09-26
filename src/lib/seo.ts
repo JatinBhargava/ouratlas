@@ -78,6 +78,18 @@ export const ROUTES: Record<string, Head> = {
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.7 },
   },
+  "/layouts": {
+    title: "Layouts — Atlas",
+    description:
+      "Poster pages and magazine layouts designed by Atlas readers and reviewed by the editors. Start from any of them, like your favourites, or submit your own.",
+    index: true,
+    sitemap: { changefreq: "monthly", priority: 0.6 },
+  },
+  "/admin/layouts": {
+    title: "Review queue — Atlas",
+    description: "Where the editors review submitted layouts.",
+    index: false,
+  },
   "/pricing": {
     title: "Pricing — Atlas: free, ₹99 or ₹199 a month",
     description:

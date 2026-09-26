@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ArrowLeft, Download, Images, Link2, Loader2, LogIn, PenLine, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, Images, Link2, Loader2, LogIn, PenLine, Send, Sparkles } from "lucide-react";
 
 import { CarouselPanel } from "@/components/carousel-panel";
+import { LayoutPreview } from "@/components/layouts/layout-preview";
+import { SubmitLayout } from "@/components/layouts/submit-layout";
+import { MagazinePage } from "@/components/magazine/pages";
 import { IssueView } from "@/components/magazine/issue-view";
 import { PrintSheet } from "@/components/magazine/print-sheet";
 import { FEED_MS, PressFeed } from "@/components/press-feed";
@@ -18,10 +21,12 @@ import { isSignInReturn, settleSignInReturn, useAuth } from "@/lib/auth";
 import { isParked, park, take } from "@/lib/draft";
 import { HttpError } from "@/lib/api";
 import { claimExport, readAllowance } from "@/lib/exports";
+import { canvasToSample, getLayout } from "@/lib/layouts";
+import { PAGE } from "@/lib/magazine/geometry";
 import { composeIssue } from "@/lib/magazine/compose";
 import { spliceStory, toParagraphs, type Cursor } from "@/lib/magazine/copy";
 import { disposeMeasurer } from "@/lib/magazine/fit";
-import { pressPdf, printHonoursPageSize, saveIssue } from "@/lib/magazine/press";
+import { drawLeaf, pressPdf, printHonoursPageSize, releaseCanvas, saveIssue } from "@/lib/magazine/press";
 import type { Axis, PlateBox } from "@/lib/magazine/templates";
 import { DEFAULT_THEME, themeOf, type ThemeId } from "@/lib/magazine/themes";
 import { ThemePicker, TiltControl } from "@/components/theme-picker";
@@ -33,7 +38,7 @@ import { TypePanel } from "@/components/type-panel";
 import { clampType, DEFAULT_TYPE, type TypeChoice } from "@/lib/magazine/typography";
 import { defaultDesign, type CustomBox, type CustomDesign, type CustomLeaves, type CustomSlot } from "@/lib/magazine/custom";
 import type { Issue } from "@/lib/magazine/types";
-import { countWords, EDITOR_NEEDS_SIGN_IN, PLAN_LIMITS, type ExportAllowance, type Focus, type Photo } from "@/types";
+import { countWords, EDITOR_NEEDS_SIGN_IN, PLAN_LIMITS, sanitizeDesign, type ExportAllowance, type Focus, type Photo } from "@/types";
 
 
 /** The story's first sentence, cut to fit under a title: the reader's dek, and a saved issue's. */
@@ -63,6 +68,10 @@ export function Create() {
     setParams(next ? { view: next } : {});
     window.scrollTo({ top: 0 });
   };
+  /** A magazine layout from the directory to start from (`/create?layout=…`), read once the desk has settled. */
+  const layoutId = params.get("layout");
+  const [layoutNotice, setLayoutNotice] = useState<string | null>(null);
+  const [submittingLayout, setSubmittingLayout] = useState(false);
   const [title, setTitle] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [story, setStory] = useState("");
@@ -878,6 +887,75 @@ export function Create() {
     void sendToPress(restoredSeed.current ?? undefined);
   }, [draftLoaded, ready, user, issue, photos.length]);
 
+  // After any parked desk is back, so a layout from the directory is laid over
+  // the restored work rather than overwritten by it.
+  useEffect(() => {
+    if (!draftLoaded || !layoutId) return;
+    let cancelled = false;
+    getLayout(layoutId)
+      .then(found => {
+        if (cancelled) return;
+        if (found.kind !== "magazine" || "pages" in found.design) throw new Error("That is a poster layout; it opens in the poster studio.");
+        const next = found.design as unknown as CustomDesign;
+        setTheme("custom");
+        setDesign(next);
+        setLeaves({});
+        setPlateSizes({});
+        setTilt(null);
+        setLayoutNotice(`Using “${found.title}”${found.author ? ` by ${found.author}` : ""} as your own layout. Change any page in the designer below.`);
+      })
+      .catch(problem => !cancelled && setLayoutNotice((problem as Error).message))
+      .finally(() => {
+        if (cancelled) return;
+        const rest = new URLSearchParams(params);
+        rest.delete("layout");
+        setParams(rest, { replace: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Once per layout id; the params object itself changes on every navigation.
+  }, [draftLoaded, layoutId]);
+
+  /**
+   * The sample a submitted magazine layout carries, drawn automatically.
+   *
+   * Once the issue has been set in the reader's own layout, the sample is one
+   * of its pages as printed — the one drawn from their design that gives the
+   * most room to photographs, so it shows the layout doing its job with their
+   * pictures and words. Before that there is nothing real to draw, so it is the layout
+   * itself, drawn as a template, with a hint that pressing first does better.
+   */
+  const sampleSource = useMemo(() => {
+    if (!issue || theme !== "custom") return null;
+    const photoArea = (page: (typeof issue.pages)[number]) =>
+      (page.layout?.boxes ?? []).filter(box => box.kind === "plate").reduce((sum, box) => sum + box.width * box.height, 0);
+    const designed = issue.pages.filter(page => page.layout);
+    const pictured = designed.filter(page => page.plates.length > 0).sort((a, b) => photoArea(b) - photoArea(a));
+    return pictured[0] ?? designed[0] ?? null;
+  }, [issue, theme]);
+  const designTemplate = useMemo(() => sanitizeDesign("magazine", design), [design]);
+  const sampleHost = useRef<HTMLDivElement>(null);
+  const [sampling, setSampling] = useState(false);
+  const makeMagazineSample = useCallback(async () => {
+    setSampling(true);
+    try {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await document.fonts.ready;
+      const host = sampleHost.current?.firstElementChild as HTMLElement | null | undefined;
+      if (!host) throw new Error("The sample could not be drawn. Attach a picture instead.");
+      await Promise.all(Array.from(host.querySelectorAll("img")).map(image => image.decode().catch(() => undefined)));
+      const canvas = await drawLeaf(host, 2);
+      try {
+        return canvasToSample(canvas);
+      } finally {
+        releaseCanvas(canvas);
+      }
+    } finally {
+      setSampling(false);
+    }
+  }, [sampleSource]);
+
   /**
    * Moves on only when both the work and the telling of it are done.
    *
@@ -1261,11 +1339,30 @@ export function Create() {
               </span>
             </span>
           </label>
+          {layoutNotice && <p className="-mt-6 text-sm text-emerald-800">{layoutNotice}</p>}
           {theme === "custom" && (
             <>
               <LayoutDesigner design={design} onChange={changeDesign} />
+              {/* Pages drawn here can go to the directory for others to start from. */}
+              <div className="-mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => setSubmittingLayout(true)}>
+                  <Send className="size-4" /> Submit this layout
+                </Button>
+                <Link to="/layouts?kind=magazine" className="text-sm text-stone-700 underline underline-offset-2 hover:text-stone-900">
+                  Browse magazine layouts
+                </Link>
+              </div>
               <TypePanel type={type} onChange={changeType} />
             </>
+          )}
+          {theme !== "custom" && (
+            <p className="-mt-6 text-sm text-stone-600">
+              Or start from a layout another reader designed:{" "}
+              <Link to="/layouts?kind=magazine" className="underline underline-offset-2 hover:text-stone-900">
+                the layout directory
+              </Link>
+              .
+            </p>
           )}
 
           <PhotoPicker photos={photos} onAdd={addPhotos} onRemove={removePhoto} onReorder={reorderPhotos} />
@@ -1320,6 +1417,46 @@ export function Create() {
           {composing ? "Setting the type" : "Send to press"}
         </Button>
       </div>
+
+      {submittingLayout && (
+        <SubmitLayout
+          kind="magazine"
+          design={design}
+          makeSample={makeMagazineSample}
+          sampleHint={
+            sampleSource ? undefined : "This is your layout drawn as a template. Send the issue to press first for a sample with your photos and words."
+          }
+          onSignIn={() => void signIn("editor")}
+          onClose={() => setSubmittingLayout(false)}
+        />
+      )}
+
+      {/* Drawn off the page only while a layout's sample is being made. */}
+      {sampling && (
+        <div ref={sampleHost} aria-hidden style={{ position: "fixed", top: 0, left: -10000, pointerEvents: "none" }}>
+          {issue && sampleSource ? (
+            <div style={{ width: PAGE.width }}>
+              <MagazinePage
+                page={sampleSource}
+                title={issue.title}
+                dateline={issue.dateline}
+                polished={issue.polished}
+                theme={issue.theme}
+                tilt={tiltNow}
+                type={issue.type}
+                palette={issue.palette}
+                sketches={sketches}
+              />
+            </div>
+          ) : (
+            typeof designTemplate !== "string" && (
+              <div style={{ display: "inline-block", padding: 24, background: "#ffffff" }}>
+                <LayoutPreview design={designTemplate} width={960} />
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Dialog } from "radix-ui";
 import { BookOpen, Check, Copy, Library, Link2, Loader2, Lock, Share2, X } from "lucide-react";
 
 import { PrintSheet } from "@/components/magazine/print-sheet";
+import { IssueSocialShare } from "@/components/social-share";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/lib/auth";
@@ -193,6 +194,7 @@ export function SavePanel({
                     ? "It is in My magazines, where you can copy the link again or take it down."
                     : "Not kept in My magazines: this link is the only way in, so keep it somewhere safe."}
                 </p>
+                <IssueSocialShare issue={issue} link={saved.link} tilt={tilt} sketches={sketches} />
               </div>
             ) : progress ? (
               <div className="flex flex-col items-center gap-3 py-8">
