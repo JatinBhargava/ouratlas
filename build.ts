@@ -137,6 +137,8 @@ const LAZY_PAGES: Record<string, string> = {
   "/account": "src/pages/Account.tsx",
   "/magazines": "src/pages/Magazines.tsx",
   "/read": "src/pages/Read.tsx",
+  "/poster": "src/pages/Poster.tsx",
+  "/editor-in-chief": "src/pages/Poster.tsx",
 };
 
 async function lazyPreloads(source: string): Promise<string> {

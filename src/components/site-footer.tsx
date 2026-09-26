@@ -87,7 +87,7 @@ export function SiteFooter() {
               Atlas
             </a>
             <p className="max-w-xs text-sm text-stone-600">
-              Trip photos and your own words, set as a magazine worth keeping.
+              Photos from any memory and your own words, set as a magazine worth keeping.
               Never stored on our servers.
             </p>
             <div className="flex items-center gap-2">

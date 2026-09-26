@@ -40,7 +40,7 @@ export function Home() {
             className="animate-rise flex items-center gap-3 text-[11px] font-medium tracking-[0.3em] text-white/70 uppercase drop-shadow-sm"
           >
             <span aria-hidden className="h-px w-8 bg-white/40" />
-            Vol. I — your trip, in print
+            Vol. I — your memories, in print
             <span aria-hidden className="h-px w-8 bg-white/40" />
           </span>
 
@@ -48,14 +48,14 @@ export function Home() {
             style={line(1)}
             className="font-editorial animate-rise max-w-3xl text-6xl leading-[1.02] tracking-tight text-white drop-shadow-lg sm:text-7xl"
           >
-            The trip is over.
+            The day is over.
             <br />
             The <em className="italic">story</em> isn't.
           </h1>
 
           <p style={line(2)} className="animate-rise max-w-xl text-lg text-white/90 drop-shadow-sm">
-            Ten photos and the story behind them, set as a magazine of your own trip — cover story, spreads, folios and
-            all. Yours to export, never kept on our servers.
+            Ten photos and the story behind them — a trip, a wedding, a birthday, an ordinary Sunday — set as a magazine
+            of your own: cover story, spreads, folios and all. Yours to export, never kept on our servers.
           </p>
 
           <div style={line(3)} className="animate-rise flex flex-wrap items-center justify-center gap-3 pt-1">

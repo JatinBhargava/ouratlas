@@ -6,6 +6,11 @@ import { SURFACE } from "@/lib/surfaces";
 
 const FAQS = [
   {
+    question: "Is it only for trips?",
+    answer:
+      "No. Anything you took photographs of and want to keep: a wedding, a birthday, a graduation, a baby's first year, a family reunion, a friend's farewell, an ordinary good day. Atlas started with trips; the magazine does not mind what it is about.",
+  },
+  {
     question: "Where are my photos and writing stored?",
     answer:
       "Nowhere on our side. Everything stays in your browser while you work, and the export is the copy you keep. We do not write your photos or text to a database.",
@@ -18,7 +23,7 @@ const FAQS = [
   {
     question: "How long can the story be?",
     answer:
-      "Between roughly five and ten thousand words, whether you type it or speak it. That is a long magazine feature — more than most trips need.",
+      "Between roughly five and ten thousand words, whether you type it or speak it. That is a long magazine feature — more than most stories need.",
   },
   {
     question: "What do I get when I export?",

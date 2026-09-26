@@ -51,9 +51,9 @@ export type Head = {
  */
 export const ROUTES: Record<string, Head> = {
   "/": {
-    title: "Atlas — your trip photos and words, set as a magazine",
+    title: "Atlas — your photos and memories, set as a magazine",
     description:
-      "Ten trip photographs and your own words, typeset in the browser as a magazine issue and exported as a PDF. Free to start; your photos are never stored.",
+      "Photos from a trip, a wedding, a birthday or any memory, with your own words, set as a magazine and exported as a PDF. Your photos are never stored.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 1 },
   },
@@ -63,6 +63,20 @@ export const ROUTES: Record<string, Head> = {
       "The desk: add up to ten photographs and your story, choose a theme, and send the issue to press as a PDF. Nothing is uploaded.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.8 },
+  },
+  "/poster": {
+    title: "One-page poster — Atlas",
+    description:
+      "One page to design yourself: photo boxes, text boxes, shapes, fonts, colours and alignment. Download a PDF or PNG; photos never leave your browser.",
+    index: true,
+    sitemap: { changefreq: "monthly", priority: 0.7 },
+  },
+  "/editor-in-chief": {
+    title: "Editor in Chief — Atlas",
+    description:
+      "Lay out every page yourself: photo boxes, text boxes, shapes, fonts, colours and alignment, page after page. Download a PDF; photos stay in your browser.",
+    index: true,
+    sitemap: { changefreq: "monthly", priority: 0.7 },
   },
   "/pricing": {
     title: "Pricing — Atlas: free, ₹99 or ₹199 a month",
@@ -85,14 +99,14 @@ export const ROUTES: Record<string, Head> = {
   },
   "/read": {
     title: "A magazine made with Atlas",
-    description: "A travel magazine made from someone's own photographs and words. Turn the pages.",
+    description: "A magazine made from someone's own photographs and words. Turn the pages.",
     // A saved issue is private to whoever holds its link; none of them belong in search.
     index: false,
   },
   "/about": {
-    title: "About Atlas — a magazine press for your own trips",
+    title: "About Atlas — a magazine press for your own memories",
     description:
-      "Why Atlas typesets your trip in the browser: the photographs are never stored, the copy is measured against real type, and the issue is yours as a PDF.",
+      "Why Atlas typesets your memories in the browser: the photographs are never stored, the copy is measured against real type, and the issue is yours as a PDF.",
     index: true,
     sitemap: { changefreq: "yearly", priority: 0.5, updated: LEGAL.updated },
   },

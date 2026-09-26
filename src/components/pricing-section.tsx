@@ -33,7 +33,7 @@ const PLANS: Plan[] = [
     icon: Tent,
     price: "Free",
     cadence: "one story at a time",
-    description: "A keepsake from a single trip.",
+    description: "A keepsake from a single memory.",
     // "Three" must match EXPORT_LIMIT_FREE on the API. The server owns the
     // count; this line only reports it, and a page that promises a different
     // number from the one enforced is worse than no number at all. The words
@@ -170,7 +170,7 @@ export function PricingSection({ headingLevel = "h2" }: { headingLevel?: "h1" | 
       <SectionHeading
         as={headingLevel}
         kicker="Subscriptions"
-        title="Keep the whole journey"
+        title="Keep every chapter"
         description="Your photos and words never touch our database — every plan sends the finished magazine straight to you."
       />
 

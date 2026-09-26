@@ -91,7 +91,7 @@ export function EditorPanel({ title, story, photos, onApply, onUseTitle, needsSi
           <h3 className="text-sm font-medium text-stone-800">The editor</h3>
           <p className="text-xs text-stone-500">
             An art director looks at your photographs and reads your story, then makes up the issue: the cover, the
-            order of the trip, a layout for every page, the framing of each shot and a caption under it.{" "}
+            order of the story, a layout for every page, the framing of each shot and a caption under it.{" "}
             <span className="text-stone-600">
               Small previews of your photographs and your words are sent to an AI provider for this, and not kept.
             </span>

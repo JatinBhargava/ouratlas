@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Atlas (ouratlas.co.in): a user brings up to ten trip photos and up to 10,000 words, and gets back a paginated magazine issue (cover, contents, feature, plates, colophon) that they export to PDF through the browser's print dialog. It's one Bun repo with two parts: a React 19 SPA in `src/` and an Express 5 API in `api/`.
+Atlas (ouratlas.co.in): a user brings up to ten photos from any memory (trips were the starting case; weddings, birthdays, a first year and ordinary days are just as much the product) and up to 10,000 words, and gets back a paginated magazine issue (cover, contents, feature, plates, colophon) that they export to PDF through the browser's print dialog. It's one Bun repo with two parts: a React 19 SPA in `src/` and an Express 5 API in `api/`.
 
 ## Commands
 
@@ -44,6 +44,10 @@ Pagination works by **measuring**, not estimating. `fit.ts` binary-searches a wo
 - Themes and typography load **no webfonts** beyond the one self-hosted face. They use system font stacks with fallbacks for macOS, Windows, and Linux, because a missing face measures differently and breaks pagination.
 - Reader decisions that must survive recomposition live in `src/pages/Create.tsx` state, not on the `Issue`, which is rebuilt from scratch on every change. That state includes plate sizes keyed by page index, the riddle seed, theme, tilt, custom design, per-page custom layouts (`leaves`: a box dragged on one page of the proof changes that page only, stored by page index with its slot so it is never laid on a different kind of page), type, and sketches.
 - Google sign-in is a full-page redirect, so `src/lib/draft.ts` parks the whole desk (including `File` handles) in IndexedDB and reads it back exactly once. **New desk state must be added to `DeskDraft`** (and to `valid()` if it's required), or it's lost across sign-in. Sign-in is required only at export. Composing works signed out.
+
+## The studio: one-page poster and Editor in Chief (`src/pages/Poster.tsx`, `src/components/poster/`, `src/lib/poster/`)
+
+One editor behind two products, chosen by `MODES` in `Poster.tsx`: `/poster` (the one-page poster: a single sheet, no page strip, no starter layouts until its own defaults are designed) and `/editor-in-chief` (as many pages as the reader wants, with the `STARTERS` layouts). A free-form page editor, separate from the magazine engine: the reader places text, photo and shape boxes by hand on pages the magazine's size (`SHEET` = `PAGE`, 520×693), styles them from the inspector, and downloads a PDF or PNG through the magazine's own press (`pressPdf` / `drawLeaf` in `press.ts`, imported on first download). Nothing is poured or measured, so it may offer more system font stacks (`FONTS` in `lib/poster/model.ts`) than the desk. `box-view.tsx` is the one renderer for the editor, the page strip and the press, so screen and file cannot drift. Photos are object URLs held in page state and referenced by id from the document; nothing is uploaded or saved, and there is no export allowance or sign-in on this route. Undo is `useHistory` (`checkpoint` + `preview` for drags, sliders and typing; `commit` for single decisions).
 
 ## Deployment
 

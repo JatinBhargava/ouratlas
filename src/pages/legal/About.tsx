@@ -14,12 +14,13 @@ export function About() {
   return (
     <LegalPage
       title="About Atlas"
-      summary="A magazine press for your own trips, built so that the photographs never have to leave your hands."
+      summary="A magazine press for your own memories, built so that the photographs never have to leave your hands."
     >
       <Clause heading="What it is">
         <p>
-          Atlas takes the photographs from a trip and the words you write about it, and sets them as a magazine — cover,
-          contents, a feature opener with a drop cap, spreads, plates and folios — which you export as a PDF and keep.
+          Atlas takes the photographs from a trip, a wedding, a birthday or any day worth keeping, and the words you write
+          about it, and sets them as a magazine — cover, contents, a feature opener with a drop cap, spreads, plates and
+          folios — which you export as a PDF and keep.
         </p>
         <p>
           The layout is not a template you fill in. The copy is measured against real type, line by line, and poured
@@ -30,7 +31,7 @@ export function About() {
 
       <Clause heading="Why it works the way it does">
         <p>
-          Holiday photographs are not neutral things. They have your family in them, and the inside of your house, and
+          Personal photographs are not neutral things. They have your family in them, and the inside of your house, and
           where you were on a particular day. The ordinary way to build this would be to upload them to a server, render
           the magazine there and send back a file — and that is a copy of your year on somebody else's disk.
         </p>

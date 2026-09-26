@@ -113,7 +113,7 @@ export function StoryEditor({ story, onChange, wordCount, maxWords, onPolish, on
             readOnly={listening}
             aria-busy={listening}
             onChange={event => onChange(event.target.value)}
-            placeholder="Where did you go, who were you with, and what do you want to remember about it?"
+            placeholder="What happened, who was there, and what do you want to remember about it?"
             className="min-h-64 resize-y bg-white/70 text-base leading-relaxed"
           />
           {/* Only one of the two at a time: the sample never lands on top of the

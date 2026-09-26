@@ -33,10 +33,10 @@ const MODES: { id: PolishMode; label: string; action: string; blurb: string }[] 
   },
   {
     id: "story",
-    label: "Travel story",
+    label: "Story",
     action: "Write the story",
     blurb:
-      "A travel writer's retelling: your notes become a short piece of fiction with a character and an arc. It invents people, dialogue and events, so treat what comes back as a story rather than a record of the trip.",
+      "A storyteller's retelling: your notes become a short piece of fiction with a character and an arc. It invents people, dialogue and events, so treat what comes back as a story rather than a record of the trip.",
   },
 ];
 

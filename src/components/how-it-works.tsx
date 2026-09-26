@@ -8,7 +8,7 @@ const STEPS = [
   {
     scene: PhotoStackScene,
     title: "Add your photos",
-    description: "Pick up to ten pictures from the trip. They stay in your browser — nothing is uploaded to a database.",
+    description: "Pick up to ten pictures from the day, the trip or the year. They stay in your browser — nothing is uploaded to a database.",
     note: "10 max",
   },
   {
@@ -31,7 +31,7 @@ export function HowItWorks() {
       <SectionHeading
         kicker="Production"
         title="From camera roll to cover story"
-        description="Three steps between getting home and holding the finished thing."
+        description="Three steps between the moment and holding the finished thing."
       />
 
       <ol className="grid gap-5 md:grid-cols-3">

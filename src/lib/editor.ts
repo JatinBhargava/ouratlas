@@ -51,12 +51,12 @@ export type EditorResult = {
  */
 const SUITS: Record<ThemeId, string> = {
   atlas:
-    "A daylight trip with five or more photographs, most of them landscape-shaped — views, streets, places — and a story told in the order it happened.",
+    "A daylight story with five or more photographs, most of them landscape-shaped — views, streets, places, gatherings — told in the order it happened.",
   modernist:
     "Cities, architecture and design; bold, graphic photographs with strong lines; a brisk, reported voice with plenty of text.",
   nocturne:
-    "Only trips that happen after dark or in low light — dusk, night markets, lamplit rooms, deep winter — or a quiet, literary, melancholy story. Never a sunny daylight trip.",
-  zine: "Casual trips with friends, road trips, festivals, phone snapshots, and a chatty or funny voice.",
+    "Only stories that happen after dark or in low light — dusk, night markets, candlelit dinners, lamplit rooms, deep winter — or a quiet, literary, melancholy story. Never a sunny daylight one.",
+  zine: "Casual days with friends, road trips, parties, festivals, phone snapshots, and a chatty or funny voice.",
   custom:
     "Choose this when most photographs are portrait-shaped, when there are four or fewer photographs, or when one photograph is far stronger than the rest — the ready styles are built around landscape pictures and crop portraits badly. You pick a layout for each page from the page layouts below.",
 };
@@ -75,7 +75,7 @@ export function offeredThemes(): EditorTheme[] {
 }
 
 /**
- * Faces a travel magazine would set a feature in. The typewriter is left out:
+ * Faces a magazine would set a feature in. The typewriter is left out:
  * it is the zine's voice, and an editor reaching for it on a designed issue
  * produced pages that read as a draft rather than a magazine.
  */

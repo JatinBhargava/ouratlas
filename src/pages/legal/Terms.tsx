@@ -20,7 +20,7 @@ export function Terms() {
       <Clause heading="What Atlas does">
         <p>
           Atlas turns photographs and writing you supply into a magazine issue, laid out in your browser and exported
-          as a PDF. The composition happens on your own device. We provide the software; the trip, the pictures and the
+          as a PDF. The composition happens on your own device. We provide the software; the memories, the pictures and the
           words are yours.
         </p>
       </Clause>

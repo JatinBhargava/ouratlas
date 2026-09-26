@@ -38,6 +38,10 @@ const Account = lazy(() => import("@/pages/Account").then(module => ({ default: 
 // A shared magazine and the archive: the book and the sealing, nothing more.
 const Read = lazy(() => import("@/pages/Read").then(module => ({ default: module.Read })));
 const Magazines = lazy(() => import("@/pages/Magazines").then(module => ({ default: module.Magazines })));
+// The studio behind the one-page poster and Editor in Chief: its canvas, panel
+// and (on download) the press, none of which any other page uses. One chunk, two routes.
+const Poster = lazy(() => import("@/pages/Poster").then(module => ({ default: module.Poster })));
+const EditorInChief = lazy(() => import("@/pages/Poster").then(module => ({ default: module.EditorInChief })));
 
 /**
  * Everything inside the router, so a router can be chosen from outside.
@@ -64,6 +68,8 @@ export function AppRoutes() {
               <Route path="/account" element={<Account />} />
               <Route path="/magazines" element={<Magazines />} />
               <Route path="/read" element={<Read />} />
+              <Route path="/poster" element={<Poster />} />
+              <Route path="/editor-in-chief" element={<EditorInChief />} />
 
               {/* Real pages, not placeholders: a merchant of record checks that
                   these exist and are reachable before it will process payments. */}

@@ -21,7 +21,7 @@ const FEATURES = [
   {
     icon: Sparkles,
     title: "Voice to page",
-    description: "Talk through the trip and have it transcribed and shaped into readable prose.",
+    description: "Talk it through — the trip, the wedding, the first year — and have it transcribed and shaped into readable prose.",
     tile: "bg-amber-600/15 text-amber-800",
   },
   {
@@ -49,7 +49,7 @@ export function FeaturesSection() {
     <section id="features" className="flex flex-col gap-8">
       <SectionHeading
         kicker="Contents"
-        title="Built around the trip, not the tool"
+        title="Built around the memory, not the tool"
         description="Everything here exists to get a finished magazine into your hands."
       />
 
