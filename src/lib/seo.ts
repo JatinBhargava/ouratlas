@@ -1,4 +1,5 @@
 import { LEGAL } from "./legal";
+import { RELEASES } from "./releases";
 
 /**
  * The head of every public page, in one table.
@@ -11,8 +12,9 @@ import { LEGAL } from "./legal";
  * that script never set a canonical other than the one in the served HTML;
  * drawing both from here is what keeps that true.
  *
- * Plain data and one DOM helper, with nothing imported beyond `legal.ts`, so
- * the build can import it without dragging in React or Supabase.
+ * Plain data and one DOM helper, with nothing imported beyond `legal.ts` and
+ * `releases.ts` (both plain data), so the build can import it without dragging
+ * in React or Supabase.
  */
 
 /** The site's own origin, which every canonical and og:url is absolute against. */
@@ -153,6 +155,14 @@ export const ROUTES: Record<string, Head> = {
       "One inbox, read by a person: billing, bugs, data requests and anything else. We answer within two working days, usually sooner.",
     index: true,
     sitemap: { changefreq: "yearly", priority: 0.4, updated: LEGAL.updated },
+  },
+  "/whats-new": {
+    title: "What's new — Atlas",
+    description:
+      "What each new edition of Atlas brought: new ways to make, share and keep your magazines, newest first.",
+    index: true,
+    // Changes with every release, so the sitemap's date follows the newest one.
+    sitemap: { changefreq: "monthly", priority: 0.4, updated: RELEASES[0]?.date },
   },
 };
 

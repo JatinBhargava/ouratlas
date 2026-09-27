@@ -15,6 +15,7 @@ import { Contact } from "@/pages/legal/Contact";
 import { Privacy } from "@/pages/legal/Privacy";
 import { Refunds } from "@/pages/legal/Refunds";
 import { Terms } from "@/pages/legal/Terms";
+import { WhatsNew } from "@/pages/WhatsNew";
 import "@/styles/globals.css";
 
 /**
@@ -88,6 +89,7 @@ export function AppRoutes() {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/refunds" element={<Refunds />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/whats-new" element={<WhatsNew />} />
                 {/* Last, and matching anything left: an address with no page of
                     its own arrives as 404.html, and React Router still has to
                     draw something for it. */}

@@ -23,7 +23,7 @@ export function stripe(): Stripe {
     apiVersion: "2026-08-26.dahlia",
     // Bun resolves `stripe` to its worker build, which talks over fetch.
     // Naming the app makes this server identifiable in Stripe's request logs.
-    appInfo: { name: "Atlas", url: "https://ouratlas.app" },
+    appInfo: { name: "Atlas", url: "https://ouratlas.co.in" },
   });
   return client;
 }

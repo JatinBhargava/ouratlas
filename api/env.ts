@@ -321,7 +321,7 @@ export function isAdmin(email: string | null | undefined): boolean {
  */
 export const mail = {
   resendKey: process.env.RESEND_API_KEY?.trim() || null,
-  /** e.g. `Atlas <layouts@ouratlas.co.in>`, on a domain verified in Resend. */
+  /** e.g. `Atlas <hello@ouratlas.co.in>`, on a domain verified in Resend. */
   from: process.env.EMAIL_FROM?.trim() || null,
 };
 export const mailConfigured = Boolean(mail.resendKey && mail.from);
