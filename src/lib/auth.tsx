@@ -11,6 +11,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, 
 import type { Session } from "@supabase/auth-js";
 
 import { api } from "@/lib/api";
+import { inApp } from "@/lib/native";
 import { authConfigured, supabase } from "@/lib/supabase";
 import type { Billing, MeResponse, SessionUser } from "@/types";
 
@@ -184,6 +185,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void start();
 
+    // The app's sign-in comes back as a link to the app, not a page load; this
+    // turns it into the same `?code=` page load the website gets.
+    if (inApp()) {
+      void import("@/lib/app-auth")
+        .then(app => app.listenForSignInReturn())
+        .catch(error => console.error("[auth] could not listen for the sign-in return:", error));
+    }
+
     // Fires on sign-in, sign-out, token refresh, and on the redirect back
     // from Google once the code in the URL has been exchanged.
     const { data } = supabase.auth.onAuthStateChange((_event, next) => {
@@ -233,19 +242,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSignInError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    // In the app, Google opens in the browser sheet and comes back through the
+    // app's own link rather than to this page's address (`app-auth.ts`).
+    // Fetched only there, so the website never downloads the plugins.
+    const app = inApp() ? await import("@/lib/app-auth") : null;
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: new URL(returnTo, window.location.origin).toString(),
+        redirectTo: app ? app.returnAddress(returnTo) : new URL(returnTo, window.location.origin).toString(),
         // Google signs someone straight in when it recognises exactly one
         // active session, which is wrong for a keepsake tied to a particular
         // account — plenty of people have a personal address and a work one,
         // and the trip belongs to one of them. `select_account` always asks.
         queryParams: { prompt: "select_account" },
+        // The PKCE verifier is written either way; only who opens the page differs.
+        skipBrowserRedirect: app !== null,
       },
     });
 
     if (error) throw new Error(error.message);
+    if (app && data.url) await app.openSignIn(data.url);
   }, []);
 
   const signOut = useCallback(async () => {
