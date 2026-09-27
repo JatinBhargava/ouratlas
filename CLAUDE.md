@@ -16,6 +16,8 @@ bun run typecheck       # tsc --noEmit over src/ and api/ together
 bun run build           # static frontend into dist/ (also copies src/static/* unhashed)
 bun start               # production: one Express process serves dist/ and the API on :3000
 bun run docker:build    # compose build, image tags injected from versions.json
+bun run app:build       # Android app: dist/ built against the public API and site, then `cap sync android`
+bun run app:open        # open android/ in Android Studio to run it on a phone or emulator
 bun --env-file=.env scripts/dodo-event.ts subscription.active <supabase-user-id> [plan]   # send a signed Dodo webhook to a local server
 ```
 

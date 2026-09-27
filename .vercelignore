@@ -21,3 +21,9 @@ dev.ts
 .github
 README.md
 LICENSE
+
+# The Android and iPhone apps. They package dist/; Vercel has no use for them,
+# and the Gradle project alone would bloat every upload.
+android
+ios
+capacitor.config.ts

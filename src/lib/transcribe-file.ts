@@ -12,6 +12,7 @@
  * which carries a sentence across the cut that does land mid-thought.
  */
 
+import { apiUrl } from "@/lib/api";
 import { accessToken } from "@/lib/supabase";
 import type { TranscribeResponse } from "@/types";
 
@@ -114,7 +115,7 @@ function wav(samples: Float32Array): Blob {
 
 async function sendPiece(piece: Blob, context: string, signal?: AbortSignal): Promise<string> {
   const token = await accessToken();
-  const response = await fetch("/api/transcribe/file", {
+  const response = await fetch(apiUrl("/api/transcribe/file"), {
     method: "POST",
     headers: {
       "content-type": "audio/wav",

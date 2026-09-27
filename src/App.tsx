@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 
 import { PageErrorBoundary } from "@/components/page-error";
 import { AuthProvider } from "@/lib/auth";
+import { inApp } from "@/lib/native";
 import { RootLayout } from "@/layouts/RootLayout";
 import { Home } from "@/pages/Home";
 import { NotFound } from "@/pages/NotFound";
@@ -107,9 +108,19 @@ export function AppRoutes() {
 
           Inside the router on purpose — that is what lets them attribute views
           to /create and /account rather than recording every visit as "/".
+
+          Left out of the Android and iPhone apps. Their scripts load from
+          /_vercel/ on the page's own origin, and in the app that origin is the
+          phone, so each launch logged two failed loads and measured nothing.
+          Neither draws any markup, so leaving them out cannot upset hydration
+          of the prerendered page.
         */}
-        <Analytics />
-        <SpeedInsights />
+        {!inApp() && (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        )}
       </AuthProvider>
     </>
   );

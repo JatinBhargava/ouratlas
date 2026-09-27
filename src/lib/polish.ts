@@ -7,6 +7,7 @@
  * attached by hand. Without it the route answers 401.
  */
 
+import { apiUrl } from "@/lib/api";
 import { accessToken } from "@/lib/supabase";
 
 /** The two things the copy desk can be asked for; the server names them too. */
@@ -19,7 +20,7 @@ export async function* streamPolish(
 ): AsyncGenerator<string> {
   const token = await accessToken();
 
-  const response = await fetch("/api/polish", {
+  const response = await fetch(apiUrl("/api/polish"), {
     method: "POST",
     headers: {
       "content-type": "application/json",
