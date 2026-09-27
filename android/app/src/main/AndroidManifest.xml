@@ -22,6 +22,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- The return from Google sign-in. Supabase sends the reader to
+                 in.co.ouratlas://auth?…&code=…, and this hands that link to
+                 Atlas instead of the browser (src/lib/app-auth.ts). singleTask
+                 above brings the running app forward and closes the sheet. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="in.co.ouratlas" android:host="auth" />
+            </intent-filter>
+
         </activity>
 
         <provider
