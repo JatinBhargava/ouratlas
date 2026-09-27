@@ -22,8 +22,8 @@ export const LEGAL = {
   /** TODO: the country whose law governs the agreement, and its courts. */
   jurisdiction: "[country]",
 
-  /** TODO: a real, monitored inbox. Not a personal address. */
-  email: "[support email]",
+  /** The monitored inbox for the whole project; the footer links to it too. */
+  email: "hello@ouratlas.co.in",
 
   /** The site itself, which is the one thing here that is already true. */
   site: "https://ouratlas.co.in",

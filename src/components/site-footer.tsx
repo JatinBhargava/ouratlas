@@ -3,6 +3,7 @@ import { Mail } from "lucide-react";
 import { AtlasMark } from "@/components/atlas-mark";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Separator } from "@/components/ui/separator";
+import { LEGAL } from "@/lib/legal";
 import { APP_VERSION } from "@/lib/version";
 
 type LinkGroup = { heading: string; links: { label: string; href: string }[] };
@@ -23,6 +24,7 @@ const GROUPS: LinkGroup[] = [
       { label: "Features", href: "#features" },
       { label: "Pricing", href: "/pricing" },
       { label: "FAQ", href: "#faq" },
+      { label: "What's new", href: "/whats-new" },
     ],
   },
   {
@@ -120,7 +122,7 @@ export function SiteFooter() {
                 );
               })}
               <a
-                href="mailto:hello@ouratlas.app"
+                href={`mailto:${LEGAL.email}`}
                 aria-label="Email"
                 className="flex size-8 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-900"
               >
@@ -160,8 +162,15 @@ export function SiteFooter() {
           <p suppressHydrationWarning>
             © {new Date().getFullYear()} OurAtlas. All rights reserved.{" "}
             {/* Small, but it is the only way to tell from a browser which
-                build is actually being served. */}
-            <span className="text-stone-500 tabular-nums">v{APP_VERSION}</span>
+                build is actually being served. It opens What's new, where a
+                reader who wonders what the number means finds out. */}
+            <a
+              href="/whats-new"
+              title="What's new in this version"
+              className="text-stone-500 tabular-nums underline-offset-2 transition-colors hover:text-stone-900 hover:underline"
+            >
+              v{APP_VERSION}
+            </a>
           </p>
           <p>Made for people who take the long way home.</p>
         </div>

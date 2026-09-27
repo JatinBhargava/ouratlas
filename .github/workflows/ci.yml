@@ -6,6 +6,11 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Create a git tag for the versions in versions.json (master only)"
+        type: boolean
+        default: false
 
 env:
   # GHCR requires a lowercase path, which is not always what the owner is called.
@@ -168,4 +173,102 @@ jobs:
             echo '```'
             echo ""
             echo "Deploy with \`docker compose pull && docker compose up -d\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Marks the commit a version was built from, so a release can be found and
+  # checked out again later. Off unless asked for, because every push to master
+  # would otherwise try to tag the same version again until versions.json moves.
+  #
+  # Two switches, either one enough:
+  #   - the "Create a git tag" box when running this workflow by hand
+  #     (Actions -> CI -> Run workflow), for a one-off release;
+  #   - the repository variable TAG_ON_BUILD=true (Settings -> Secrets and
+  #     variables -> Actions -> Variables), to tag every master build.
+  #
+  # Master only: a tag names a release, and releases come from master.
+  tag:
+    name: Tag the release
+    needs: [check, publish]
+    # always() so a skipped publish (a manual run publishes nothing) does not
+    # skip this too; a failed one still stops it, since images and tag must agree.
+    if: >-
+      always()
+      && needs.check.result == 'success'
+      && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+      && github.ref == 'refs/heads/master'
+      && ((github.event_name == 'workflow_dispatch' && inputs.tag)
+          || (github.event_name == 'push' && vars.TAG_ON_BUILD == 'true'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+
+      # One tag while the API and the frontend share a version, which is the
+      # usual case; one per part, named like the images, once they differ, so a
+      # tag never claims a version one of them is not at.
+      #
+      # A tag that already exists is left where it is. It usually means this
+      # version was tagged by an earlier build and versions.json has not moved
+      # since; moving a published tag would rewrite what a release points to.
+      - name: Create tags
+        run: |
+          api=$(bun scripts/versions.ts api)
+          ui=$(bun scripts/versions.ts ui)
+
+          if [ "$api" = "$ui" ]; then
+            tags="v$api"
+          else
+            tags="api-v$api web-v$ui"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # The tag's message is that version's CHANGELOG.md entry, so
+          # `git show <tag>` says what the release holds. A version with no
+          # entry still gets tagged, with a one-line message and a warning.
+          notes() {
+            awk -v head="## [$1]" '
+              index($0, head) == 1 { found = 1; next }
+              found && /^## \[/ { exit }
+              found { print }
+            ' CHANGELOG.md
+          }
+
+          created=""
+          for tag in $tags; do
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+              echo "::notice::$tag already exists; left as it is. Bump versions.json to tag a new release."
+              continue
+            fi
+
+            version="${tag##*v}"
+            {
+              echo "Atlas $tag (api v$api, web v$ui)"
+              echo ""
+              notes "$version"
+            } > tag-message.txt
+            if [ -z "$(notes "$version")" ]; then
+              echo "::warning::CHANGELOG.md has no entry for $version; tagging with a one-line message."
+            fi
+
+            git tag -a "$tag" -F tag-message.txt "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+            created="$created $tag"
+          done
+
+          {
+            echo "### Tags"
+            echo ""
+            if [ -n "$created" ]; then
+              echo "Created:$created at \`${GITHUB_SHA::7}\`"
+            else
+              echo "Nothing new: every tag for these versions already exists."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
