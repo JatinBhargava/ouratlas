@@ -44,6 +44,36 @@ export const PORT = Number(process.env.PORT ?? (process.env.NODE_ENV === "produc
 export const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 
 /**
+ * Origins allowed to call the API from another address: the Android and iPhone
+ * apps, which load the site from the phone and reach the API directly.
+ *
+ * Capacitor serves the bundle at `https://localhost` on Android and
+ * `capacitor://localhost` on iPhone, so those two are the default. The website
+ * never needs an entry: Vercel and nginx forward `/api` from its own origin.
+ * APP_ORIGINS replaces the list, and `none` empties it for a server that should
+ * answer only same-origin requests.
+ *
+ * This is not what protects accounts. Sign-in travels as a bearer token rather
+ * than a cookie, so a page on another origin has nothing to borrow; the list
+ * only decides which pages a browser lets read the answers.
+ */
+export const appOrigins = originList(process.env.APP_ORIGINS);
+
+function originList(value: string | undefined): Set<string> {
+  const listed = value?.trim();
+  if (!listed) return new Set(["https://localhost", "capacitor://localhost"]);
+  if (listed.toLowerCase() === "none") return new Set();
+  // Trailing slashes trimmed: the Origin header never has one, and a pasted
+  // "https://localhost/" would otherwise never match and fail silently.
+  return new Set(
+    listed
+      .split(",")
+      .map(entry => entry.trim().replace(/\/+$/, ""))
+      .filter(Boolean),
+  );
+}
+
+/**
  * Whether this process also serves the built frontend from `dist/`.
  *
  * True for `bun start`, which is one process doing both. False in the split
@@ -415,5 +445,6 @@ export function describe(): string {
     `   layouts   ${supabaseConfigured ? `on (bucket ${layoutsBucket}, ${adminEmails.size} reviewer${adminEmails.size === 1 ? "" : "s"})` : "off (needs Supabase)"}`,
     `   mail      ${mailConfigured ? `on (resend, from ${mail.from})` : "off (set RESEND_API_KEY and EMAIL_FROM)"}`,
     `   analytics ${state(analyticsConfigured, "VERCEL_API_TOKEN, VERCEL_PROJECT_ID")}`,
+    `   apps      ${appOrigins.size > 0 ? `on (cors for ${[...appOrigins].join(", ")})` : "off (APP_ORIGINS=none)"}`,
   ].join("\n");
 }

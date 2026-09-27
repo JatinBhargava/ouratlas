@@ -9,6 +9,7 @@
 import express, { type Express } from "express";
 import path from "node:path";
 
+import { cors } from "@api/cors";
 import { APP_VERSION, serveStatic } from "@api/env";
 import { errorHandler, notFound } from "@api/http";
 import { adminRoutes } from "@api/routes/admin";
@@ -38,6 +39,11 @@ export function createApp(): Express {
   // Express advertises itself by default; there is nothing to gain from
   // telling the internet which framework this is.
   app.disable("x-powered-by");
+
+  // Before everything under /api, the webhooks included, so a preflight is
+  // answered before any body parser or route sees it. Webhooks send no Origin
+  // header, so the only thing this does for them is add `Vary`.
+  app.use("/api", cors);
 
   // Both webhooks must see the bytes their processor signed, so their raw
   // parsers are mounted before the JSON one. body-parser marks a request as

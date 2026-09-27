@@ -21,3 +21,8 @@ LICENSE
 # Development-only entry points. The containers run `api/index.ts` and nginx;
 # neither needs the hot-reload servers.
 dev.ts
+
+# The Android and iPhone apps: native projects that package dist/ for the
+# stores. Neither image builds or serves them.
+android
+ios

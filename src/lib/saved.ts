@@ -11,6 +11,7 @@
 
 import { api } from "@/lib/api";
 import { pressSlides } from "@/lib/magazine/carousel";
+import { publicUrl } from "@/lib/site";
 import { newKey, readKey, seal, unseal } from "@/lib/vault";
 import type { Keep, SavedFiles, SavedList, SaveRequest, SaveResponse, UploadSlot } from "@/types";
 
@@ -29,9 +30,13 @@ export type Manifest = {
   savedAt: string;
 };
 
-/** The address that opens a saved issue: its id in the query, its key after the `#`. */
+/**
+ * The address that opens a saved issue: its id in the query, its key after the
+ * `#`. Public rather than the page's own origin, so a link saved in the app is
+ * not a `localhost` address only that phone can open.
+ */
 export function linkFor(id: string, key: string): string {
-  return new URL(`/read?i=${id}#${key}`, location.origin).toString();
+  return publicUrl(`/read?i=${id}#${key}`);
 }
 
 /** A sealed file up to its signed slot, the way the storage client sends one. */

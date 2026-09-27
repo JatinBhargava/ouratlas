@@ -40,11 +40,40 @@ async function toError(response: Response, method: string, path: string): Promis
   );
 }
 
+// Caught rather than guarded with `typeof process`, for the reason spelled out
+// in `supabase.ts`: the bundler substitutes the value but not the guard.
+function apiBase(): string | undefined {
+  try {
+    return process.env.BUN_PUBLIC_API_URL;
+  } catch {
+    return undefined;
+  }
+}
+
+const API_BASE = apiBase() || undefined;
+
+/**
+ * The full address of an API path.
+ *
+ * On the website this is the page's own origin: Vercel (and the dev server)
+ * forward `/api` to the API, so the browser never leaves the site and needs no
+ * CORS. The Android and iPhone apps load the same bundle from the phone, at
+ * `https://localhost` or `capacitor://localhost`, where there is nothing to
+ * forward `/api`; their builds set `BUN_PUBLIC_API_URL` to the API's own origin
+ * and the API answers them with CORS (`api/cors.ts`).
+ *
+ * Every direct `fetch` of the API goes through here, including the two that
+ * bypass `request` because they stream or send raw audio.
+ */
+export function apiUrl(path: string): string {
+  return new URL(path, API_BASE ?? location.href).toString();
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await accessToken();
   const method = init?.method ?? "GET";
 
-  const res = await fetch(new URL(path, location.href), {
+  const res = await fetch(apiUrl(path), {
     ...init,
     headers: {
       "Content-Type": "application/json",

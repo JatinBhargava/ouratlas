@@ -33,5 +33,5 @@
     "noPropertyAccessFromIndexSignature": false
   },
 
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "android", "ios"]
 }
