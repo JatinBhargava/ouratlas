@@ -9,18 +9,20 @@
  *
  * EVERY VALUE MARKED TODO MUST BE REPLACED BEFORE THESE PAGES GO LIVE. A
  * merchant of record reads them during verification, and a document naming
- * "[registered company name]" fails that review on sight.
+ * a bracketed placeholder fails that review on sight.
  */
 
 export const LEGAL = {
-  /** TODO: the registered name that appears on your invoices. */
-  company: "[registered company name]",
+  /**
+   * The name the pages go by. There is deliberately no postal address: Atlas
+   * is run online, and the inbox below is where to reach it. A payment
+   * provider that insists on one reads it from the merchant account, not from
+   * these pages.
+   */
+  company: "Atlas",
 
-  /** TODO: registered address. Required by most payment providers. */
-  address: "[registered address]",
-
-  /** TODO: the country whose law governs the agreement, and its courts. */
-  jurisdiction: "[country]",
+  /** The country whose law governs the agreement, and whose courts hear it. */
+  jurisdiction: "India",
 
   /** The monitored inbox for the whole project; the footer links to it too. */
   email: "hello@ouratlas.co.in",

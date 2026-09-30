@@ -54,9 +54,13 @@ export function Contact() {
 
       <Clause heading="Post">
         <p>
-          {LEGAL.company}
-          <br />
-          {LEGAL.address}
+          {LEGAL.company} has no letterbox, only an inbox. We make magazines for the internet, so there is nowhere to
+          send a letter, but a note to{" "}
+          <a href={`mailto:${LEGAL.email}`} className="underline underline-offset-2">
+            {LEGAL.email}
+          </a>{" "}
+          reaches us faster than any postman. And if a magazine you made ever made you smile, tell us about that too.
+          Those are our favourite emails to read.
         </p>
       </Clause>
     </LegalPage>

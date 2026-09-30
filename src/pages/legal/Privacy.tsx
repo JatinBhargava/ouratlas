@@ -184,7 +184,7 @@ export function Privacy() {
 
       <Clause heading="Who we are">
         <p>
-          {LEGAL.company}, {LEGAL.address}. Questions to{" "}
+          {LEGAL.company}, at {LEGAL.site.replace("https://", "")}. Questions to{" "}
           <a href={`mailto:${LEGAL.email}`} className="underline underline-offset-2">
             {LEGAL.email}
           </a>

@@ -62,7 +62,7 @@ export function About() {
 
       <Clause heading="Who makes it">
         <p>
-          {LEGAL.company}, {LEGAL.address}. Write to{" "}
+          {LEGAL.company}, at {LEGAL.site.replace("https://", "")}. Write to{" "}
           <a href={`mailto:${LEGAL.email}`} className="underline underline-offset-2">
             {LEGAL.email}
           </a>{" "}

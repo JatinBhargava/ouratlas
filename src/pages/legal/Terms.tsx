@@ -12,8 +12,8 @@ export function Terms() {
     >
       <Clause heading="Who this is between">
         <p>
-          Atlas is operated by {LEGAL.company}, {LEGAL.address}. Using the site means you accept these terms. If you do
-          not, please do not use it.
+          These terms are between you and {LEGAL.company}, which runs {LEGAL.site.replace("https://", "")}. Using the
+          site means you accept these terms. If you do not, please do not use it.
         </p>
       </Clause>
 
