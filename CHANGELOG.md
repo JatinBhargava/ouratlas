@@ -8,6 +8,57 @@ A release is tagged `v<version>` by CI when tagging is switched on (see
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-10-01
+
+The website only; the API stays at 1.0.0, so this is tagged `web-v1.1.0`.
+
+### Added
+
+- **Atlas Studio** (`/studio`). Every layout from the design canvas, 206 pages
+  in four groups (one-page magazines, magazine pages, new ideas, and complete
+  ten-page issues), with a fill-in editor (`FillIn`) that swaps in the reader's
+  photos, makes the text editable and lets a crop be dragged. Pages are
+  finished HTML drawn in script-less `srcdoc` iframes, imported by
+  `scripts/studio.ts` into `src/lib/studio/pages.json` (a lazy chunk) with the
+  sample photos in `src/assets/studio/`. Only pages near the screen keep a live
+  frame. PDF and PNG downloads need no sign-in; Save & share needs one and
+  parks the editor under the `studio` key of `lib/draft.ts` across the redirect.
+  Linked from the Products menu.
+- **`SaveDialog`**, split out of `save-panel.tsx`, so the desk and the Studio
+  seal and upload pages through the same dialog and `saveIssue`.
+- **Preview in Editor in Chief.** A Preview button beside Download PDF opens the
+  whole issue as a bound magazine: the cover on its own, then every page facing
+  its neighbour, turned with the arrows, the ← → keys, a swipe or a page's edge
+  (one page at a time on a phone). It is the desk's own `IssueView`, the book
+  `/read` opens a saved issue in, with each page drawn by the studio's `Sheet`,
+  so the proof shows exactly what the PDF will. The PDF can be downloaded from
+  inside it, and the editor's shortcuts are held while it is open. Nothing new
+  is uploaded or kept.
+- **A 404 page to play with.** The cover tears into three pieces the reader
+  drags back into place, above a contents list of pages that do exist.
+- **A "Make" column in the footer** linking every tool, since the Products menu
+  draws its links only once opened and crawlers otherwise found them only in
+  the sitemap.
+
+### Changed
+
+- The Studio, the poster, Editor in Chief and the layout directory are drawn
+  ahead of time by `build.ts` with their own titles and share cards
+  (`scripts/og-studio.ts` makes the Studio's). `useHydrated` holds back
+  anything sized from the viewport or read from the query until the browser
+  takes over, so the prebuilt markup and the first render agree.
+- Carousel slides are scaled from each leaf's own width, so the Studio's larger
+  pages save at the same 1080×1440.
+
+### Fixed
+
+- Panning a photo on a phone: a touch the browser turned into a scroll
+  (`pointercancel`) left the drag attached and the picture stuck mid-move.
+  Plates now take `touch-none`, and the pan badge is always shown and larger on
+  coarse pointers.
+- The inspector's section headings are `h2`, not `h3`, so the poster page no
+  longer skips a heading level.
+
 ## [1.0.0] - 2026-09-27
 
 The first version with an Android app.

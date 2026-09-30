@@ -22,6 +22,42 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "1.1.0",
+    date: "1 October 2026",
+    headline: "Hundreds of ready-made layouts, and a preview of your whole magazine.",
+    items: [
+      {
+        title: "Atlas Studio",
+        detail:
+          "Over two hundred layouts drawn by our editors: one-page magazines in a dozen moods, covers, contents pages, photo plates and pull quotes. Open any page, press Use this layout, and put your own photos and words in it.",
+      },
+      {
+        title: "Complete issues, ready to fill",
+        detail:
+          "Ten-page magazines from cover to colophon, each in a house style of its own, from Swiss and Gazette to Riviera, Garden and Noir. Fill every page at once and download the whole issue.",
+      },
+      {
+        title: "Save & share from the Studio",
+        detail:
+          "Download a Studio page as a PDF or picture with no account, or save it for a link to send. As on the desk, your pages are sealed before they leave your browser.",
+      },
+      {
+        title: "Preview in Editor in Chief",
+        detail:
+          "Press Preview to turn through every page you've made as the finished magazine: the cover on its own, then each page beside the one it faces in print. Happy with it? Download the PDF right from there.",
+      },
+      {
+        title: "Easier on phones",
+        detail:
+          "Moving a photo inside its frame no longer gets stuck when your finger slips into a scroll, and the controls on each photo are bigger and always showing, so they're easy to find and tap.",
+      },
+      {
+        title: "A page that isn't there",
+        detail: "Follow a broken link and you'll find a torn cover to piece back together, and a contents page to take you somewhere that is.",
+      },
+    ],
+  },
+  {
     version: "1.0.0",
     date: "27 September 2026",
     headline: "Atlas is coming to Android.",
