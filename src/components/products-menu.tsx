@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from "react";
-import { ChevronDown, Frame, LayoutGrid, LibraryBig, Newspaper, type LucideIcon } from "lucide-react";
+import { ChevronDown, Frame, LayoutGrid, LibraryBig, Newspaper, Palette, type LucideIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ const PRODUCTS: Product[] = [
   { name: "One-page poster", blurb: "One page to design yourself: photos, text, shapes, fonts and colours.", icon: Frame, to: "/poster" },
   { name: "Editor in Chief", blurb: "Lay out every page yourself, page after page, from scratch or a layout.", icon: Newspaper, to: "/editor-in-chief" },
   { name: "Layout directory", blurb: "Pages other readers designed. Start from one, like it, or submit your own.", icon: LibraryBig, to: "/layouts" },
+  { name: "Atlas Studio", blurb: "Every layout the editors have drawn, from one-page magazines to whole issues.", icon: Palette, to: "/studio" },
 ];
 
 const PANEL_ID = "products-menu";

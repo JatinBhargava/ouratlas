@@ -153,6 +153,7 @@ const LAZY_PAGES: Record<string, string> = {
   "/poster": "src/pages/Poster.tsx",
   "/editor-in-chief": "src/pages/Poster.tsx",
   "/layouts": "src/pages/Layouts.tsx",
+  "/studio": "src/pages/Studio.tsx",
   "/admin/layouts": "src/pages/AdminLayouts.tsx",
   "/admin/dashboard": "src/pages/AdminDashboard.tsx",
 };

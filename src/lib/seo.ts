@@ -87,6 +87,13 @@ export const ROUTES: Record<string, Head> = {
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.6 },
   },
+  "/studio": {
+    title: "Atlas Studio — every layout, page by page",
+    description:
+      "Every layout the Atlas editors have drawn: one-page magazines, covers, contents, plates, new ideas and complete issues, page by page.",
+    index: true,
+    sitemap: { changefreq: "monthly", priority: 0.6 },
+  },
   "/admin/dashboard": {
     title: "Dashboard — Atlas",
     description: "How Atlas is doing, for the editors.",

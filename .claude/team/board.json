@@ -15,5 +15,5 @@
     "note": "The story-ID column is addressed as 'userDefined:ID' in the SQLite view of this data source, because 'ID' collides with Notion's own column name.",
     "id": "userDefined:ID"
   },
-  "nextId": 1
+  "nextId": 7
 }

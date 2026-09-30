@@ -49,6 +49,9 @@ const EditorInChief = lazy(() => import("@/pages/Poster").then(module => ({ defa
 const Layouts = lazy(() => import("@/pages/Layouts").then(module => ({ default: module.Layouts })));
 const AdminLayouts = lazy(() => import("@/pages/AdminLayouts").then(module => ({ default: module.AdminLayouts })));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then(module => ({ default: module.AdminDashboard })));
+// Atlas Studio, the showcase of every drawn layout. Its pages are a further
+// chunk of their own (`loadStudio`), fetched once this one has drawn.
+const Studio = lazy(() => import("@/pages/Studio").then(module => ({ default: module.Studio })));
 
 /**
  * Everything inside the router, so a router can be chosen from outside.
@@ -79,6 +82,7 @@ export function AppRoutes() {
                 <Route path="/poster" element={<Poster />} />
                 <Route path="/editor-in-chief" element={<EditorInChief />} />
                 <Route path="/layouts" element={<Layouts />} />
+                <Route path="/studio" element={<Studio />} />
                 <Route path="/admin/layouts" element={<AdminLayouts />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
 

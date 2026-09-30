@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import { Link } from "react-router";
 import { Dialog } from "radix-ui";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/lib/auth";
 import type { Issue } from "@/lib/magazine/types";
-import { saveIssue, type SaveProgress } from "@/lib/saved";
+import { saveIssue, type Manifest, type SaveProgress } from "@/lib/saved";
 import { cn } from "@/lib/utils";
 import { KEEPS, type Keep } from "@/types";
 
@@ -19,13 +19,10 @@ const date = new Intl.DateTimeFormat("en", { day: "numeric", month: "long", year
 const KEEP_LABELS: Record<Keep, string> = { "1d": "1 day", "7d": "7 days", "30d": "30 days", forever: "Forever" };
 
 /**
- * Saving an issue to share by link, and to keep in My magazines.
+ * Saving an issue from the desk to share by link, and to keep in My magazines.
  *
- * The pages are drawn and sealed here, then sent straight to storage; the
- * link that comes back carries the key after its `#`. Two choices, both
- * stated plainly because both are about who can open it: how long it lasts,
- * and whether the key is kept on the account so My magazines can open it —
- * or held only in the link.
+ * The desk's pages are drawn from a full-size print sheet mounted off screen
+ * only while they are being drawn; everything else is `SaveDialog`'s.
  */
 export function SavePanel({
   issue,
@@ -47,6 +44,71 @@ export function SavePanel({
   /** The same question an export asks before anything is drawn. False stops here. */
   onPress: () => Promise<boolean>;
 }) {
+  return (
+    <SaveDialog
+      title={issue.title}
+      pages={issue.pages.length}
+      resetOn={issue}
+      open={open}
+      onOpenChange={onOpenChange}
+      onPress={onPress}
+      manifest={() => ({
+        title: issue.title,
+        dateline: issue.dateline,
+        folios: issue.pages.map(page => page.folio),
+        words: issue.words,
+        photographs,
+        dek,
+      })}
+      draw={sheet => ({ leaves: [...(sheet?.children ?? [])] as HTMLElement[] })}
+      sheet={ref => <PrintSheet ref={ref} issue={issue} tilt={tilt} sketches={sketches} offscreen />}
+      extra={link => <IssueSocialShare issue={issue} link={link} tilt={tilt} sketches={sketches} />}
+    />
+  );
+}
+
+/**
+ * Saving any set of pages to share by link, and to keep in My magazines: the
+ * desk's issues and the Studio's filled layouts alike.
+ *
+ * The pages are drawn and sealed here, then sent straight to storage; the
+ * link that comes back carries the key after its `#`. Two choices, both
+ * stated plainly because both are about who can open it: how long it lasts,
+ * and whether the key is kept on the account so My magazines can open it —
+ * or held only in the link.
+ */
+export function SaveDialog({
+  title,
+  pages,
+  manifest,
+  draw,
+  sheet: renderSheet,
+  extra,
+  resetOn,
+  open,
+  onOpenChange,
+  onPress,
+}: {
+  title: string;
+  pages: number;
+  /** What is sealed beside the pages, read when the save starts. */
+  manifest: () => Omit<Manifest, "v" | "pages" | "savedAt">;
+  /**
+   * The pages to draw, at the moment of drawing, with anything to undo once
+   * they are drawn. Handed the off-screen sheet when there is one.
+   */
+  draw: (sheet: HTMLDivElement | null) => { leaves: HTMLElement[]; done?: () => void };
+  /** Mounted only while pages are being drawn, for pages that are not on screen already. */
+  sheet?: (ref: RefObject<HTMLDivElement | null>) => ReactNode;
+  /** Shown under the link once it is saved. */
+  extra?: (link: string) => ReactNode;
+  /** A saved link is for what it was made from; when this changes, it is forgotten. */
+  resetOn?: unknown;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Asked before anything is drawn (sign-in, an allowance). False stops here. */
+  onPress: () => Promise<boolean>;
+}) {
   const { billing } = useAuth();
   const paid = billing.plan !== "free";
   const [keep, setKeep] = useState<Keep>(paid ? "forever" : "30d");
@@ -58,12 +120,12 @@ export function SavePanel({
   const sheet = useRef<HTMLDivElement>(null);
   const run = useRef(0);
 
-  // A saved link is for the issue it was made from; a recomposed issue is a new one.
+  // A saved link is for the pages it was made from; a recomposed issue is a new one.
   useEffect(() => {
     run.current++;
     setSaved(null);
     setProgress(null);
-  }, [issue]);
+  }, [resetOn]);
 
   // The plan can arrive after the panel first draws.
   useEffect(() => {
@@ -82,26 +144,15 @@ export function SavePanel({
     const mine = ++run.current;
     if (!(await onPress()) || mine !== run.current) return;
 
-    flushSync(() => setProgress({ stage: "drawing", done: 0, total: issue.pages.length }));
+    flushSync(() => setProgress({ stage: "drawing", done: 0, total: pages }));
+    const { leaves, done } = draw(sheet.current);
     try {
-      const leaves = [...(sheet.current?.children ?? [])] as HTMLElement[];
-      const result = await saveIssue(
-        leaves,
-        {
-          title: issue.title,
-          dateline: issue.dateline,
-          folios: issue.pages.map(page => page.folio),
-          words: issue.words,
-          photographs,
-          dek,
-        },
-        { keep, keepInLibrary: inLibrary },
-        next => mine === run.current && setProgress(next),
-      );
+      const result = await saveIssue(leaves, manifest(), { keep, keepInLibrary: inLibrary }, next => mine === run.current && setProgress(next));
       if (mine === run.current) setSaved(result);
     } catch (cause) {
       if (mine === run.current) setFailed(cause instanceof Error ? cause.message : "The magazine could not be saved.");
     } finally {
+      done?.();
       if (mine === run.current) setProgress(null);
     }
   };
@@ -116,7 +167,7 @@ export function SavePanel({
   const share = async () => {
     if (!saved) return;
     try {
-      await navigator.share({ title: issue.title, url: saved.link });
+      await navigator.share({ title, url: saved.link });
     } catch {
       // Closing the sheet is a choice, not a failure.
     }
@@ -126,9 +177,9 @@ export function SavePanel({
     <>
       <Dialog.Root open={open} onOpenChange={close}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" />
+          <Dialog.Overlay className="fixed inset-0 z-70 bg-black/55 backdrop-blur-sm" />
           <Dialog.Content
-            className="fixed top-1/2 left-1/2 z-50 flex max-h-[90dvh] w-[min(calc(100vw-2rem),520px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-2xl bg-white p-5 text-stone-800 shadow-2xl sm:p-6"
+            className="fixed top-1/2 left-1/2 z-70 flex max-h-[90dvh] w-[min(calc(100vw-2rem),520px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-2xl bg-white p-5 text-stone-800 shadow-2xl sm:p-6"
             onOpenAutoFocus={event => event.preventDefault()}
           >
             <header className="flex items-start justify-between gap-4">
@@ -194,7 +245,7 @@ export function SavePanel({
                     ? "It is in My magazines, where you can copy the link again or take it down."
                     : "Not kept in My magazines: this link is the only way in, so keep it somewhere safe."}
                 </p>
-                <IssueSocialShare issue={issue} link={saved.link} tilt={tilt} sketches={sketches} />
+                {extra?.(saved.link)}
               </div>
             ) : progress ? (
               <div className="flex flex-col items-center gap-3 py-8">
@@ -291,7 +342,7 @@ export function SavePanel({
       </Dialog.Root>
 
       {/* Every page at full size, off the edge of the screen, only while it is being drawn. */}
-      {progress && <PrintSheet ref={sheet} issue={issue} tilt={tilt} sketches={sketches} offscreen />}
+      {progress && renderSheet?.(sheet)}
     </>
   );
 }

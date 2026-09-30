@@ -79,7 +79,9 @@ export async function pressSlides(
   const files: File[] = [];
 
   for (const [n, leaf] of leaves.entries()) {
-    const drawn = await drawLeaf(leaf, SLIDE.width / PAGE.width);
+    // From the leaf's own width, so a Studio page (780 wide) makes the same
+    // slide as a page from the desk (520) rather than half as much again.
+    const drawn = await drawLeaf(leaf, SLIDE.width / (leaf.offsetWidth || PAGE.width));
     // Drawn at the page's 520 × 693 it comes out a pixel short of 1440 high;
     // laid on an exact canvas so every slide is the size the app expects.
     const slide = document.createElement("canvas");
