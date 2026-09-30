@@ -268,9 +268,13 @@ function usePhotoPan(photo: Photo | undefined) {
       setLive(next);
     };
 
+    // A cancelled pointer ends the drag like a lifted one. On a phone the
+    // browser cancels a touch it decides is a scroll, and without this the
+    // listeners stayed attached and the picture stuck halfway through a move.
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
 
       const settled = latest.current;
       latest.current = null;
@@ -280,6 +284,7 @@ function usePhotoPan(photo: Photo | undefined) {
 
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
 
   const placement = (
@@ -290,11 +295,15 @@ function usePhotoPan(photo: Photo | undefined) {
       onClick={() => onPan(photo.id, manual ? null : CENTRED)}
       title={manual ? "Let the plate place this picture again" : "Place this picture yourself"}
       className={cn(
+        // Shown on hover with a mouse. A touch screen has no hover, so there it
+        // is always shown, and drawn larger: the proof is scaled down to fit a
+        // phone, and at its desktop size the badge was too small to find or tap.
         "absolute top-1 right-1 z-20 flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[7px] tracking-[0.14em] uppercase opacity-0 transition-opacity group-hover/plate:opacity-100",
+        "pointer-coarse:gap-1 pointer-coarse:px-2.5 pointer-coarse:py-1.5 pointer-coarse:text-[13px] pointer-coarse:opacity-100 pointer-coarse:shadow-md",
         manual ? "bg-emerald-600 text-white" : "bg-stone-900/60 text-white",
       )}
     >
-      {manual ? <Move className="size-2.5" aria-hidden /> : <Wand2 className="size-2.5" aria-hidden />}
+      {manual ? <Move className="size-2.5 pointer-coarse:size-4" aria-hidden /> : <Wand2 className="size-2.5 pointer-coarse:size-4" aria-hidden />}
       {manual ? "Move" : "Auto"}
     </button>
   );
@@ -400,7 +409,7 @@ function usePlateSize(page: Page): { size: PlateBox; grips: ReactNode } {
         aria-label={sideways ? "Drag to set how wide this plate is" : "Drag to set how deep this plate is"}
         title={sideways ? "Drag sideways to set the width" : "Drag up or down to set the depth"}
         className={cn(
-          "absolute z-20 flex items-center justify-center",
+          "absolute z-20 flex touch-none items-center justify-center",
           sideways ? "inset-y-0 w-6 cursor-ew-resize" : "inset-x-0 h-6 cursor-ns-resize",
         )}
         style={
@@ -572,7 +581,7 @@ function PlateFigure({ plate, width, height }: { plate: Plate | undefined; width
           alt={plate.label}
           {...pan.handlers}
           style={focusStyle(pan.focus)}
-          className={cn("size-full bg-stone-200 object-cover", pan.pannable && "cursor-move", handle.over && OVER)}
+          className={cn("size-full bg-stone-200 object-cover", pan.pannable && "cursor-move touch-none", handle.over && OVER)}
         />
         {handle.swappable && <SwapGrip grip={handle.grip} />}
         {pan.placement}
@@ -613,7 +622,7 @@ function Cover({ page, title, dateline }: { page: Page; title: string; dateline:
             style={focusStyle(pan.focus)}
             className={cn(
               "size-full object-cover",
-              pan.pannable && "cursor-move",
+              pan.pannable && "cursor-move touch-none",
               handle.over && "outline-2 -outline-offset-4 outline-emerald-500",
             )}
           />
@@ -1347,11 +1356,12 @@ function FullPlate({ page }: { page: Page }) {
         style={focusStyle(pan.focus)}
         className={cn(
           "size-full object-cover",
-          pan.pannable && "cursor-move",
+          pan.pannable && "cursor-move touch-none",
           handle.over && "outline-2 -outline-offset-4 outline-emerald-500",
         )}
       />
       {handle.swappable && <SwapGrip grip={handle.grip} />}
+      {pan.placement}
       <span
         className="absolute bottom-0 left-0 bg-white/85 px-2 py-1 text-[7px] tracking-[0.14em] text-stone-500 uppercase"
         style={{ marginLeft: MARGIN, marginBottom: MARGIN }}
