@@ -2,15 +2,14 @@
 
 What changed in each version of Atlas. The API and the website are versioned
 separately in `versions.json`; while they share a number, one entry covers both.
-A release is tagged `v<version>` by CI when tagging is switched on (see
-`.github/workflows/ci.yml`), and that tag carries the entry below as its message.
+A release is tagged `v<version>` by CI from a `release/**` branch when tagging
+is switched on (see `.github/workflows/ci.yml`), and that tag carries the entry
+below as its message.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org/).
 
 ## [1.1.0] - 2026-10-01
-
-The website only; the API stays at 1.0.0, so this is tagged `web-v1.1.0`.
 
 ### Added
 

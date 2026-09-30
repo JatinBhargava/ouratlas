@@ -1,14 +1,15 @@
 name: CI
 
-# Every push and PR is checked. Only master publishes images.
+# Every push and PR is checked. Only master publishes images, and only a
+# release/** branch is tagged.
 on:
   push:
-    branches: [master]
+    branches: [master, "release/**"]
   pull_request:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Create a git tag for the versions in versions.json (master only)"
+        description: "Create a git tag for the versions in versions.json (release/** branches only)"
         type: boolean
         default: false
 
@@ -176,16 +177,22 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Marks the commit a version was built from, so a release can be found and
-  # checked out again later. Off unless asked for, because every push to master
-  # would otherwise try to tag the same version again until versions.json moves.
+  # checked out again later. Off unless asked for, because every push to a
+  # release branch would otherwise try to tag the same version again until
+  # versions.json moves.
   #
   # Two switches, either one enough:
   #   - the "Create a git tag" box when running this workflow by hand
-  #     (Actions -> CI -> Run workflow), for a one-off release;
+  #     (Actions -> CI -> Run workflow, with a release/** branch chosen), for a
+  #     one-off release;
   #   - the repository variable TAG_ON_BUILD=true (Settings -> Secrets and
-  #     variables -> Actions -> Variables), to tag every master build.
+  #     variables -> Actions -> Variables), to tag every push to a release branch.
   #
-  # Master only: a tag names a release, and releases come from master.
+  # Release branches only: a tag names a release, and a release is cut on its
+  # own branch (release/1.1.0), so work landing on master is never tagged by
+  # accident. The box is offered on every branch — GitHub cannot hide a
+  # workflow input by branch — so ticking it anywhere else fails the job with a
+  # message rather than skipping it silently.
   tag:
     name: Tag the release
     needs: [check, publish]
@@ -195,9 +202,9 @@ jobs:
       always()
       && needs.check.result == 'success'
       && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
-      && github.ref == 'refs/heads/master'
       && ((github.event_name == 'workflow_dispatch' && inputs.tag)
-          || (github.event_name == 'push' && vars.TAG_ON_BUILD == 'true'))
+          || (github.event_name == 'push' && vars.TAG_ON_BUILD == 'true'
+              && startsWith(github.ref, 'refs/heads/release/')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -208,6 +215,34 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.0"
+
+      # A branch named for a version (release/1.1.0 or release/v1.1.0) has to
+      # carry that version in versions.json, for the API or the website. A
+      # branch cut for 1.1.0 whose file still says 1.0.0 would otherwise tag
+      # the old number on the new code. Any other name (release/october) is
+      # tagged with whatever versions.json says.
+      - name: Check this is a release branch
+        run: |
+          branch="${GITHUB_REF#refs/heads/}"
+          case "$GITHUB_REF" in
+            refs/heads/release/*) ;;
+            *)
+              echo "::error::Tags are made only from release/** branches, and this is $branch. Push a release/<version> branch and run it there."
+              exit 1
+              ;;
+          esac
+
+          named="${branch#release/}"
+          named="${named#v}"
+          if echo "$named" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            api=$(bun scripts/versions.ts api)
+            ui=$(bun scripts/versions.ts ui)
+            if [ "$named" != "$api" ] && [ "$named" != "$ui" ]; then
+              echo "::error::$branch names version $named, but versions.json has api $api and ui $ui. Bump versions.json on this branch first."
+              exit 1
+            fi
+          fi
+          echo "Tagging from $branch"
 
       # One tag while the API and the frontend share a version, which is the
       # usual case; one per part, named like the images, once they differ, so a
