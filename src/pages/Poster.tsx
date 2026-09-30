@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -24,6 +25,7 @@ import {
 import { SubmitLayout } from "@/components/layouts/submit-layout";
 import { Sheet } from "@/components/poster/box-view";
 import { PosterCanvas } from "@/components/poster/canvas";
+import { IssuePreview } from "@/components/poster/issue-preview";
 import { Inspector, type Edits, type Layer, type PageAlign } from "@/components/poster/inspector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -149,6 +151,7 @@ function Studio({ mode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | "sample" | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const { signInWithGoogle } = useAuth();
   const location = useLocation();
@@ -390,6 +393,9 @@ function Studio({ mode }: { mode: Mode }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
+      // The preview turns its pages with the arrow keys, and an undo taken
+      // there would change a page the reader cannot see being changed.
+      if (previewing) return;
       if (editing || target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       const mod = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
@@ -599,6 +605,22 @@ function Studio({ mode }: { mode: Mode }) {
             </Button>
 
             <div className="ml-auto flex gap-2">
+              {config.pages && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={tool}
+                  disabled={!hasWork}
+                  onClick={() => {
+                    setSelected(null);
+                    setEditing(null);
+                    setPreviewing(true);
+                  }}
+                  title="Turn through every page as the finished magazine"
+                >
+                  <BookOpen className="size-4" /> Preview
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className={tool} disabled={exporting !== null} onClick={() => void download("png")} title="This page as a picture">
                 {exporting === "png" ? <Loader2 className="size-4 animate-spin" /> : <FileImage className="size-4" />} PNG
               </Button>
@@ -768,6 +790,16 @@ function Studio({ mode }: { mode: Mode }) {
           if (files.length > 0) void addPhotos(files, null, pickFor.current);
         }}
       />
+
+      {previewing && (
+        <IssuePreview
+          doc={doc}
+          photos={photos}
+          exporting={exporting === "pdf"}
+          onDownload={() => void download("pdf")}
+          onClose={() => setPreviewing(false)}
+        />
+      )}
 
       {submitting && (
         <SubmitLayout
