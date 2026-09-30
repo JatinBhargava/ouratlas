@@ -73,7 +73,9 @@ export type PageAlign = "left" | "hcenter" | "right" | "top" | "vcenter" | "bott
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3 border-b border-stone-200 pb-4 last:border-b-0">
-      <h3 className="text-[11px] font-medium tracking-[0.2em] text-stone-500 uppercase">{title}</h3>
+      {/* An h2: on the poster page these sit straight under the page's h1,
+          and a skipped level reads to a screen reader as a missing section. */}
+      <h2 className="text-[11px] font-medium tracking-[0.2em] text-stone-500 uppercase">{title}</h2>
       {children}
     </section>
   );

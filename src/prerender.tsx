@@ -16,12 +16,29 @@ import { StaticRouter } from "react-router";
 
 import { AppRoutes } from "./App";
 
-export function render(location: string): string {
-  return renderToString(
+/**
+ * Drawn twice, and the first drawing thrown away.
+ *
+ * A page behind `lazy()` in App.tsx (the studio is one) is not there the
+ * first time: `renderToString` cannot wait, so it writes the Suspense
+ * fallback, which is nothing. That first pass is what starts the import, and
+ * in this bundle the import is already in memory, so one turn of the event
+ * loop later the second pass finds the page loaded and draws it. An eager page
+ * such as the home page comes out the same both times.
+ *
+ * `prerender` from react-dom/static waits by itself, but it writes a resolved
+ * boundary as a template plus an inline script that moves it into place, and
+ * a crawler that runs no script would read an empty page.
+ */
+export async function render(location: string): Promise<string> {
+  const app = (
     <StrictMode>
       <StaticRouter location={location}>
         <AppRoutes />
       </StaticRouter>
-    </StrictMode>,
+    </StrictMode>
   );
+  renderToString(app);
+  await new Promise(resolve => setTimeout(resolve));
+  return renderToString(app);
 }

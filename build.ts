@@ -1,6 +1,7 @@
 import tailwind from "bun-plugin-tailwind";
 import { versionOf } from "./scripts/versions";
-import { NOT_FOUND, ROUTES, SITE, type Head } from "./src/lib/seo";
+import { DEFAULT_IMAGE, NOT_FOUND, ROUTES, SITE, type Head } from "./src/lib/seo";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -201,6 +202,17 @@ function page(head: Head, url: string | null, structuredData: boolean): string {
   html = replaceOnce(html, meta("name", "twitter:title"), `<meta name="twitter:title" content="${title}" />`);
   html = replaceOnce(html, meta("name", "twitter:description"), `<meta name="twitter:description" content="${description}" />`);
 
+  // The share card: the page's own, or the site's. Checked against src/static
+  // because a card that is not deployed unfurls as a bare link, and nothing
+  // else would notice.
+  const image = head.image ?? DEFAULT_IMAGE;
+  if (!existsSync(path.join("src/static", image.path))) throw new Error(`build.ts: ${head.title} names ${image.path}, which is not in src/static`);
+  const imageUrl = new URL(image.path, SITE).toString();
+  html = replaceOnce(html, meta("property", "og:image"), `<meta property="og:image" content="${imageUrl}" />`);
+  html = replaceOnce(html, meta("property", "og:image:alt"), `<meta property="og:image:alt" content="${escape(image.alt)}" />`);
+  html = replaceOnce(html, meta("name", "twitter:image"), `<meta name="twitter:image" content="${imageUrl}" />`);
+  html = replaceOnce(html, meta("name", "twitter:image:alt"), `<meta name="twitter:image:alt" content="${escape(image.alt)}" />`);
+
   // An address that is not a page has no URL of its own to claim.
   html = replaceOnce(html, /<link\s+rel="canonical"\s+href="[^"]*"\s*\/>/, url ? `<link rel="canonical" href="${url}" />` : "");
   html = replaceOnce(html, meta("property", "og:url"), url ? `<meta property="og:url" content="${url}" />` : "");
@@ -219,7 +231,7 @@ function page(head: Head, url: string | null, structuredData: boolean): string {
   return html;
 }
 
-// The home page, drawn at build time and hydrated in the browser.
+// The public pages, drawn at build time and hydrated in the browser.
 //
 // Until the bundle had downloaded and run, a reader of the cover saw the
 // scene and nothing else: on a mid-range phone that was about 2.7 s of the
@@ -228,10 +240,26 @@ function page(head: Head, url: string | null, structuredData: boolean): string {
 // screen as soon as the HTML and the stylesheet arrive, and `frontend.tsx`
 // hydrates the markup instead of drawing it again.
 //
-// Only the home page. It is the page that arrives from search and shared links
-// and the one measured as slow. The desk draws from state that exists only in
-// the reader's browser, and the other pages are small enough that the wait
-// was never theirs.
+// Every other indexable page gets the same, for crawlers first: one that runs
+// no script (Bing often, the AI crawlers always) was sent an empty root and
+// learned nothing but the head. The studio's intro paragraph, its largest
+// paint, also arrived about 300 ms sooner unthrottled on a local build.
+//
+// A page is drawn here only if its first render needs nothing from the
+// reader's browser. Where it does, that part waits for `useHydrated`: the
+// studio's and the directory's query string, and the poster studio's sheet,
+// which is sized from a width the build cannot know. The desk (/create) is
+// left out whole. Its first render reads the parked draft and the return from
+// Google, which the build cannot see, and a drawn empty desk would flash
+// before the interlude it holds for a returning reader. The signed-in and
+// noindex pages are left out because no crawler should be reading them.
+//
+// The lazy pages (studio, directory, the poster studio) are drawn again
+// rather than hydrated in Chrome, most likely because the auth provider's
+// context changes (it learns the session) before their chunk arrives, and
+// React renders a boundary it has not yet hydrated afresh rather than guess
+// which of its readers changed. The markup is the same, swapped in one
+// commit, so nothing moves on screen and no error is reported.
 //
 // Rendered from its own bundle of `src/prerender.tsx`, built with the same
 // plugins, public path and `define` as the browser's. Importing the app
@@ -256,28 +284,40 @@ const prerender = await Bun.build({
 });
 const prerenderEntry = prerender.outputs.find(output => output.kind === "entry-point");
 if (!prerender.success || !prerenderEntry) throw new Error("build.ts: the prerender bundle did not build");
-const { render } = (await import(prerenderEntry.path)) as { render: (location: string) => string };
-const homeMarkup = render("/");
+const { render } = (await import(prerenderEntry.path)) as { render: (location: string) => Promise<string> };
+const PRERENDERED = Object.entries(ROUTES)
+  .filter(([route, head]) => head.index && route !== "/create")
+  .map(([route]) => route);
+const drawn = new Map<string, string>();
+for (const route of PRERENDERED) drawn.set(route, await render(route));
 await rm(prerenderDir, { recursive: true, force: true });
 
-// Every file the rendered page points at must be one this build wrote. The two
-// bundles hash assets independently, and if they ever disagreed the page would
-// ship with broken images that only the hydrated render repaired, after the
-// wait this exists to remove.
-for (const [, address] of homeMarkup.matchAll(/(?:src|srcSet|srcset|href)="(\/[^"#?]+\.[a-z0-9]+)"/g)) {
-  if (!(await Bun.file(path.join(outdir, address!)).exists())) {
-    throw new Error(`build.ts: the prerendered home page points at ${address}, which is not in dist`);
+for (const [route, markup] of drawn) {
+  // A lazy page that had not loaded by the second pass (`prerender.tsx`)
+  // comes out as an empty Suspense boundary: the nav and nothing under it.
+  // Every one of these pages opens on a headline, so its absence means that.
+  if (!markup.includes("<h1")) throw new Error(`build.ts: the prerendered ${route} has no <h1>; did its lazy chunk fail to draw?`);
+
+  // Every file the rendered page points at must be one this build wrote. The
+  // two bundles hash assets independently, and if they ever disagreed the page
+  // would ship with broken images that only the hydrated render repaired,
+  // after the wait this exists to remove.
+  for (const [, address] of markup.matchAll(/(?:src|srcSet|srcset|href)="(\/[^"#?]+\.[a-z0-9]+)"/g)) {
+    if (!(await Bun.file(path.join(outdir, address!)).exists())) {
+      throw new Error(`build.ts: the prerendered ${route} points at ${address}, which is not in dist`);
+    }
   }
+  console.log(` ${route}  prerendered ${(markup.length / 1024).toFixed(1)} KB of markup`);
 }
-console.log(` dist/index.html  prerendered ${(homeMarkup.length / 1024).toFixed(1)} KB of markup`);
 
 for (const [route, head] of Object.entries(ROUTES)) {
   const file = route === "/" ? "index.html" : `${route.slice(1)}.html`;
   let html = page(head, new URL(route, SITE).toString(), route === "/");
   // Marked with the address it was drawn for, which `frontend.tsx` checks
   // before hydrating rather than trusting whichever path was served this file.
-  if (route === "/") {
-    html = replaceOnce(html, /<div id="root"><\/div>/, `<div id="root" data-prerendered="/">${homeMarkup}</div>`);
+  const markup = drawn.get(route);
+  if (markup !== undefined) {
+    html = replaceOnce(html, /<div id="root"><\/div>/, `<div id="root" data-prerendered="${route}">${markup}</div>`);
   }
   const lazySource = LAZY_PAGES[route];
   if (lazySource) {

@@ -5,6 +5,7 @@ import { Heart, Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import { LayoutPreview } from "@/components/layouts/layout-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useAuth } from "@/lib/auth";
 import { listLayouts, myLayouts, toggleLike, withdrawLayout } from "@/lib/layouts";
 import { cn } from "@/lib/utils";
@@ -111,8 +112,13 @@ export function Layouts() {
   const { ready, user, admin, signInWithGoogle } = useAuth();
   const [params, setParams] = useSearchParams();
   const { pathname, search, hash } = useLocation();
-  const kind: LayoutKind = params.get("kind") === "magazine" ? "magazine" : "poster";
-  const sort: LayoutSort = params.get("sort") === "new" ? "new" : "top";
+  // Read from the address only once in the browser: `build.ts` draws this
+  // page with no query, and a link to `?kind=magazine` must not hydrate onto
+  // the build's poster tab (see `useHydrated`). Nothing is listed until the
+  // session is known, so the wait shows only in the tabs.
+  const hydrated = useHydrated();
+  const kind: LayoutKind = hydrated && params.get("kind") === "magazine" ? "magazine" : "poster";
+  const sort: LayoutSort = hydrated && params.get("sort") === "new" ? "new" : "top";
 
   const [layouts, setLayouts] = useState<LayoutCard[] | null>(null);
   const [mine, setMine] = useState<OwnLayout[] | null>(null);

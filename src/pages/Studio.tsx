@@ -6,6 +6,7 @@ import { FillIn } from "@/components/studio/fill-in";
 import { PageFrame, useSize } from "@/components/studio/page-frame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { loadStudio, STUDIO_GROUPS, type StudioGroup, type StudioPage, type StudioSection } from "@/lib/studio";
 import { cn } from "@/lib/utils";
 
@@ -178,7 +179,12 @@ function Viewer({
  */
 export function Studio() {
   const [params, setParams] = useSearchParams();
-  const shelf = STUDIO_GROUPS.find(group => group.id === params.get("shelf"))?.id ?? "all";
+  // The shelf in the address is honoured only once the page is in the
+  // browser: `build.ts` draws /studio with no query (see `useHydrated`). The
+  // shelves are empty until the pages arrive, so nothing but the pill's colour
+  // waits.
+  const hydrated = useHydrated();
+  const shelf = (hydrated && STUDIO_GROUPS.find(group => group.id === params.get("shelf"))?.id) || "all";
   const open = params.get("page");
 
   const [sections, setSections] = useState<StudioSection[] | null>(null);
@@ -288,6 +294,10 @@ export function Studio() {
           Every layout the editors have drawn: one-page magazines in a dozen moods, the pages an issue is built from, ideas still on the table, and complete
           issues from cover to colophon. Open any page, then press Use this layout to put your own photos and words in it.
         </p>
+        <p className="max-w-prose text-white/90 drop-shadow-sm">
+          For a trip, a wedding, a birthday or an ordinary Sunday. Your photographs stay in your browser: download a PDF with no account, or a PNG of a
+          single page, or press Save &amp; share for a link, which seals the pages before they leave.
+        </p>
       </header>
 
       <Card className="border-white/50 bg-white/90 backdrop-blur-md">
@@ -336,6 +346,27 @@ export function Studio() {
               </section>
             ))
           )}
+
+          {/* What each shelf holds, from `STUDIO_GROUPS` rather than the pages,
+              so it is in the HTML the build draws. Everything else here is a
+              picture in a frame, and without these lines a crawler that runs
+              no script learns only the page's name. Plain text, not links: a
+              link per shelf would hand crawlers four copies of this page to
+              sort out. Inside the card, because over the scene the words
+              crossed the pale path and could not be read. */}
+          <section aria-labelledby="studio-shelves" className="flex flex-col gap-4 border-t border-stone-200 pt-6">
+            <h2 id="studio-shelves" className="font-editorial text-2xl text-stone-900">
+              On the shelves
+            </h2>
+            <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+              {STUDIO_GROUPS.map(group => (
+                <div key={group.id} className="flex flex-col gap-1">
+                  <dt className="text-sm font-medium text-stone-900">{group.label}</dt>
+                  <dd className="text-sm text-stone-600">{group.blurb}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         </CardContent>
       </Card>
 

@@ -19,9 +19,10 @@ const app = (
 /**
  * Hydrates the page the build already drew, or draws one from nothing.
  *
- * `build.ts` renders the home page into index.html and marks the root with the
- * address it drew. Hydrating keeps that markup and attaches React to it, so a
- * reader sees the page before the bundle has run instead of after.
+ * `build.ts` renders the home page and the other public pages into their HTML
+ * and marks the root with the address it drew. Hydrating keeps that markup and attaches
+ * React to it, so a reader sees the page before the bundle has run instead of
+ * after.
  *
  * The mark is checked against the real address because a server may hand
  * index.html to some other path as a catch-all. Hydrating the cover's markup as

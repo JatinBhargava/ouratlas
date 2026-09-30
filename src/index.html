@@ -8,7 +8,9 @@
       this file are the home page's. build.ts writes a copy of this file for
       every other route with those values replaced from src/lib/seo.ts, and
       fails the build if it cannot find each tag exactly once — so keep one of
-      each here, and change the wording in seo.ts rather than only here.
+      each here, and change the wording in seo.ts rather than only here. The
+      share card's address and alt text are replaced the same way, from the
+      page's own card in seo.ts or DEFAULT_IMAGE there.
     -->
     <meta
       name="description"
@@ -54,6 +56,10 @@
       content="Photos from a trip, a wedding, a birthday or any memory, with your own words, set as a magazine and exported as a PDF. Your photos are never stored."
     />
     <meta name="twitter:image" content="https://ouratlas.co.in/og.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="The Atlas home page: the headline 'The day is over. The story isn't.' over an illustrated sky, with a magazine spread beginning below it."
+    />
     <!--
       The headline face, served from this deployment rather than from Google.
 

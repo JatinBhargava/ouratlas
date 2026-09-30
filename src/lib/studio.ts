@@ -42,12 +42,36 @@ export type StudioSection = {
 
 export type StudioGroup = "one-page" | "magazine" | "ideas" | "issues";
 
-/** The shelves, in the order the page lists them. `scripts/studio.ts` decides which row sits on which. */
-export const STUDIO_GROUPS: { id: StudioGroup; label: string }[] = [
-  { id: "one-page", label: "One-page magazines" },
-  { id: "magazine", label: "Magazine pages" },
-  { id: "ideas", label: "New ideas" },
-  { id: "issues", label: "Complete issues" },
+/**
+ * The shelves, in the order the page lists them. `scripts/studio.ts` decides which row sits on which.
+ *
+ * Each carries a line of its own, written here rather than read from
+ * `pages.json`, because the pages arrive only after the studio has drawn and
+ * the build draws /studio ahead of time without them (`build.ts`). These lines
+ * are what a crawler that runs no script learns the shelves hold, so they name
+ * what is really on each; change them when a row moves shelf.
+ */
+export const STUDIO_GROUPS: { id: StudioGroup; label: string; blurb: string }[] = [
+  {
+    id: "one-page",
+    label: "One-page magazines",
+    blurb: "A whole story on a single sheet, in a dozen moods: minimal, cinematic, zine, anime, the long letter and the classic cover.",
+  },
+  {
+    id: "magazine",
+    label: "Magazine pages",
+    blurb: "The leaves an issue is built from: covers, contents, openers, photo plates, pull quotes and the back of the book.",
+  },
+  {
+    id: "ideas",
+    label: "New ideas",
+    blurb: "Layouts still on the drawing board: a contact sheet, chapters, a postcard, a back cover and the double-page spread.",
+  },
+  {
+    id: "issues",
+    label: "Complete issues",
+    blurb: "Ten-page issues from cover to colophon, each in a house style of its own, from Swiss and Gazette to Riviera, Garden and Noir.",
+  },
 ];
 
 /** Bundled, so each gets a hashed address and the long cache; the pages name them as `%photo:<name>%`. */

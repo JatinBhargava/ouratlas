@@ -27,6 +27,13 @@ export type Head = {
   description: string;
   /** False writes `noindex`, and keeps the page out of the sitemap. */
   index: boolean;
+  /**
+   * The share card, when the page deserves its own. Absent means the site's
+   * card (`DEFAULT_IMAGE`). The file lives in `src/static`, so its address is
+   * unhashed and stays put in other people's caches, and it must be 1200×630:
+   * the served head declares that size for every card.
+   */
+  image?: ShareImage;
   sitemap?: {
     changefreq: "monthly" | "yearly";
     priority: number;
@@ -37,6 +44,19 @@ export type Head = {
      */
     updated?: string;
   };
+};
+
+export type ShareImage = {
+  /** A root-relative address of a file in `src/static`, such as "/og.jpg". */
+  path: string;
+  /** What the card shows, for readers who cannot see it. */
+  alt: string;
+};
+
+/** The card every page without its own is shared with, drawn by `scripts/og-image.ts`. */
+export const DEFAULT_IMAGE: ShareImage = {
+  path: "/og.jpg",
+  alt: "The Atlas home page: the headline 'The day is over. The story isn't.' over an illustrated sky, with a magazine spread beginning below it.",
 };
 
 /**
@@ -67,31 +87,44 @@ export const ROUTES: Record<string, Head> = {
     sitemap: { changefreq: "monthly", priority: 0.8 },
   },
   "/poster": {
-    title: "One-page poster — Atlas",
+    title: "One-page poster maker, free as a PDF or PNG — Atlas",
     description:
       "One page to design yourself: photo boxes, text boxes, shapes, fonts, colours and alignment. Download a PDF or PNG; photos never leave your browser.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.7 },
   },
   "/editor-in-chief": {
-    title: "Editor in Chief — Atlas",
+    title: "Editor in Chief: design a magazine page by page — Atlas",
     description:
       "Lay out every page yourself: photo boxes, text boxes, shapes, fonts, colours and alignment, page after page. Download a PDF; photos stay in your browser.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.7 },
   },
   "/layouts": {
-    title: "Layouts — Atlas",
+    title: "Layout directory: magazine pages by Atlas readers",
     description:
       "Poster pages and magazine layouts designed by Atlas readers and reviewed by the editors. Start from any of them, like your favourites, or submit your own.",
     index: true,
     sitemap: { changefreq: "monthly", priority: 0.6 },
   },
+  // "Templates" in the title, though the page itself says layouts: it is the
+  // word people search with, and the page is exactly that. The shelf, the open
+  // page and the layout in use (`?shelf=`, `?page=`, `?use=`) are served this
+  // same HTML, so each names /studio as its canonical and none is a page of
+  // its own in the index. That is deliberate: they are views of one gallery,
+  // their pages are pictures a crawler cannot read, and the studio links to
+  // none of them.
   "/studio": {
-    title: "Atlas Studio — every layout, page by page",
+    title: "Free magazine templates for your own photos — Atlas Studio",
     description:
-      "Every layout the Atlas editors have drawn: one-page magazines, covers, contents, plates, new ideas and complete issues, page by page.",
+      "Over 200 magazine layouts, from one-page magazines to complete ten-page issues. Fill any with your own photos and words, then download it as a PDF.",
     index: true,
+    // Its own card, of real pages from the shelves (`scripts/og-studio.ts`):
+    // the home page's card says nothing about layouts.
+    image: {
+      path: "/og-studio.jpg",
+      alt: "Atlas Studio: five magazine pages from the shelves, fanned out beside the line 'Magazine layouts for your own photos'.",
+    },
     sitemap: { changefreq: "monthly", priority: 0.6 },
   },
   "/admin/dashboard": {
@@ -221,6 +254,11 @@ export function applyHead(pathname: string): void {
   setMeta("name", "twitter:title", head.title);
   setMeta("name", "twitter:description", head.description);
   setMeta("property", "og:url", url);
+  const image = head.image ?? DEFAULT_IMAGE;
+  setMeta("property", "og:image", new URL(image.path, SITE).toString());
+  setMeta("property", "og:image:alt", image.alt);
+  setMeta("name", "twitter:image", new URL(image.path, SITE).toString());
+  setMeta("name", "twitter:image:alt", image.alt);
   setMeta("name", "robots", head.index ? null : "noindex");
 
   let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');

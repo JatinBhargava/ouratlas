@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   ChevronLeft,
@@ -27,6 +27,7 @@ import { PosterCanvas } from "@/components/poster/canvas";
 import { Inspector, type Edits, type Layer, type PageAlign } from "@/components/poster/inspector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useAuth } from "@/lib/auth";
 import { popRecord, putRecord } from "@/lib/draft";
 import { canvasToSample, getLayout } from "@/lib/layouts";
@@ -159,17 +160,31 @@ function Studio({ mode }: { mode: Mode }) {
 
   /* ----------------------------------------------------------- scale */
 
+  // The workspace (sheet, page strip, inspector) is drawn only in the
+  // browser. `build.ts` draws this page ahead of time so its heading and
+  // tools reach crawlers, but the sheet is sized from the width it is given,
+  // which the build cannot know: drawn at full size and shrunk on a phone
+  // once the script ran, it would shove everything beneath it. Left out of the
+  // build's markup, it arrives inside the card with nothing below to move.
+  const hydrated = useHydrated();
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  useEffect(() => {
+  // Measured once before the first paint as well as observed. An observer
+  // reports only after a frame has been drawn, and until then the sheet sat at
+  // full size: on a phone it was then shrunk under the reader's eyes, the one
+  // layout shift Lighthouse found on this page.
+  useLayoutEffect(() => {
     const node = stage.current;
     if (!node) return;
+    const fit = (width: number) => setScale(Math.min(MAX_SCALE, width / SHEET.width));
+    fit(node.getBoundingClientRect().width);
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setScale(Math.min(MAX_SCALE, entry.contentRect.width / SHEET.width));
+      if (entry) fit(entry.contentRect.width);
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+    // Again once hydrated, when the stage it measures first exists.
+  }, [hydrated]);
 
   /* ---------------------------------------------------------- photos */
 
@@ -613,6 +628,7 @@ function Studio({ mode }: { mode: Mode }) {
             </p>
           )}
 
+          {hydrated && (
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             {/* The page */}
             <div className="flex min-w-0 flex-1 flex-col items-center gap-10">
@@ -736,6 +752,7 @@ function Studio({ mode }: { mode: Mode }) {
               />
             </aside>
           </div>
+          )}
         </CardContent>
       </Card>
 

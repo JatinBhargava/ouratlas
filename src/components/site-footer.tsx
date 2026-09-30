@@ -27,6 +27,20 @@ const GROUPS: LinkGroup[] = [
       { label: "What's new", href: "/whats-new" },
     ],
   },
+  // The tools are otherwise reached only through the nav's Products menu,
+  // which draws its links only once opened. The home page's HTML therefore
+  // linked to none of them, and a crawler finds them only in the sitemap,
+  // which it treats as a hint rather than as the site vouching for a page.
+  {
+    heading: "Make",
+    links: [
+      { label: "Start a story", href: "/create" },
+      { label: "Atlas Studio", href: "/studio" },
+      { label: "One-page poster", href: "/poster" },
+      { label: "Editor in Chief", href: "/editor-in-chief" },
+      { label: "Layout directory", href: "/layouts" },
+    ],
+  },
   {
     heading: "Company",
     links: [
