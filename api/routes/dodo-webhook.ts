@@ -215,9 +215,16 @@ dodoWebhookRoutes.post(
       case "subscription.plan_changed":
       case "subscription.cancelled":
       case "subscription.expired":
-      case "subscription.failed":
-        await mirror(event.data as Parameters<typeof mirror>[0], Date.parse(event.timestamp));
+      case "subscription.failed": {
+        const occurredAt = Date.parse(event.timestamp);
+        // Without an event time, acknowledge but do not risk overwriting newer entitlement state.
+        if (!Number.isFinite(occurredAt)) {
+          res.json({ received: true, handled: false });
+          return;
+        }
+        await mirror(event.data as Parameters<typeof mirror>[0], occurredAt);
         break;
+      }
 
       // The ledger. These say what was charged; they never grant a plan —
       // that stays with the subscription events above.

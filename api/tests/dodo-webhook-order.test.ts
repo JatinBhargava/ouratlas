@@ -34,7 +34,7 @@ const port = (server.address() as { port: number }).port;
 afterAll(() => { server.close(); });
 
 let sequence = 0;
-async function deliver(type: string, status: string, occurredAt: string, id = `msg_${++sequence}`) {
+async function deliver(type: string, status: string, occurredAt: string | undefined, id = `msg_${++sequence}`) {
   const payload = JSON.stringify({
     business_id: "bus_1",
     type,
@@ -85,3 +85,12 @@ describe("Dodo subscription events that arrive out of order", () => {
   expect(subscriptions.get("sub_1")?.status).toBe("active");
   expect(subscriptions.get("sub_1")?.updated_at).toBe("2026-10-01T10:06:00.000Z");
  });
+
+for (const timestamp of [undefined, "not-a-date"]) {
+  test(`non-orderable Dodo event is acknowledged without changing state (${timestamp})`, async () => {
+    subscriptions.clear();
+    expect(await deliver("subscription.cancelled", "cancelled", "2026-10-01T10:05:00Z")).toBe(200);
+    expect(await deliver("subscription.active", "active", timestamp)).toBe(200);
+    expect(subscriptions.get("sub_1")?.status).toBe("cancelled");
+  });
+}
