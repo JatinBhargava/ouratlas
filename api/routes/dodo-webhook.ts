@@ -83,7 +83,7 @@ async function mirror(subscription: {
   cancel_at_next_billing_date?: boolean | null;
   customer?: { customer_id?: string } | null;
   metadata?: Record<string, unknown> | null;
-}): Promise<void> {
+}, occurredAt: number): Promise<void> {
   const userId = await resolve(subscription.metadata, subscription.customer?.customer_id);
   if (!userId) {
     console.error(`[dodo] no account for subscription ${subscription.subscription_id}; skipped`);
@@ -99,6 +99,12 @@ async function mirror(subscription: {
     return;
   }
 
+  const { data: existing, error: readError } = await admin().from("subscriptions")
+    .select("updated_at").eq("id", subscription.subscription_id).maybeSingle();
+  if (readError) throw new HttpError(500, "Could not read subscription event time.");
+  if (existing?.updated_at && Date.parse(existing.updated_at) > occurredAt) return;
+  // A read-then-write race remains for concurrent deliveries; acceptable for this ordering guard.
+
   const { error } = await admin().from("subscriptions").upsert(
     {
       id: subscription.subscription_id,
@@ -110,7 +116,7 @@ async function mirror(subscription: {
       price_id: subscription.product_id,
       current_period_end: at(subscription.next_billing_date),
       cancel_at_period_end: subscription.cancel_at_next_billing_date ?? false,
-      updated_at: new Date().toISOString(),
+      updated_at: new Date(occurredAt).toISOString(),
     },
     { onConflict: "id" },
   );
@@ -210,7 +216,7 @@ dodoWebhookRoutes.post(
       case "subscription.cancelled":
       case "subscription.expired":
       case "subscription.failed":
-        await mirror(event.data as Parameters<typeof mirror>[0]);
+        await mirror(event.data as Parameters<typeof mirror>[0], Date.parse(event.timestamp));
         break;
 
       // The ledger. These say what was charged; they never grant a plan —
