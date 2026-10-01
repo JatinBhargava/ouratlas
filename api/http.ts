@@ -72,6 +72,22 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     return;
   }
 
+  // body-parser marks expected request failures with a type and HTTP status.
+  // Use fixed messages: parser errors can include the submitted body.
+  const bodyErrors: Record<string, { status: number; message: string }> = {
+    "entity.parse.failed": { status: 400, message: "Malformed request body." },
+    "entity.too.large": { status: 413, message: "Request body is too large." },
+    "charset.unsupported": { status: 415, message: "Unsupported request charset." },
+    "encoding.unsupported": { status: 415, message: "Unsupported request encoding." },
+    "request.aborted": { status: 400, message: "Request body was interrupted." },
+    "request.size.invalid": { status: 400, message: "Invalid request body size." },
+  };
+  const bodyError = error && typeof error.type === "string" ? bodyErrors[error.type] : undefined;
+  if (bodyError && error.status === bodyError.status) {
+    res.status(bodyError.status).json({ error: bodyError.message });
+    return;
+  }
+
   console.error("[api] unhandled:", error);
   res.status(500).json({ error: "Something went wrong on our end." });
 };
