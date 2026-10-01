@@ -11,6 +11,7 @@ import { Router } from "express";
 
 import { asyncRoute, HttpError } from "@api/http";
 import { admin } from "@api/supabase";
+import { burst } from "@api/limits";
 import type { WaitlistResponse } from "@/types";
 
 export const waitlistRoutes = Router();
@@ -33,6 +34,7 @@ const UNIQUE_VIOLATION = "23505";
 
 waitlistRoutes.post(
   "/waitlist",
+  burst("waitlist", 10, 60_000),
   asyncRoute(async (req, res) => {
     const body = (req.body ?? {}) as { email?: unknown; source?: unknown };
 
