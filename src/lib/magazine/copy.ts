@@ -197,8 +197,15 @@ export function spliceStory(paragraphs: string[][], from: Cursor, to: Cursor, te
  * the same markup, though, which is why this is an option on the shared
  * function rather than something the renderer does afterwards.
  */
-const inkPunctuation = (html: string) =>
-  html.replace(/[.&]/g, char => `<span style="color:var(--ink-accent)">${char}</span>`);
+const inkPunctuation = (text: string) =>
+  text
+    .split(/([.&])/)
+    .map(piece =>
+      piece === "." || piece === "&"
+        ? `<span style="color:var(--ink-accent)">${escapeHtml(piece)}</span>`
+        : escapeHtml(piece),
+    )
+    .join("");
 
 /** Markup for a slice. Used to measure it and, later, to draw it. */
 export function paragraphsHtml(
@@ -209,10 +216,9 @@ export function paragraphsHtml(
     .map((line, i) => {
       const dropCap = i === 0 && options.dropCap && !line.continued;
       const className = dropCap ? `${PARAGRAPH_CLASS} ${DROP_CAP_CLASS}` : PARAGRAPH_CLASS;
-      // Escaped first, so the spans are wrapped around real punctuation and
-      // never around the `&` of an entity this just produced.
-      const text = escapeHtml(line.text);
-      return `<p class="${className}">${options.punctuation ? inkPunctuation(text) : text}</p>`;
+      // Accent raw punctuation and escape each piece, leaving HTML entities intact.
+      const text = options.punctuation ? inkPunctuation(line.text) : escapeHtml(line.text);
+      return `<p class="${className}">${text}</p>`;
     })
     .join("");
 }
