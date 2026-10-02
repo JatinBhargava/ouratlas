@@ -1,401 +1,141 @@
 # Atlas
 
-Trip photos and your own words, set as a magazine you can keep.
+**Your photos and your own words, set as a magazine you can keep.**
 
-Ten photographs and up to ten thousand words go in; a paginated issue — cover,
-contents, feature, plates, colophon — comes out, ready to export as a PDF.
+Atlas ([ouratlas.co.in](https://ouratlas.co.in)) turns a memory into a printed-style magazine. A person brings up to ten photographs and tells the story in their own words, typed or spoken. Atlas lays it out as a real magazine issue, with a cover, a contents page, the story, full-page photographs and page numbers. They download it as a PDF to keep, print or send.
 
-## Running it
+## The problem it solves
 
-```bash
-bun install
-cp .env.example .env   # then fill in what you want switched on
+Most people's best memories sit in a camera roll of thousands of photos that nobody looks at again. Photo books take hours to design, and social posts disappear in a day. Atlas sits in between. In a few minutes it turns a handful of photos and a story into something that looks and feels like a keepsake, and the person never has to know anything about design.
 
-bun dev                # frontend on :3000, API on :3001
-bun run build          # static build into dist/
-bun start              # production: one process on :3000, site and API
-```
+## Who it is for
 
-`bun dev` runs two processes, because they want different things. The frontend
-is bundled by Bun, which is what gives hot reload; the API is Express. The dev
-frontend forwards `/api` to it, so the browser only ever sees one origin —
-the same as in production, where Express serves `dist/` and the API together.
+Anyone with a memory worth keeping:
 
-Either half can be run alone with `bun dev:web` and `bun dev:api`.
+- **Trips**: a weekend in the hills, a family holiday, a first trip abroad.
+- **Weddings** and their many functions.
+- **Birthdays**, anniversaries and a baby's first year.
+- **Festivals** and family gatherings.
+- **School and college** magazines, farewells and reunions.
+- **An ordinary day** worth remembering.
 
-Nothing is required to start. Every integration is optional and a missing key
-switches that feature off rather than stopping the server, so the boot log
-prints what is on:
+Atlas is built India-first, with prices in rupees, and it works in any modern browser on a phone or a computer.
 
-```
-   accounts  off (set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-   billing   off (set STRIPE_SECRET_KEY, STRIPE_PRICE_*)
-   webhook   off (set STRIPE_WEBHOOK_SECRET)
-   copy desk on
-```
-
-`bun run typecheck` checks the frontend and the API together.
+## How it works
 
-## Where the data goes
-
-**Photographs and story text are never stored.** Photos are read into the tab as
-object URLs, and composing and exporting never upload them. The story is held in React state.
-Composition and pagination happen in the browser, and export goes through the
-browser's own print dialog. None of it is written to a database, and there is
-no table it could go in.
-
-Some things do reach a server, all of them opt-in:
-
-- The **copy desk** streams the story through OpenAI or Anthropic and writes
-  nothing down on the way (see below).
-- **Voice** streams the microphone to OpenAI for transcription (or, for an
-  uploaded recording, sends it through the API in two-minute pieces).
-- The **editor** sends small previews of the photographs, with the story, to
-  OpenAI or Anthropic, which suggests a style, an order and a crop.
-- **Accounts, subscriptions and the waitlist** are stored in Supabase — an
-  email address, a plan, and a Stripe customer id. That is the whole of it.
+1. **Add your photos**: up to ten, straight from your phone or computer.
+2. **Tell the story**: type it, paste it, or speak it aloud and watch the words appear.
+3. **Get your magazine**: Atlas sets every page. Change the look, the order or the cover, then download the PDF.
 
-Earlier versions of this README said nothing was stored at all. Billing changed
-that, and it is worth being exact rather than keeping the nicer sentence.
-
-## Accounts
+No account is needed to make a magazine. Signing in (with Google) is asked for only when downloading a magazine from the desk, saving one to share, or using the copy desk.
 
-Sign-in is Google, through Supabase Auth. There is no password to store and no
-login endpoint in `api/` — the browser gets a signed token from Supabase, and
-the server verifies it with Supabase rather than decoding it itself.
+## What you can do
 
-Run `api/schema.sql` once in the Supabase SQL editor. It creates three tables,
-turns on row-level security for all of them, and adds the trigger that mirrors
-a new Google sign-in into `profiles`.
-
-Then enable Google under **Authentication → Providers**, and add your redirect
-URLs (`http://localhost:3000/**` for development) under **URL Configuration**.
-
-The service-role key bypasses row-level security, so it stays on the server.
-Only `BUN_PUBLIC_*` variables are inlined into the browser bundle, which is why
-the Supabase URL and anon key appear twice in `.env.example` and the
-service-role key appears once.
+### Make a magazine in minutes
 
-## Subscriptions
-
-Two paid plans, both monthly, through Stripe Checkout. Create them as prices in
-Stripe and put the **price** ids (not product ids) in `STRIPE_PRICE_TRAVELLER`
-and `STRIPE_PRICE_CARTOGRAPHER`.
-
-The browser never names a price, only a plan — a client that could name its own
-price could name its own price of zero.
-
-Entitlement is granted by the webhook and nowhere else. Checkout finishing in
-the browser proves nothing: the tab can be closed before it happens, and the
-return URL can be typed by hand. So `POST /api/stripe/webhook` is the only
-writer of the `subscriptions` table, and it acts only on a signed event. It is
-mounted with a raw body parser, because the signature covers the exact bytes
-Stripe sent and re-serialised JSON is not those bytes.
-
-Forward events while developing:
-
-```bash
-stripe listen --forward-to localhost:3000/api/stripe/webhook
-```
-
-It prints a `whsec_...` to put in `STRIPE_WEBHOOK_SECRET`. The deployed endpoint
-gets a different one from the dashboard.
-
-Stripe stays the source of truth; the `subscriptions` table is a mirror so a
-page load does not need an API call.
-
-Six events are subscribed to, and the endpoint acknowledges and drops anything
-else:
-
-```
-checkout.session.completed
-customer.subscription.created
-customer.subscription.updated
-customer.subscription.deleted
-invoice.paid
-invoice.payment_failed
-```
-
-The subscription events grant the plan. The invoice events write the ledger
-(below) and never grant anything — a paid invoice for a price this server does
-not sell should leave a record, not an entitlement.
-
-## The payments ledger
-
-`subscriptions` and `payments` mirror the same Stripe account and answer
-different questions. The first is current state, overwritten in place: what
-plan is this person on. The second is history, appended to: what have they
-actually been charged, with a link to each invoice and its PDF.
-
-They are deliberately **not** joined by a foreign key. Stripe does not order
-its webhooks, and `invoice.paid` routinely arrives before the
-`customer.subscription.created` it belongs to. A reference would reject those
-rows and lose the first payment of every new subscription, which is the one
-that matters most. `payments.subscription_id` is a plain id, joined when both
-rows exist.
-
-Amounts are stored in the currency's minor unit exactly as Stripe sends them
-(`829` = $8.29). A decimal column here would drift against the figures printed
-on the invoice.
-
-One subtlety worth knowing when reading the table: Stripe has no "failed"
-invoice status. A declined card leaves the invoice `open` and increments its
-attempt count, so the outcome lives in `last_attempt_failed`, which is set from
-the event type rather than read off the invoice. Cancellation, card changes and plan
-switches all go to Stripe's own billing portal rather than being rebuilt here.
-
-Because the webhook can arrive after the browser does, `/account` re-asks for
-the plan on a widening interval for about half a minute after checkout instead
-of telling someone who has just paid that they are on the free plan.
-
-## The waitlist
-
-`POST /api/waitlist` takes an email address and where on the site it was typed.
-It needs no account, which makes it the one write a stranger can reach.
-
-The `waitlist` table has row-level security on and **no policies at all**. That
-is deliberate: it is writable only through the server's service-role key, so
-anyone holding the public anon key still cannot enumerate the mailing list.
-Signing up twice is reported as success, because it is — the address is on the
-list either way.
-
-## Layout
-
-```
-api/          Express: routes, Supabase and Stripe clients, schema.sql
-src/          React app
-src/lib/      supabase client, auth context, billing and waitlist helpers
-src/types/    types shared by both halves, so they cannot drift on a plan name
-dev.ts        runs both halves for development
-```
-
-## Deployment
-
-Two containers behind one origin.
-
-```
-                    ┌──────────────────────────────┐
-  browser  ────────▶│ web    nginx :80             │
-                    │        dist/ + SPA fallback  │
-                    │        /api/* ──┐            │
-                    └─────────────────┼────────────┘
-                                      ▼
-                    ┌──────────────────────────────┐
-                    │ api    Express :3000         │
-                    │        not published         │
-                    └──────────────────────────────┘
-```
-
-The proxy is what makes this one origin rather than two, which is worth more
-than it looks: no CORS, no second base URL in the client, and the Stripe
-webhook path and Supabase redirect URLs are the same string in production as in
-development. The API publishes no port at all — it is reachable on the compose
-network and nowhere else, so the service-role key is never one request away from
-the internet.
-
-```bash
-docker compose up --build      # http://localhost:3000
-docker compose down
-```
-
-`PORT` moves the published port; everything else comes from `.env`.
-
-### The one thing that is not runtime configuration
-
-`BUN_PUBLIC_SUPABASE_URL` and `BUN_PUBLIC_SUPABASE_ANON_KEY` are **baked into
-the bundle at build time** — Bun inlines them (`bunfig.toml`, `build.ts`), so by
-the time a container starts, the JavaScript is already written. They are build
-arguments to the `web` image, not environment variables on it. Setting them at
-run time does nothing whatsoever, silently. `Dockerfile.web` fails the build if
-the URL is missing, because the alternative is an image that looks fine and
-cannot sign anybody in.
-
-Everything else — Supabase service-role key, Stripe keys, `APP_URL` — is read by
-the API at run time and can change without a rebuild.
-
-### Keeping the API awake
-
-`api/cron.ts` runs one scheduled job: every ten minutes it fetches its own
-`/api/health`.
-
-Free hosting idles a service out after a quiet spell — around fifteen minutes on
-Render — and a cold start is several seconds of someone staring at a blank
-sign-in. Ten minutes leaves room for one ping to fail without the idle window
-being reached.
-
-It has to be the **public** URL rather than localhost. Hosts count inbound
-requests through their own proxy, so a loopback request would keep the event
-loop busy and let the service sleep anyway. On Render this is automatic —
-`RENDER_EXTERNAL_URL` is injected — and `KEEPALIVE_URL` covers anywhere else.
-
-Two things it deliberately does not do. It cannot wake a service that has
-already stopped, because the process holding the timer stopped with it; it only
-prevents the idle window from being reached. And it never runs in development,
-where pinging localhost would achieve nothing but noise.
-
-A failed ping is logged and the schedule continues. The timer is unref'd, so it
-never holds the process open during shutdown. The boot log names the jobs that
-started — a cron that silently is not running would be worse than none.
-
-### The masthead line
-
-The small capitalised line in the navigation is where a magazine prints its
-circulation and edition, and it behaves like one.
-
-When the visitor count is known it is stated as **circulation**, which is what a
-readership figure is called in print. When it is not — analytics off, API
-unreachable, a fresh deployment — it falls back to the **edition**, named by the
-reader's own clock: Morning, Afternoon, Evening, Late. That needs no data at
-all, so the slot is never empty and the nav keeps reading as a periodical rather
-than an app chrome bar.
-
-The count itself comes from `GET /api/visits`, which asks Vercel's Web Analytics
-API and returns only `{ visitors, pageviews }`. It goes through the server
-because the Vercel token reaches the whole account — far too much to hand a
-browser for a decorative number — and the response is deliberately thin for the
-same reason: no paths, no referrers, no countries.
-
-That call is cached for ten minutes. The figure moves slowly and nobody watches
-it change, so a request per page load would spend the rate limit on nothing. A
-failed refresh serves the stale value rather than blanking the line.
-
-The nav previously showed a hardcoded `12,480`. On a site about keeping an
-honest record of a trip, an invented readership was the wrong default.
-
-### Versioning
-
-`versions.json` is the only place a version number is written:
-
-```json
-{ "api": "0.1.0", "ui": "0.1.0" }
-```
-
-The two are separate because they ship separately — a frontend change should not
-claim the API moved. Everything else reads that file through
-`scripts/versions.ts`, which is the single reader so nothing else needs to know
-the file's shape:
-
-| Reads it | For |
-| --- | --- |
-| `.github/workflows/ci.yml` | image tags `v0.1.0`, alongside `latest` and the SHA |
-| `docker-compose.yml` | the same tags locally, via `bun run docker:build` |
-| `Dockerfile.api` / `.web` | `APP_VERSION` build arg, stamped into the image |
-| `api/env.ts` | what `/api/health` and the boot log report |
-| `build.ts` | inlined into the bundle, shown in the footer |
-
-Bumping a version is editing that one file. Nothing else needs touching.
-
-Both halves report what they are actually running, which is how a rollout gets
-confirmed from outside:
-
-```bash
-curl https://api.ouratlas.co.in/api/health
-# {"ok":true,"service":"api","version":"0.1.0"}
-```
-
-The frontend's equivalent is the `v0.1.0` in the footer.
-
-An image carries the version it was **built** from, stamped in as `APP_VERSION`,
-rather than reading `versions.json` at run time — so a container keeps reporting
-what it is, even after the file moves on. Locally, `docker compose` on its own
-cannot read JSON, so `bun run docker:build` injects the versions for it; called
-directly, compose falls back to `:dev`, which is a truthful label for an
-unversioned build.
-
-### CI
-
-`.github/workflows/ci.yml`. Every push and pull request runs `check`: install
-with a frozen lockfile, typecheck, build the frontend, then boot the API and
-wait on `/api/health`. That last step runs with no keys configured at all, which
-is the point — the server must start and answer when every integration is
-switched off.
-
-Pushes to `master` additionally run `publish`, which builds both images and
-pushes them to GHCR tagged `latest` and the commit SHA.
-
-Two repository settings are needed for the web image, both public values, kept
-out of the repo rather than out of sight:
-
-| Where | Name |
-| --- | --- |
-| Variables | `BUN_PUBLIC_SUPABASE_URL` |
-| Secrets | `BUN_PUBLIC_SUPABASE_ANON_KEY` |
-
-### Deploying
-
-The pipeline stops at a published image, because where it runs is not decided
-yet. On any host with Docker:
-
-```bash
-docker compose pull && docker compose up -d
-```
-
-with `.env` present and `APP_URL` set to the public origin. Point `APP_URL`
-somewhere the browser cannot reach and Stripe will return people to a dead
-address after checkout.
-
-## The copy desk (optional)
-
-`POST /api/polish` streams the story through a model for a copy-editing pass.
-**Either OpenAI or Anthropic** will do — set one key:
-
-```bash
-OPENAI_API_KEY=sk-... bun dev
-# or
-ANTHROPIC_API_KEY=sk-ant-... bun dev
-```
-
-With both configured OpenAI is used, since that is usually the one with credit
-on it. `POLISH_PROVIDER=anthropic` overrides that. Naming a provider whose key
-is missing switches the copy desk **off** rather than quietly falling back to
-the one you did not ask for — a fallback there would send the story somewhere
-the operator did not choose.
-
-The boot log names what is actually running, because "on" is not enough to
-debug a wrong-model error:
-
-```
-   copy desk on (openai, gpt-4.1)
-```
-
-Models are overridable with `OPENAI_MODEL` and `ANTHROPIC_MODEL`; names move
-faster than this repository does. An Anthropic key that is identity-linked also
-needs `ANTHROPIC_WORKSPACE_ID`, and ordinary keys reject that header, so it is
-only sent when set.
-
-Without any key the endpoint returns 503 and the UI says so. The key stays on
-the server and is never sent to the browser. The story is split into passes of
-about 1,200 words so a long trip cannot run past the model's output limit, and
-the passes are rejoined so paragraph structure survives the round trip. Nothing
-is logged or stored on the way through. Photographs are never sent.
-
-The two providers differ only in the shape of the request and in which field of
-the stream carries the text — both speak server-sent events and both report
-failures as `{ error: { message } }` — so `api/polish.ts` describes each as a
-handful of lines and shares everything else.
-
-One asymmetry worth knowing: the Anthropic request caps output at 8,000 tokens,
-the OpenAI one sets no cap. Newer OpenAI models renamed `max_tokens` to
-`max_completion_tokens` and reject the old spelling, and the default limit is far
-above a 1,200-word pass, so asking for one would buy a compatibility problem and
-nothing else.
-
-## How the magazine is composed
-
-`src/lib/magazine/` is the engine and `src/components/magazine/` draws it.
-
-The hard part is pagination: fixed pages, variable copy. Rather than estimating
-from a words-per-column average, the composer **measures** — each text box is
-filled by binary-searching the word count against real type rendered off-screen.
-That is why no page overflows and none is left half empty.
-
-- `geometry.ts` — the page grid. Shared by the fitter and the renderer, because
-  if the two ever disagreed a page would silently overflow.
-- `copy.ts` — the story as paragraphs, and the one function that turns a slice
-  into markup. Measuring and drawing go through it for the same reason.
-- `fit.ts` — the fitter.
-- `templates.ts` — the layouts and their text boxes.
-- `compose.ts` — pours copy through the layouts, deals out plates, sets folios.
-
-Print uses an `@page` box matching the layout exactly (520×693 CSS px), so
-"Save as PDF" produces pages 1:1 with no scaling.
+- **Automatic layout.** Atlas flows the story across as many pages as it needs, gives the photos full-page plates, and adds a cover, a contents page and page numbers. Long stories never spill off the page.
+- **Themes.** Choose the look of the whole issue in one tap, from quiet and classic to bold and graphic.
+- **Make it yours.** Move boxes on any page, change type and colours, or draw your own page layout.
+- **Download as a PDF.** The file looks exactly like the screen, ready to keep, print at a local shop or send on.
+- **Pictures for social media.** Every page also comes out as a picture sized for Instagram and WhatsApp.
+
+### Help when you want it (optional AI)
+
+- **The editor** looks at the photos and the story and suggests a theme, a cover, the best order for the photos, captions and a title. One tap undoes it.
+- **The copy desk** tidies up a story, or turns rough notes into a finished piece.
+- **Speak instead of typing.** Tell the story out loud, or upload a voice note, and the words appear as you speak.
+
+### Atlas Studio: over 200 ready-made layouts
+
+- A library of magazine pages drawn by the Atlas editors: covers, contents pages, photo spreads, pull quotes, one-page magazines in a dozen moods, and complete ten-page issues in house styles such as Swiss, Gazette, Riviera, Garden and Noir.
+- **Fill any layout** with your own photos and words. Drag each photo to frame it, zoom in, change the font, size, alignment and colour of any text, and delete anything you don't need (undo brings it back).
+- Download as a PDF or picture with no account, or save it to share as a link.
+
+### Editor in Chief: design every page yourself
+
+- A free-form page designer for a whole magazine: text, photos and shapes placed exactly where you want them, with fonts, colours and alignment.
+- **Start any page from an Atlas Studio layout.** Every element comes in ready to move, restyle or delete. Switch a page to a different layout at any time, straight from the page strip.
+- **The next page follows the theme.** After a page from a themed issue, the next page offered is that issue's next layout, and page numbers update themselves as pages are added, moved or deleted.
+- **Frame each photo.** Double-click a photo and drag it inside its frame.
+- **Preview** the finished magazine as it will read in print, then download the PDF.
+
+### One-page poster
+
+A single page designed by hand, for an invitation, an announcement or a wall print, downloaded as a PDF or picture.
+
+### Layouts from the community
+
+Readers can browse page designs made by other Atlas users, like their favourites, start from any of them, or send in their own for the editors to review.
+
+### Save & share
+
+- Save a magazine and share it as a private link, including straight to WhatsApp, Instagram and other apps.
+- **Only people with the link can open it.** The magazine is locked in the person's own browser before it is saved, and the key to open it travels inside the link, never to Atlas.
+- **My magazines** keeps a person's saved issues together, on any device they sign in to.
+- Free saves last up to 30 days. Paid plans can keep a magazine for as long as they like.
+
+### The Atlas Journal
+
+A blog at [ouratlas.co.in/blog](https://ouratlas.co.in/blog). A new post every week covers design, art, the media industry and technology, and spotlights new Atlas features and why they are worth using.
+
+### Android app
+
+An Atlas app for Android is in testing, so people can make a magazine from the photos already on their phone.
+
+## Privacy
+
+This is central to the product, and worth stating exactly:
+
+- **Photos and stories are never stored by Atlas.** The magazine is put together inside the person's own browser.
+- They leave the device only when the person chooses a tool that needs it: the AI editor, the copy desk or voice transcription. Even then Atlas passes them to the AI service for that one task and keeps no copy.
+- **Saving a magazine to share is also the person's choice.** The pages are locked before they leave the device, so Atlas cannot open them.
+- Beyond the locked magazines people choose to save, Atlas stores only what an account needs (an email address, the plan and a record of payments) and the page layouts people choose to send in to the community, with the words and photos taken out.
+
+## Plans
+
+| | **Wanderer** | **Traveller** | **Cartographer** |
+|---|---|---|---|
+| Price | Free | ₹99 a month | ₹199 a month |
+| Photos per story | 10 | 10 | 10 |
+| Story length | Up to 5,000 words | Up to 10,000 words | Up to 15,000 words |
+| AI editor designs a month | 2 | 5 | 12 |
+| Copy-desk edits a month | 2 | 5 | 15 |
+| Stories | One at a time | Unlimited | Unlimited |
+| Magazine downloads | 3 a month | Unlimited | Unlimited |
+| Themes | Two | All | All |
+| Also includes | | Print-quality PDF, voice transcription | Everything in Traveller, custom fonts and palettes, editable page layouts, bulk export, priority support |
+
+Atlas Studio, the one-page poster and Editor in Chief can be used and downloaded free.
+
+## Run it on your computer
+
+You need a Mac, Windows or Linux computer and about ten minutes.
+
+1. **Install Bun**, the tool that runs Atlas, from [bun.sh](https://bun.sh). On a Mac or Linux:
+   ```bash
+   curl -fsSL https://bun.sh/install | bash
+   ```
+2. **Get the code** and open the folder:
+   ```bash
+   git clone https://github.com/JatinBhargava/ouratlas.git
+   cd ouratlas
+   ```
+3. **Install** everything Atlas needs:
+   ```bash
+   bun install
+   ```
+4. **Start it**:
+   ```bash
+   bun dev
+   ```
+5. **Open [http://localhost:3000](http://localhost:3000)** in your browser.
+
+That is enough to make a magazine and to use Atlas Studio, Editor in Chief and the poster.
+
+**Turning on the optional parts.** Sign-in, saving and sharing, the AI helpers, voice and payments each need an account with an outside service. To switch any of them on, copy the file `.env.example` to `.env` and fill in the keys it describes, then restart. Anything left blank simply stays switched off, and the rest of Atlas keeps working. When Atlas starts, it lists which parts are on and which are off.
+
+## Learn more
+
+- **What's new**: [ouratlas.co.in/whats-new](https://ouratlas.co.in/whats-new) lists every release in plain words.
+- **The Journal**: [ouratlas.co.in/blog](https://ouratlas.co.in/blog).
+- **For engineers**: how Atlas is built and configured is in [docs/engineering.md](docs/engineering.md).
