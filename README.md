@@ -4,6 +4,12 @@
 
 Atlas ([ouratlas.co.in](https://ouratlas.co.in)) turns a memory into a printed-style magazine. A person brings up to ten photographs and tells the story in their own words, typed or spoken. Atlas lays it out as a real magazine issue, with a cover, a contents page, the story, full-page photographs and page numbers. They download it as a PDF to keep, print or send.
 
+## See it in 90 seconds
+
+<a href="docs/media/atlas-walkthrough.mp4"><img src="docs/media/atlas-walkthrough.jpg" alt="Atlas walkthrough: from photos and a story to a finished magazine" width="100%"></a>
+
+From seven photos and a story to a finished magazine: adding photos and words on the desk, sending it to press, turning the pages, changing the whole look in one tap, filling an Atlas Studio layout, and building pages in Editor in Chief. [Play the video](docs/media/atlas-walkthrough.mp4).
+
 ## The problem it solves
 
 Most people's best memories sit in a camera roll of thousands of photos that nobody looks at again. Photo books take hours to design, and social posts disappear in a day. Atlas sits in between. In a few minutes it turns a handful of photos and a story into something that looks and feels like a keepsake, and the person never has to know anything about design.
