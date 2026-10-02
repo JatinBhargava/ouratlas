@@ -326,3 +326,98 @@
     animation: none;
   }
 }
+
+/*
+ * A Journal post's body (`/blog/<slug>`). The HTML is rendered from Markdown
+ * at build time (`scripts/blog.ts`), so it arrives as bare elements with no
+ * classes to hang utilities on; this sets them on the same paper and in the
+ * same type as the legal pages.
+ */
+.journal-prose {
+  color: var(--color-stone-700);
+  font-size: 1rem;
+  line-height: 1.75;
+
+  & > * + * {
+    margin-top: 1.1em;
+  }
+  & h2 {
+    margin-top: 2em;
+    font-family: var(--font-editorial);
+    font-size: 1.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--color-stone-900);
+    scroll-margin-top: 7rem;
+  }
+  & h3 {
+    margin-top: 1.6em;
+    font-weight: 600;
+    color: var(--color-stone-900);
+    scroll-margin-top: 7rem;
+  }
+  & a {
+    color: var(--color-stone-900);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  & strong {
+    font-weight: 600;
+    color: var(--color-stone-900);
+  }
+  & ul,
+  & ol {
+    padding-left: 1.25rem;
+  }
+  & ul {
+    list-style: disc;
+  }
+  & ol {
+    list-style: decimal;
+  }
+  & li + li {
+    margin-top: 0.35em;
+  }
+  & blockquote {
+    border-left: 2px solid var(--color-stone-300);
+    padding-left: 1rem;
+    font-family: var(--font-editorial);
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: var(--color-stone-900);
+  }
+  & :not(pre) > code {
+    border-radius: 0.25rem;
+    background: var(--color-stone-100);
+    padding: 0.1em 0.35em;
+    font-size: 0.875em;
+  }
+  & pre {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    background: var(--color-stone-900);
+    padding: 1rem 1.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--color-stone-100);
+  }
+  & table {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  & th,
+  & td {
+    border-bottom: 1px solid var(--color-stone-200);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  & th {
+    font-weight: 600;
+    color: var(--color-stone-900);
+  }
+  & hr {
+    border-color: var(--color-stone-200);
+  }
+}

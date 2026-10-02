@@ -196,6 +196,16 @@ export const ROUTES: Record<string, Head> = {
     index: true,
     sitemap: { changefreq: "yearly", priority: 0.4, updated: LEGAL.updated },
   },
+  // The posts themselves are not listed here (see `SELF_HEADED`); build.ts
+  // gives each its own HTML, sitemap entry and article JSON-LD from
+  // `scripts/blog.ts`, and dates this page by the newest post.
+  "/blog": {
+    title: "The Atlas Journal — keeping photos, stories and memories",
+    description:
+      "Guides to turning photos and memories into albums, magazines and keepsakes, essays on print and family stories, and how Atlas is built.",
+    index: true,
+    sitemap: { changefreq: "monthly", priority: 0.6 },
+  },
   "/whats-new": {
     title: "What's new — Atlas",
     description:
@@ -245,8 +255,26 @@ function setMeta(attribute: "name" | "property", key: string, content: string | 
  * server did not recognise (for instance a different letter case).
  */
 export function applyHead(pathname: string): void {
+  if (SELF_HEADED.test(pathname)) return;
   const { head, url } = headFor(pathname);
+  writeHead(head, url);
+}
 
+/**
+ * Addresses whose page writes its own head (through `writeHead`) rather than
+ * taking one from `ROUTES`: the Journal's posts.
+ *
+ * There is one a day, and listing each here would put every title and
+ * description ever written into the bundle every reader of the cover
+ * downloads. Their heads come from the Journal's own chunk instead, and
+ * `build.ts` writes the same values into each post's HTML. `applyHead` must
+ * stay out of their way: it runs after the page's effect, and would
+ * otherwise overwrite the post's head with the not-found one.
+ */
+export const SELF_HEADED = /^\/blog\/[^/]+\/?$/;
+
+/** Writes one head into the live document: title, description, cards, robots and canonical. */
+export function writeHead(head: Head, url: string | null): void {
   document.title = head.title;
   setMeta("name", "description", head.description);
   setMeta("property", "og:title", head.title);

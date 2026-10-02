@@ -52,6 +52,9 @@ const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then(module =
 // Atlas Studio, the showcase of every drawn layout. Its pages are a further
 // chunk of their own (`loadStudio`), fetched once this one has drawn.
 const Studio = lazy(() => import("@/pages/Studio").then(module => ({ default: module.Studio })));
+// The Journal: every post's metadata in one chunk, each body a chunk of its own.
+const Blog = lazy(() => import("@/pages/Blog").then(module => ({ default: module.Blog })));
+const BlogPost = lazy(() => import("@/pages/Blog").then(module => ({ default: module.BlogPost })));
 
 /**
  * Everything inside the router, so a router can be chosen from outside.
@@ -94,6 +97,8 @@ export function AppRoutes() {
                 <Route path="/refunds" element={<Refunds />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/whats-new" element={<WhatsNew />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
                 {/* Last, and matching anything left: an address with no page of
                     its own arrives as 404.html, and React Router still has to
                     draw something for it. */}

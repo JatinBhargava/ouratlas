@@ -81,7 +81,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+export function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="shrink-0 text-xs text-stone-600">{label}</span>
@@ -91,7 +91,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** A row of mutually exclusive buttons: alignment, weight, fit. */
-function Segmented<V extends string | number>({
+export function Segmented<V extends string | number>({
   value,
   options,
   onChange,
@@ -125,7 +125,7 @@ function Segmented<V extends string | number>({
 }
 
 /** An on/off button with an icon, for bold, italic and the like. */
-function Toggle({ on, onChange, label, children }: { on: boolean; onChange: (on: boolean) => void; label: string; children: ReactNode }) {
+export function Toggle({ on, onChange, label, children }: { on: boolean; onChange: (on: boolean) => void; label: string; children: ReactNode }) {
   return (
     <button
       type="button"
@@ -143,7 +143,7 @@ function Toggle({ on, onChange, label, children }: { on: boolean; onChange: (on:
   );
 }
 
-function Slider({
+export function Slider({
   label,
   value,
   min,
@@ -220,7 +220,7 @@ function NumberField({
  * hex for someone matching a brand. `allowNone` adds a clear swatch for fills
  * that may be left empty.
  */
-function ColorField({
+export function ColorField({
   label,
   value,
   allowNone,

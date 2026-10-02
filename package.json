@@ -8,6 +8,7 @@
     "dev:api": "bun --hot api/index.ts",
     "dev:web": "bun --hot src/index.ts",
     "build": "bun run build.ts",
+    "blog": "bun scripts/blog.ts",
     "app:build": "BUN_PUBLIC_API_URL=https://api.ouratlas.co.in BUN_PUBLIC_SITE_URL=https://ouratlas.co.in bun run build.ts && cap sync android",
     "app:open": "cap open android",
     "start": "NODE_ENV=production bun api/index.ts",

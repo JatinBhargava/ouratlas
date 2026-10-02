@@ -1,5 +1,7 @@
 import tailwind from "bun-plugin-tailwind";
+import { compileBlog } from "./scripts/blog";
 import { versionOf } from "./scripts/versions";
+import { postHead, type PostMeta } from "./src/lib/blog/types";
 import { DEFAULT_IMAGE, NOT_FOUND, ROUTES, SITE, type Head } from "./src/lib/seo";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -8,6 +10,11 @@ import path from "node:path";
 
 const outdir = path.join(process.cwd(), "dist");
 await rm(outdir, { recursive: true, force: true });
+
+// The Journal's posts, compiled from Markdown before anything is bundled, so
+// the bundle imports the bodies the sources say rather than whatever was last
+// committed. A post that fails its checks fails the build here.
+const posts = await compileBlog();
 
 const entrypoints = [...new Bun.Glob("src/**/*.html").scanSync()];
 
@@ -155,6 +162,7 @@ const LAZY_PAGES: Record<string, string> = {
   "/editor-in-chief": "src/pages/Poster.tsx",
   "/layouts": "src/pages/Layouts.tsx",
   "/studio": "src/pages/Studio.tsx",
+  "/blog": "src/pages/Blog.tsx",
   "/admin/layouts": "src/pages/AdminLayouts.tsx",
   "/admin/dashboard": "src/pages/AdminDashboard.tsx",
 };
@@ -272,6 +280,44 @@ function page(head: Head, url: string | null, structuredData: boolean): string {
 // ran, and cost 100–150 ms by competing with the scripts. The <img> is now in
 // the HTML itself, with `fetchpriority="high"`, so the browser's preload
 // scanner finds it just as early without one.
+// The Journal's feed, for readers and for the places that syndicate from one.
+// Written before the pages are drawn, because the Journal links to it and
+// every address a drawn page points at is checked against dist below. The
+// newest fifty: a reader subscribing today wants the recent posts, and the
+// whole archive is one link away.
+const FEED = `${SITE}/blog/feed.xml`;
+const xml = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+const rfc822 = (iso: string) => new Date(`${iso}T09:00:00+05:30`).toUTCString();
+await Bun.write(
+  path.join(outdir, "blog", "feed.xml"),
+  `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>The Atlas Journal</title>
+    <link>${SITE}/blog</link>
+    <description>${xml(ROUTES["/blog"]!.description)}</description>
+    <language>en-IN</language>
+    <atom:link href="${FEED}" rel="self" type="application/rss+xml" />
+${posts
+  .slice(0, 50)
+  .map(post =>
+    [
+      "    <item>",
+      `      <title>${xml(post.title)}</title>`,
+      `      <link>${SITE}/blog/${post.slug}</link>`,
+      `      <guid isPermaLink="true">${SITE}/blog/${post.slug}</guid>`,
+      `      <pubDate>${rfc822(post.date)}</pubDate>`,
+      `      <description>${xml(post.description)}</description>`,
+      "    </item>",
+    ].join("\n"),
+  )
+  .join("\n")}
+  </channel>
+</rss>
+`,
+);
+console.log(` dist/blog/feed.xml  ${Math.min(posts.length, 50)} posts`);
+
 const prerenderDir = await mkdtemp(path.join(tmpdir(), "atlas-prerender-"));
 const prerender = await Bun.build({
   entrypoints: ["src/prerender.tsx"],
@@ -285,9 +331,12 @@ const prerender = await Bun.build({
 const prerenderEntry = prerender.outputs.find(output => output.kind === "entry-point");
 if (!prerender.success || !prerenderEntry) throw new Error("build.ts: the prerender bundle did not build");
 const { render } = (await import(prerenderEntry.path)) as { render: (location: string) => Promise<string> };
-const PRERENDERED = Object.entries(ROUTES)
-  .filter(([route, head]) => head.index && route !== "/create")
-  .map(([route]) => route);
+const PRERENDERED = [
+  ...Object.entries(ROUTES)
+    .filter(([route, head]) => head.index && route !== "/create")
+    .map(([route]) => route),
+  ...posts.map(post => `/blog/${post.slug}`),
+];
 const drawn = new Map<string, string>();
 for (const route of PRERENDERED) drawn.set(route, await render(route));
 await rm(prerenderDir, { recursive: true, force: true });
@@ -327,6 +376,62 @@ for (const [route, head] of Object.entries(ROUTES)) {
   await Bun.write(path.join(outdir, file), html);
   console.log(` ${path.join("dist", file)}  ${head.index ? "" : "noindex  "}${head.title}`);
 }
+
+// The Journal's posts, each with its own HTML like any other public page.
+//
+// Their heads are not in ROUTES (see `SELF_HEADED` in seo.ts) but come from
+// the same `postHead` the post page writes in the browser. The site's product
+// graph is swapped for the post's own article JSON-LD, and the page preloads
+// both the Journal's chunk and the post's body, which the browser would
+// otherwise find only one after the other.
+const feedLink = `<link rel="alternate" type="application/rss+xml" title="The Atlas Journal" href="${FEED}" />`;
+
+/** JSON-LD inside a <script>, where a "</script>" in a title would end it early. */
+const jsonLd = (data: object) => `<script type="application/ld+json">${JSON.stringify(data).replaceAll("<", "\\u003c")}</script>`;
+
+function articleData(post: PostMeta, url: string): object {
+  const atlas = { "@type": "Organization", name: "Atlas", url: SITE };
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.description,
+    url,
+    mainEntityOfPage: url,
+    datePublished: post.date,
+    dateModified: post.updated ?? post.date,
+    inLanguage: "en-IN",
+    ...(post.tags.length ? { keywords: post.tags.join(", ") } : {}),
+    image: new URL(DEFAULT_IMAGE.path, SITE).toString(),
+    author: atlas,
+    publisher: atlas,
+  };
+}
+
+// The Journal's own index gets the feed link too.
+{
+  const file = path.join(outdir, "blog.html");
+  await Bun.write(file, replaceOnce(await Bun.file(file).text(), /<\/head>/, `  ${feedLink}\n  </head>`));
+}
+
+const blogChunk = await lazyPreloads("src/pages/Blog.tsx");
+for (const post of posts) {
+  const route = `/blog/${post.slug}`;
+  const url = new URL(route, SITE).toString();
+  let html = page(postHead(post), url, false);
+  const markup = drawn.get(route);
+  if (markup === undefined) throw new Error(`build.ts: ${route} was not prerendered`);
+  // A body that never loaded leaves its fallback in the markup, and the page
+  // would reach crawlers with no article in it.
+  if (markup.includes("Setting the page")) throw new Error(`build.ts: the prerendered ${route} has no body; did its chunk fail to draw?`);
+  html = replaceOnce(html, /<div id="root"><\/div>/, `<div id="root" data-prerendered="${route}">${markup}</div>`);
+  const preloads = blogChunk + (await lazyPreloads(`src/lib/blog/bodies/${post.slug}.ts`));
+  html = replaceOnce(html, /<\/head>/, `  ${preloads}${feedLink}${jsonLd(articleData(post, url))}\n  </head>`);
+  await Bun.write(path.join(outdir, "blog", `${post.slug}.html`), html);
+  console.log(` dist/blog/${post.slug}.html  ${post.title}`);
+}
+
+
 await Bun.write(path.join(outdir, "404.html"), page(NOT_FOUND, null, false));
 console.log(` dist/404.html  noindex  ${NOT_FOUND.title}`);
 
@@ -346,13 +451,28 @@ const urls: string[] = [];
 for (const [route, head] of Object.entries(ROUTES)) {
   const { sitemap } = head;
   if (!head.index || !sitemap) continue;
+  // The Journal's index changes whenever a post is published.
+  const lastmod = route === "/blog" ? posts[0]?.date : sitemap.updated && isoDay(sitemap.updated);
   urls.push(
     [
       "  <url>",
       `    <loc>${new URL(route, SITE)}</loc>`,
-      ...(sitemap.updated ? [`    <lastmod>${isoDay(sitemap.updated)}</lastmod>`] : []),
+      ...(lastmod ? [`    <lastmod>${lastmod}</lastmod>`] : []),
       `    <changefreq>${sitemap.changefreq}</changefreq>`,
       `    <priority>${sitemap.priority.toFixed(1)}</priority>`,
+      "  </url>",
+    ].join("\n"),
+  );
+}
+
+for (const post of posts) {
+  urls.push(
+    [
+      "  <url>",
+      `    <loc>${SITE}/blog/${post.slug}</loc>`,
+      `    <lastmod>${post.updated ?? post.date}</lastmod>`,
+      "    <changefreq>yearly</changefreq>",
+      "    <priority>0.5</priority>",
       "  </url>",
     ].join("\n"),
   );

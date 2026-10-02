@@ -17,7 +17,7 @@ import { StaticRouter } from "react-router";
 import { AppRoutes } from "./App";
 
 /**
- * Drawn twice, and the first drawing thrown away.
+ * Drawn until it stops changing, and every drawing but the last thrown away.
  *
  * A page behind `lazy()` in App.tsx (the studio is one) is not there the
  * first time: `renderToString` cannot wait, so it writes the Suspense
@@ -38,7 +38,16 @@ export async function render(location: string): Promise<string> {
       </StaticRouter>
     </StrictMode>
   );
-  renderToString(app);
-  await new Promise(resolve => setTimeout(resolve));
-  return renderToString(app);
+  // Usually twice. A Journal post is a lazy page holding a lazy body, and
+  // each pass can only start the import it reaches, so it needs a third. The
+  // cap is there so a page that never settles fails the build's <h1> check
+  // instead of hanging it.
+  let markup = renderToString(app);
+  for (let pass = 0; pass < 5; pass++) {
+    await new Promise(resolve => setTimeout(resolve));
+    const next = renderToString(app);
+    if (next === markup) break;
+    markup = next;
+  }
+  return markup;
 }
