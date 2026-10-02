@@ -10,11 +10,13 @@ import {
   FileImage,
   Heading,
   ImagePlus,
+  LayoutTemplate,
   Loader2,
   Minus,
   Pilcrow,
   Plus,
   Redo2,
+  Replace,
   Square,
   SquareDashed,
   Trash2,
@@ -26,6 +28,7 @@ import { SubmitLayout } from "@/components/layouts/submit-layout";
 import { Sheet } from "@/components/poster/box-view";
 import { PosterCanvas } from "@/components/poster/canvas";
 import { IssuePreview } from "@/components/poster/issue-preview";
+import { StudioPicker } from "@/components/poster/studio-picker";
 import { Inspector, type Edits, type Layer, type PageAlign } from "@/components/poster/inspector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,6 +44,7 @@ import {
   clonePage,
   newId,
   photoBox,
+  renumber,
   shapeBox,
   SHEET,
   STARTERS,
@@ -50,7 +54,10 @@ import {
   type PosterDoc,
   type PosterPage,
   type StarterId,
+  type StudioOrigin,
 } from "@/lib/poster/model";
+import { convertStudioPage, fitsSheet, sampleId } from "@/lib/poster/from-studio";
+import { loadStudio, samplePhoto, type StudioPage, type StudioSection } from "@/lib/studio";
 import { cn } from "@/lib/utils";
 
 /** Largest the page is drawn on screen: a little over print size reads comfortably on a laptop. */
@@ -58,7 +65,7 @@ const MAX_SCALE = 1.15;
 const THUMB = 0.16;
 
 /** Reads a picture into memory. Nothing is uploaded: the URL points at the file on this machine. */
-async function loadPhoto(file: File): Promise<Photo> {
+async function loadPhoto(file: File, id = newId("ph")): Promise<Photo> {
   const url = URL.createObjectURL(file);
   const image = new Image();
   image.src = url;
@@ -68,7 +75,29 @@ async function loadPhoto(file: File): Promise<Photo> {
     URL.revokeObjectURL(url);
     throw new Error(`${file.name} could not be opened. Try a JPEG or PNG.`);
   }
-  return { id: newId("ph"), url, width: image.naturalWidth, height: image.naturalHeight, name: file.name, file };
+  return { id, url, width: image.naturalWidth, height: image.naturalHeight, name: file.name, file };
+}
+
+/**
+ * A Studio layout's sample photograph as a file of the reader's own, so it
+ * sits in the photo store like any picture they brought: parked across the
+ * sign-in with the rest, replaced by double-clicking. It comes from this
+ * site's own assets, not from anywhere the reader's work is sent.
+ */
+async function sampleFile(slot: string): Promise<File> {
+  const response = await fetch(samplePhoto(slot));
+  if (!response.ok) throw new Error("A sample photograph could not be loaded.");
+  const blob = await response.blob();
+  return new File([blob], `${slot}.jpg`, { type: blob.type || "image/jpeg" });
+}
+
+/** The page after `origin` in its Studio section that fits the sheet, if there is one. */
+function nextInSection(sections: StudioSection[] | null, origin: StudioOrigin | undefined): { section: StudioSection; page: StudioPage } | null {
+  const section = origin && sections?.find(item => item.id === origin.section);
+  if (!section) return null;
+  const at = section.pages.findIndex(item => item.id === origin.page);
+  const page = section.pages.slice(at + 1).find(fitsSheet);
+  return page ? { section, page } : null;
 }
 
 /** A name for the downloaded file, from the first words on the first page that has any. */
@@ -126,6 +155,16 @@ function isParked(value: unknown): value is Parked {
   return Boolean(parked && typeof parked.mode === "string" && Array.isArray(parked.doc?.pages) && Array.isArray(parked.photos));
 }
 
+/**
+ * A box after an edit: a page number the reader has typed over is theirs
+ * now, so it loses the mark that would set it back on the next renumbering.
+ */
+function retyped(before: Box, after: Box): Box {
+  if (after.kind !== "text" || before.kind !== "text" || !after.folio || after.text === before.text) return after;
+  const { folio: _folio, ...rest } = after;
+  return rest;
+}
+
 /** The next free spot for a new box, stepped so a second one never lands exactly on the first. */
 function spot(count: number) {
   return { x: 60 + (count % 5) * 18, y: 80 + (count % 7) * 22 };
@@ -153,6 +192,11 @@ function Studio({ mode }: { mode: Mode }) {
   const [submitting, setSubmitting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Atlas Studio: the picker, open to set this page or to add one after it,
+  // and the layout being taken apart into boxes while the reader waits.
+  const [picking, setPicking] = useState<"replace" | "insert" | null>(null);
+  const [converting, setConverting] = useState<string | null>(null);
+  const [sections, setSections] = useState<StudioSection[] | null>(null);
   const { signInWithGoogle } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -224,7 +268,7 @@ function Studio({ mode }: { mode: Mode }) {
   const patchBox = (patch: Partial<Box>) =>
     onPage(item => ({
       ...item,
-      boxes: item.boxes.map(entry => (entry.id === selected ? clampBox({ ...entry, ...patch } as Box) : entry)),
+      boxes: item.boxes.map(entry => (entry.id === selected ? clampBox(retyped(entry, { ...entry, ...patch } as Box)) : entry)),
     }));
 
   const boxEdits: Edits<Box> = {
@@ -343,6 +387,12 @@ function Studio({ mode }: { mode: Mode }) {
 
   /* ----------------------------------------------------------- pages */
 
+  /**
+   * Anything that adds, removes or reorders pages goes through here, so a
+   * Studio layout's page number always matches where its page now sits.
+   */
+  const commitPages = (change: (pages: PosterPage[]) => PosterPage[]) => history.commit(doc => ({ pages: renumber(change(doc.pages)) }));
+
   const goTo = (at: number) => {
     setIndex(at);
     setSelected(null);
@@ -351,12 +401,12 @@ function Studio({ mode }: { mode: Mode }) {
 
   const addPage = (starter: StarterId = "blank") => {
     const fresh = STARTERS[starter].build();
-    history.commit(doc => ({ pages: [...doc.pages.slice(0, current + 1), fresh, ...doc.pages.slice(current + 1)] }));
+    commitPages(pages => [...pages.slice(0, current + 1), fresh, ...pages.slice(current + 1)]);
     goTo(current + 1);
   };
 
   const duplicatePage = () => {
-    history.commit(doc => ({ pages: [...doc.pages.slice(0, current + 1), clonePage(page), ...doc.pages.slice(current + 1)] }));
+    commitPages(pages => [...pages.slice(0, current + 1), clonePage(page), ...pages.slice(current + 1)]);
     goTo(current + 1);
   };
 
@@ -366,25 +416,78 @@ function Studio({ mode }: { mode: Mode }) {
       goTo(0);
       return;
     }
-    history.commit(doc => ({ pages: doc.pages.filter((_, at) => at !== current) }));
+    commitPages(pages => pages.filter((_, at) => at !== current));
     goTo(Math.max(0, current - 1));
   };
 
   const movePage = (step: -1 | 1) => {
     const target = current + step;
     if (target < 0 || target >= doc.pages.length) return;
-    history.commit(doc => {
-      const pages = [...doc.pages];
-      [pages[current], pages[target]] = [pages[target]!, pages[current]!];
-      return { pages };
+    commitPages(pages => {
+      const next = [...pages];
+      [next[current], next[target]] = [next[target]!, next[current]!];
+      return next;
     });
     setIndex(target);
   };
 
   const applyStarter = (id: StarterId) => {
     if (page.boxes.length > 0 && !window.confirm("Replace everything on this page with the layout? Undo brings it back.")) return;
-    history.commit(onPage(() => STARTERS[id].build()));
+    commitPages(pages => pages.map((item, at) => (at === current ? STARTERS[id].build() : item)));
     setSelected(null);
+  };
+
+  /* ---------------------------------------------------- Atlas Studio */
+
+  // The studio's pages, once a page here has come from one: they name the
+  // next page of its theme on the Add page button.
+  useEffect(() => {
+    if (!page.studio || sections) return;
+    let cancelled = false;
+    loadStudio()
+      .then(list => !cancelled && setSections(list))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [page.studio, sections]);
+
+  const next = nextInSection(sections, page.studio);
+
+  /**
+   * Takes a Studio layout apart into boxes and sets this page with it, or
+   * adds it as a new page after this one. Its sample photographs go into the
+   * photo store like any other picture, once each, so every page that shows
+   * one shares it until the reader replaces it.
+   */
+  const takeStudioPage = async (section: StudioSection, chosen: StudioPage, how: "replace" | "insert") => {
+    if (how === "replace" && page.boxes.length > 0 && !window.confirm("Replace everything on this page with the layout? Undo brings it back.")) return;
+    setError(null);
+    setConverting(chosen.id);
+    try {
+      const converted = await convertStudioPage(chosen, { section: section.id, page: chosen.id });
+      const loaded: Photo[] = [];
+      for (const slot of converted.samples) {
+        if (!photosRef.current[sampleId(slot)]) loaded.push(await loadPhoto(await sampleFile(slot), sampleId(slot)));
+      }
+      for (const art of converted.artwork) loaded.push(await loadPhoto(art.file, art.id));
+      if (loaded.length > 0) setPhotos(current => ({ ...current, ...Object.fromEntries(loaded.map(photo => [photo.id, photo])) }));
+      if (!sections) setSections(await loadStudio());
+
+      if (how === "replace") {
+        commitPages(pages => pages.map((item, at) => (at === current ? converted.page : item)));
+        setSelected(null);
+        setEditing(null);
+      } else {
+        commitPages(pages => [...pages.slice(0, current + 1), converted.page, ...pages.slice(current + 1)]);
+        goTo(current + 1);
+      }
+      setPicking(null);
+    } catch (problem) {
+      setError((problem as Error).message || "That layout could not be opened.");
+    } finally {
+      setConverting(null);
+    }
   };
 
   /* -------------------------------------------------------- keyboard */
@@ -396,6 +499,11 @@ function Studio({ mode }: { mode: Mode }) {
       // The preview turns its pages with the arrow keys, and an undo taken
       // there would change a page the reader cannot see being changed.
       if (previewing) return;
+      // Escape lets go of a photograph being moved in its frame.
+      if (editing && event.key === "Escape" && box?.kind === "photo") {
+        setEditing(null);
+        return;
+      }
       if (editing || target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       const mod = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
@@ -596,6 +704,12 @@ function Studio({ mode }: { mode: Mode }) {
               <Minus className="size-4" />
             </Button>
 
+            {config.starters && (
+              <Button variant="ghost" size="sm" className={tool} onClick={() => setPicking("replace")} title="Set this page from an Atlas Studio layout">
+                <LayoutTemplate className="size-4" /> Studio layout
+              </Button>
+            )}
+
             <span className="mx-1 hidden h-6 w-px bg-stone-300 sm:block" />
             <Button variant="ghost" size="sm" className={tool} aria-label="Undo" title="Undo (⌘Z)" disabled={!history.canUndo} onClick={history.undo}>
               <Undo2 className="size-4" />
@@ -670,7 +784,7 @@ function Studio({ mode }: { mode: Mode }) {
                     history.commit(
                       onPage(item => ({
                         ...item,
-                        boxes: item.boxes.map(entry => (entry.id === id && entry.kind === "text" ? { ...entry, text } : entry)),
+                        boxes: item.boxes.map(entry => (entry.id === id && entry.kind === "text" ? retyped(entry, { ...entry, text }) : entry)),
                       })),
                     )
                   }
@@ -696,6 +810,13 @@ function Studio({ mode }: { mode: Mode }) {
                         {STARTERS[id].name}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setPicking("replace")}
+                      className="rounded-full bg-stone-900 px-3 py-1 text-xs text-white hover:bg-stone-800"
+                    >
+                      Atlas Studio layouts…
+                    </button>
                   </div>
                 </div>
               )}
@@ -706,8 +827,21 @@ function Studio({ mode }: { mode: Mode }) {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-medium tracking-[0.2em] text-stone-500 uppercase">
                       Page {current + 1} of {doc.pages.length}
+                      {page.studio && sections && (
+                        <span className="ml-2 tracking-normal normal-case">· {sections.find(item => item.id === page.studio!.section)?.name}</span>
+                      )}
                     </span>
                     <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2 text-xs"
+                        title="Set this page from another Atlas Studio layout"
+                        onClick={() => setPicking("replace")}
+                      >
+                        <Replace className="size-4" />
+                        Switch layout
+                      </Button>
                       <Button variant="ghost" size="icon-sm" aria-label="Move page earlier" title="Move page earlier" disabled={current === 0} onClick={() => movePage(-1)}>
                         <ChevronLeft className="size-4" />
                       </Button>
@@ -724,24 +858,59 @@ function Studio({ mode }: { mode: Mode }) {
                   </div>
                   <div className="flex gap-3 overflow-x-auto pb-2">
                     {doc.pages.map((item, at) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => goTo(at)}
-                        aria-label={`Page ${at + 1}`}
-                        aria-current={at === current ? "page" : undefined}
-                        className={cn(
-                          "relative shrink-0 overflow-hidden rounded-sm ring-2 transition-shadow",
-                          at === current ? "ring-emerald-600" : "ring-stone-200 hover:ring-stone-400",
-                      )}
+                      <div key={item.id} className="group relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => goTo(at)}
+                          aria-label={`Page ${at + 1}`}
+                          aria-current={at === current ? "page" : undefined}
+                          className={cn(
+                            "relative block overflow-hidden rounded-sm ring-2 transition-shadow",
+                            at === current ? "ring-emerald-600" : "ring-stone-200 hover:ring-stone-400",
+                          )}
+                          style={{ width: SHEET.width * THUMB, height: SHEET.height * THUMB }}
+                        >
+                          <div className="pointer-events-none origin-top-left" style={{ transform: `scale(${THUMB})` }}>
+                            <Sheet page={item} photos={photos} />
+                          </div>
+                          <span className="absolute right-1 bottom-1 rounded bg-stone-900/70 px-1 text-[10px] text-white">{at + 1}</span>
+                        </button>
+                        {/* Switching a page's layout from the page itself, rather
+                            than from the toolbar above it. Always shown on the
+                            page in hand, so it can be reached without hovering. */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            goTo(at);
+                            setPicking("replace");
+                          }}
+                          aria-label={`Switch page ${at + 1} to another layout`}
+                          title="Switch layout"
+                          className={cn(
+                            "absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-white/95 text-stone-700 shadow-sm ring-1 ring-stone-300 transition-opacity hover:text-stone-950 focus-visible:opacity-100",
+                            at === current ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                          )}
+                        >
+                          <Replace className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  {/* After a page from a Studio theme, the next page is that theme's
+                      next layout, numbered for where it lands. */}
+                  {next && (
+                    <button
+                      type="button"
+                      disabled={converting !== null}
+                      onClick={() => void takeStudioPage(next.section, next.page, "insert")}
+                      title={`Add “${next.page.title}”, the next page of ${next.section.name}`}
+                      className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-sm border-2 border-dashed border-emerald-400 bg-emerald-50/60 px-1 text-center text-[11px] leading-tight text-emerald-800 hover:border-emerald-600 disabled:cursor-wait"
                       style={{ width: SHEET.width * THUMB, height: SHEET.height * THUMB }}
                     >
-                      <div className="pointer-events-none origin-top-left" style={{ transform: `scale(${THUMB})` }}>
-                        <Sheet page={item} photos={photos} />
-                      </div>
-                      <span className="absolute right-1 bottom-1 rounded bg-stone-900/70 px-1 text-[10px] text-white">{at + 1}</span>
+                      {converting === next.page.id ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                      Next page
+                      <span className="line-clamp-2 text-[10px] text-emerald-700">{next.page.title}</span>
                     </button>
-                  ))}
+                  )}
                   <button
                     type="button"
                     onClick={() => addPage()}
@@ -749,7 +918,16 @@ function Studio({ mode }: { mode: Mode }) {
                     style={{ width: SHEET.width * THUMB, height: SHEET.height * THUMB }}
                   >
                     <Plus className="size-4" />
-                    Add page
+                    {next ? "Blank page" : "Add page"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPicking("insert")}
+                    className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-sm border-2 border-dashed border-stone-300 px-1 text-center text-[11px] leading-tight text-stone-500 hover:border-stone-400 hover:text-stone-700"
+                    style={{ width: SHEET.width * THUMB, height: SHEET.height * THUMB }}
+                  >
+                    <LayoutTemplate className="size-4" />
+                    From Atlas Studio
                   </button>
                 </div>
               </div>
@@ -798,6 +976,16 @@ function Studio({ mode }: { mode: Mode }) {
           exporting={exporting === "pdf"}
           onDownload={() => void download("pdf")}
           onClose={() => setPreviewing(false)}
+        />
+      )}
+
+      {picking && (
+        <StudioPicker
+          title={picking === "replace" ? `A layout for page ${current + 1}` : `A new page after page ${current + 1}`}
+          prefer={page.studio?.section}
+          busy={converting}
+          onPick={(section, chosen) => void takeStudioPage(section, chosen, picking)}
+          onClose={() => setPicking(null)}
         />
       )}
 

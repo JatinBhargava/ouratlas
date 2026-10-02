@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from "react";
 
 import { BoxBody, frameStyle } from "@/components/poster/box-view";
-import { clampBox, SHEET, type Box, type Photo, type PosterPage } from "@/lib/poster/model";
+import { clampBox, SHEET, type Box, type Photo, type PhotoBox, type PosterPage } from "@/lib/poster/model";
 import { cn } from "@/lib/utils";
 
 /** Margin guide inset, in page pixels. Only drawn in the editor; nothing about it prints. */
@@ -23,7 +23,8 @@ const HANDLE_CURSOR: Record<Handle, string> = {
 };
 
 type Drag = {
-  mode: "move" | Handle;
+  /** `crop` moves the photograph inside its frame rather than the frame on the page. */
+  mode: "move" | "crop" | Handle;
   box: Box;
   fromX: number;
   fromY: number;
@@ -65,6 +66,45 @@ function snapMove(box: Box, others: Box[], threshold: number): { x: number; y: n
     y: box.y + (sy?.shift ?? 0),
     guides: { x: sx ? [sx.line] : [], y: sy ? [sy.line] : [] },
   };
+}
+
+/**
+ * Where a photograph's crop moves to when the pointer travels `dx`, `dy` page
+ * pixels across its frame: the picture follows the pointer.
+ *
+ * The room it has is the part `cover` leaves outside the frame, scaled by the
+ * zoom, plus what the zoom itself pushes past the frame's edges — the zoom is
+ * centred on the crop point (`PhotoView`), so both move together. The pointer's
+ * travel is turned back by the frame's own turn first, and a mirrored picture
+ * moves the other way across.
+ */
+function cropTo(box: PhotoBox, photo: Photo, dx: number, dy: number): { focusX: number; focusY: number } {
+  const turn = (-box.rotation * Math.PI) / 180;
+  let across = dx * Math.cos(turn) - dy * Math.sin(turn);
+  const down = dx * Math.sin(turn) + dy * Math.cos(turn);
+  if (box.flip) across = -across;
+  const fit = box.fit === "cover" ? Math.max(box.width / photo.width, box.height / photo.height) : Math.min(box.width / photo.width, box.height / photo.height);
+  const spareX = Math.max(0, photo.width * fit - box.width);
+  const spareY = Math.max(0, photo.height * fit - box.height);
+  const roomX = box.zoom * spareX + (box.zoom - 1) * box.width;
+  const roomY = box.zoom * spareY + (box.zoom - 1) * box.height;
+  const clamp = (value: number) => Math.min(100, Math.max(0, Math.round(value * 10) / 10));
+  return {
+    focusX: roomX > 1 ? clamp(box.focusX - (across / roomX) * 100) : box.focusX,
+    focusY: roomY > 1 ? clamp(box.focusY - (down / roomY) * 100) : box.focusY,
+  };
+}
+
+/** Whether a point on the page falls inside a box, turned as the box is turned. */
+function contains(box: Box, point: { x: number; y: number }): boolean {
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const turn = (-box.rotation * Math.PI) / 180;
+  const dx = point.x - cx;
+  const dy = point.y - cy;
+  const x = dx * Math.cos(turn) - dy * Math.sin(turn);
+  const y = dx * Math.sin(turn) + dy * Math.cos(turn);
+  return Math.abs(x) <= box.width / 2 && Math.abs(y) <= box.height / 2;
 }
 
 function resize(box: Box, handle: Handle, dx: number, dy: number, keepRatio: boolean): Box {
@@ -139,14 +179,28 @@ export function PosterCanvas({
     setOverflows(body.current.scrollHeight > chosen.height - chosen.padding * 2 + 1);
   }, [chosen, editing]);
 
-  const begin = (mode: Drag["mode"], box: Box) => (event: PointerEvent) => {
+  /**
+   * The photograph under a point, topmost first. Layouts lay gradients,
+   * tints and captions over their photographs, and those take the press; a
+   * photo is still reached through them, to crop it.
+   */
+  const photoUnder = (point: { x: number; y: number }) =>
+    [...page.boxes].reverse().find((item): item is PhotoBox => item.kind === "photo" && contains(item, point)) ?? null;
+
+  const begin = (mode: Drag["mode"], pressed: Box) => (event: PointerEvent) => {
     if (event.button !== 0) return;
     event.stopPropagation();
+    // While a photo is open for cropping, a press anywhere over its frame
+    // moves its picture, whatever lies on top of it there.
+    const open = editing ? page.boxes.find(item => item.id === editing && item.kind === "photo") : undefined;
+    const box = mode === "move" && open && contains(open, pagePoint(event.clientX, event.clientY)) ? open : pressed;
     if (editing && editing !== box.id) onEdit(null);
     onSelect(box.id);
     if (box.locked) return;
     event.preventDefault();
-    drag.current = { mode, box, fromX: event.clientX, fromY: event.clientY, moved: false, pointer: event.pointerId };
+    // A photo opened for cropping (double-clicked) moves its picture, not itself.
+    const cropping = mode === "move" && box.kind === "photo" && editing === box.id;
+    drag.current = { mode: cropping ? "crop" : mode, box, fromX: event.clientX, fromY: event.clientY, moved: false, pointer: event.pointerId };
   };
 
   const move = (event: PointerEvent) => {
@@ -167,6 +221,12 @@ export function PosterCanvas({
       // itself, the page would own the pointer, and a double-click on a box
       // would land on the page instead: no typing, no photo picker.
       surface.current?.setPointerCapture(held.pointer);
+    }
+
+    if (held.mode === "crop") {
+      const photo = held.box.kind === "photo" && held.box.photo ? photos[held.box.photo] : undefined;
+      if (held.box.kind === "photo" && photo) onPreview({ ...held.box, ...cropTo(held.box, photo, dx, dy) });
+      return;
     }
 
     if (held.mode === "move") {
@@ -254,10 +314,23 @@ export function PosterCanvas({
             onPointerDown={begin("move", box)}
             onDoubleClick={event => {
               event.stopPropagation();
-              if (box.kind === "text" && !box.locked) onEdit(box.id);
-              if (box.kind === "photo") onPickPhoto(box.id);
+              if (box.kind === "text") {
+                if (!box.locked) onEdit(box.id);
+                return;
+              }
+              // A photo opens for moving the picture in its frame, and a
+              // second double-click closes it again; an empty frame asks for
+              // a picture. A shape laid over a photo opens the photo beneath.
+              const photo = box.kind === "photo" ? box : photoUnder(pagePoint(event.clientX, event.clientY));
+              if (!photo || photo.locked) return;
+              onSelect(photo.id);
+              if (photo.photo && photos[photo.photo]) onEdit(editing === photo.id ? null : photo.id);
+              else onPickPhoto(photo.id);
             }}
-            style={{ ...frameStyle(box), cursor: box.locked ? "default" : editing === box.id ? "text" : "move" }}
+            style={{
+              ...frameStyle(box),
+              cursor: box.locked ? "default" : editing === box.id ? (box.kind === "photo" ? "grab" : "text") : "move",
+            }}
           >
             <BoxBody
               box={box}
@@ -287,6 +360,11 @@ export function PosterCanvas({
           <div key={`y${y}`} aria-hidden className="pointer-events-none absolute right-0 left-0 bg-pink-500" style={{ top: y, height: 1 / scale }} />
         ))}
 
+        {chosen && editing === chosen.id && chosen.kind === "photo" && (
+          <div aria-hidden className="pointer-events-none absolute" style={frameStyle({ ...chosen, opacity: 1 })}>
+            <div className="absolute inset-0" style={{ outline: `${2 / scale}px dashed #059669`, outlineOffset: 0 }} />
+          </div>
+        )}
         {chosen && editing !== chosen.id && (
           <div aria-hidden className="pointer-events-none absolute" style={frameStyle({ ...chosen, opacity: 1 })}>
             <div className="absolute inset-0" style={{ outline: `${1.5 / scale}px solid ${chosen.locked ? "#a8a29e" : "#059669"}` }} />
@@ -310,6 +388,11 @@ export function PosterCanvas({
         )}
       </div>
 
+      {chosen && editing === chosen.id && chosen.kind === "photo" && (
+        <p className="absolute -bottom-7 left-0 text-xs text-emerald-800">
+          Drag to move the photo in its frame; Zoom in the panel enlarges it. Double-click again or press Esc when done.
+        </p>
+      )}
       {chosen && overflows && (
         <p className="absolute -bottom-7 left-0 text-xs text-red-600">This text runs past its box and will be cut off — drag the box taller.</p>
       )}

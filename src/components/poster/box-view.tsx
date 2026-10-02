@@ -43,6 +43,7 @@ export function textStyle(box: TextBox): CSSProperties {
     textShadow: box.shadow ? "0 2px 8px rgba(0, 0, 0, 0.45)" : undefined,
     whiteSpace: "pre-wrap",
     overflowWrap: "break-word",
+    ...(box.columns && box.columns > 1 ? { columnCount: box.columns, columnGap: box.gap ?? 16 } : {}),
   };
 }
 

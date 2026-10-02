@@ -24,6 +24,33 @@ export function useSize(ref: RefObject<HTMLElement | null>): { width: number; he
   return size;
 }
 
+/** How far off screen, in px, a page's frame is made ahead of being scrolled to. */
+const MARGIN = 600;
+
+/**
+ * Whether an element is on screen or close to it.
+ *
+ * Every page is a document of its own, and two hundred of them live at once
+ * held a few hundred megabytes on a phone. A page's frame is made as it
+ * scrolls near and dropped again once it is well past, so only a screenful or
+ * two ever exist.
+ */
+export function useNear(ref: RefObject<HTMLElement | null>): boolean {
+  const [near, setNear] = useState(false);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    // Measured once at once, for the same reason as `useSize`: the pages on
+    // screen when the studio opens should not wait a frame for the observer.
+    const { top, bottom } = element.getBoundingClientRect();
+    setNear(bottom > -MARGIN && top < window.innerHeight + MARGIN);
+    const observer = new IntersectionObserver(([entry]) => setNear(entry!.isIntersecting), { rootMargin: `${MARGIN}px 0px` });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+  return near;
+}
+
 type Props = {
   page: StudioPage;
   width: number;

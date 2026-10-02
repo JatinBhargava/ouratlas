@@ -437,6 +437,7 @@ function PhotoPanel({ box, edits, onPick }: { box: PhotoBox; edits: Edits<PhotoB
           />
         </Row>
         <Slider label="Zoom" value={box.zoom} min={1} max={3} step={0.05} unit="×" onHold={edits.hold} onPreview={zoom => edits.preview({ zoom })} />
+        <p className="text-[11px] text-stone-500">Double-click the photo on the page to drag it around inside its frame.</p>
         <Slider label="Focus left – right" value={box.focusX} min={0} max={100} unit="%" onHold={edits.hold} onPreview={focusX => edits.preview({ focusX })} />
         <Slider label="Focus top – bottom" value={box.focusY} min={0} max={100} unit="%" onHold={edits.hold} onPreview={focusY => edits.preview({ focusY })} />
         <Row label="Mirror">

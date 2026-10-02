@@ -56,6 +56,8 @@ export const POSTER_FONT_IDS = [
   "mono",
   "script",
   "marker",
+  "narrow",
+  "hand",
 ] as const;
 export type PosterFontId = (typeof POSTER_FONT_IDS)[number];
 
@@ -129,6 +131,10 @@ export type PosterTextData = Frame & {
   fill: string;
   padding: number;
   shadow: boolean;
+  /** Set in columns, as a Studio layout's long text often is; absent or 1 is one column. */
+  columns?: number;
+  /** Page pixels between columns. */
+  gap?: number;
 };
 
 export type PosterPhotoData = Frame & {
@@ -239,6 +245,7 @@ function posterBox(input: unknown, index: number): PosterPageData["boxes"][numbe
       fill: fill(value.fill, "transparent"),
       padding: num(value.padding, 0, 200, 0),
       shadow: bool(value.shadow),
+      ...(num(value.columns, 1, 6, 1) > 1 ? { columns: Math.round(num(value.columns, 1, 6, 1)), gap: num(value.gap, 0, 200, 16) } : {}),
     };
   }
   if (value.kind === "photo") {

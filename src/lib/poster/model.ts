@@ -62,7 +62,21 @@ export type TextBox = Frame & {
   /** Page pixels inside the box, all four sides. */
   padding: number;
   shadow: boolean;
+  /** Set in columns, as a Studio layout's long text often is; absent or 1 is one column. */
+  columns?: number;
+  /** Page pixels between columns. */
+  gap?: number;
+  /**
+   * Marks the page number a Studio layout prints at its head or foot. The
+   * words either side are kept and the number is set to where the page now
+   * sits in the issue (`renumber`). Typing over it takes the mark off: the
+   * reader has made the line their own.
+   */
+  folio?: Folio;
 };
+
+/** A page number's words either side of the number, and how many digits it is padded to ("04"). */
+export type Folio = { before: string; after: string; pad: number };
 
 export type PhotoBox = Frame & {
   kind: "photo";
@@ -100,7 +114,12 @@ export type PosterPage = {
   id: string;
   background: string;
   boxes: Box[];
+  /** The Atlas Studio layout the page was started from, so the page after it can be that layout's next page. */
+  studio?: StudioOrigin;
 };
+
+/** A Studio section (one of its themes or shelves) and a page in it, by id. */
+export type StudioOrigin = { section: string; page: string };
 
 export type PosterDoc = { pages: PosterPage[] };
 
@@ -146,6 +165,9 @@ export const FONTS = {
   mono: { name: "Mono", stack: 'ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace' },
   script: { name: "Script", stack: '"Snell Roundhand", "Brush Script MT", "Segoe Script", "URW Chancery L", cursive' },
   marker: { name: "Marker", stack: '"Marker Felt", "Segoe Print", "Comic Sans MS", "Comic Neue", cursive' },
+  // Both used by Atlas Studio's layouts, so a page started from one keeps its face.
+  narrow: { name: "Narrow", stack: '"Arial Narrow", "Helvetica Neue Condensed", "Roboto Condensed", "Liberation Sans Narrow", sans-serif' },
+  hand: { name: "Handwriting", stack: '"Bradley Hand", "Segoe Print", "Comic Neue", cursive' },
   // Checked against the ids the API accepts for a submitted layout, so the two lists cannot drift.
 } as const satisfies Record<PosterFontId, { name: string; stack: string }>;
 
@@ -258,6 +280,31 @@ export function cloneBox<T extends Box>(box: T, offset = 0): T {
 
 export function clonePage(page: PosterPage): PosterPage {
   return { ...page, id: newId("p"), boxes: page.boxes.map(box => cloneBox(box)) };
+}
+
+/** A page number as a page prints it: the number padded as the layout padded it, inside its words. */
+export function folioText(folio: Folio, number: number): string {
+  return `${folio.before}${String(number).padStart(folio.pad, "0")}${folio.after}`;
+}
+
+/**
+ * Sets every marked page number to the page's place in the issue. Run after
+ * anything that adds, removes or moves pages, so a layout's "4" always sits on
+ * page four. Pages with nothing to change are handed back as they were, so an
+ * undo step holds no copies it does not need.
+ */
+export function renumber(pages: PosterPage[]): PosterPage[] {
+  return pages.map((page, at) => {
+    let changed = false;
+    const boxes = page.boxes.map(box => {
+      if (box.kind !== "text" || !box.folio) return box;
+      const text = folioText(box.folio, at + 1);
+      if (text === box.text) return box;
+      changed = true;
+      return { ...box, text };
+    });
+    return changed ? { ...page, boxes } : page;
+  });
 }
 
 /**
