@@ -75,6 +75,11 @@ type Parked = {
  * an outline on the picture: a zoomed picture is clipped back to its frame
  * (`place`), and the clip would take its own outline with it.
  *
+ * Many designs lay something over a photograph — a gradient for the cover
+ * line to sit on, a tint, a panel. A press there is meant for the photograph
+ * (`photoAt`), so whatever covers the chosen one is marked `data-atlas-over`
+ * and takes the same cursor and `touch-action` as the picture itself.
+ *
  * `touch-action: none` on the chosen picture only: on a phone a finger on it
  * moves the photograph, and a finger anywhere else still scrolls.
  */
@@ -83,7 +88,8 @@ const EDITING_CSS = `
 [data-atlas-editing] [contenteditable]:hover{outline:1.5px dashed rgba(37,99,235,.65);outline-offset:3px}
 [data-atlas-editing] [contenteditable]:focus{outline:2px solid #2563eb;outline-offset:3px}
 [data-atlas-editing] [data-atlas-target]:not(:focus){outline:2px solid rgba(37,99,235,.45);outline-offset:3px}
-[data-atlas-editing] img[data-slot]{cursor:pointer}
+[data-atlas-editing] img[data-slot]{cursor:grab}
+[data-atlas-editing] [data-atlas-over]{cursor:grab;touch-action:none}
 [data-atlas-editing] img[data-atlas-chosen]{cursor:grab;touch-action:none}
 [data-atlas-ring]{display:none}
 [data-atlas-deleted]{visibility:hidden!important}
@@ -231,13 +237,14 @@ function place(image: HTMLImageElement, crop: Crop | undefined) {
 /** Puts each slot's current picture and crop into a drawn page, and rings the chosen slot's. */
 function paint(doc: Document, urls: Record<string, string>, crops: Record<string, Crop>, chosen: string | null) {
   for (const ring of Array.from(doc.querySelectorAll("[data-atlas-ring]"))) ring.remove();
+  for (const cover of Array.from(doc.querySelectorAll("[data-atlas-over]"))) cover.removeAttribute("data-atlas-over");
   for (const image of Array.from(doc.querySelectorAll<HTMLImageElement>("img[data-slot]"))) {
     const url = urls[image.dataset.slot!];
     if (url && image.getAttribute("src") !== url) image.src = url;
     place(image, crops[image.dataset.crop!]);
     const isChosen = image.dataset.slot === chosen;
     image.toggleAttribute("data-atlas-chosen", isChosen);
-    if (isChosen && !isDeleted(image)) ring(doc, image);
+    if (isChosen && !isDeleted(image)) markCovers(doc, image, ring(doc, image));
   }
   // A few designs draw a photograph as a CSS background (a type mask, a
   // halftone), so the page's own stylesheet is rewritten from its original too.
@@ -253,7 +260,7 @@ function paint(doc: Document, urls: Record<string, string>, crops: Record<string
  * off for the moment, because the frame is the box the picture was laid out
  * in, not the larger one it is scaled to; a pan or a pinch changes neither.
  */
-function ring(doc: Document, image: HTMLImageElement) {
+function ring(doc: Document, image: HTMLImageElement): DOMRect {
   const zoom = image.style.scale;
   image.style.scale = "";
   const box = image.getBoundingClientRect();
@@ -266,6 +273,32 @@ function ring(doc: Document, image: HTMLImageElement) {
   mark.style.width = `${box.width}px`;
   mark.style.height = `${box.height}px`;
   doc.body.append(mark);
+  return box;
+}
+
+/**
+ * Marks what lies over a picture, sampled at nine points across its frame.
+ * Words are left alone: a press on them is for typing, and they keep their caret.
+ */
+function markCovers(doc: Document, image: HTMLImageElement, box: DOMRect) {
+  for (const across of [0.15, 0.5, 0.85]) {
+    for (const down of [0.15, 0.5, 0.85]) {
+      const top = doc.elementFromPoint(box.left + box.width * across, box.top + box.height * down);
+      if (top && top !== image && top !== doc.body && top !== doc.documentElement && !top.closest("[contenteditable]")) top.setAttribute("data-atlas-over", "");
+    }
+  }
+}
+
+/**
+ * The photograph a press is for: the one pressed, or the one under whatever
+ * the design has laid over it. Words take their own presses, for typing.
+ */
+function photoAt(doc: Document, event: MouseEvent): HTMLImageElement | null {
+  const hit = event.target as Element | null;
+  if (!hit?.closest || hit.closest("[contenteditable]")) return null;
+  const pressed = hit.closest<HTMLImageElement>("img[data-slot]");
+  if (pressed) return isDeleted(pressed) ? null : pressed;
+  return (doc.elementsFromPoint(event.clientX, event.clientY).find(element => element.matches("img[data-slot]") && !isDeleted(element)) as HTMLImageElement | undefined) ?? null;
 }
 
 /**
@@ -362,6 +395,9 @@ export function FillIn({ id, title, pages, onClose }: Props) {
   const words = useRef<string[]>([]);
   const restoring = useRef<Parked | null>(null);
   const [ready, setReady] = useState(0);
+  // Bumped as each photograph finishes loading in a page, so what the sidebar
+  // reads off a photograph's own size (`chosenFits`) is read again.
+  const [, setLoads] = useState(0);
 
   // Read by the page's own listeners, which are set up once per page.
   const chosenRef = useRef(chosen);
@@ -444,9 +480,11 @@ export function FillIn({ id, title, pages, onClose }: Props) {
   }, [urls, crops, chosen, ready, deletions]);
 
   /**
-   * Presses on a page's photographs. The first press on a picture chooses its
-   * slot; a press on the chosen one drags the photograph within its frame, and
-   * two fingers on it pinch it larger or smaller.
+   * Presses on a page's photographs. A press chooses the picture's slot and
+   * drags the photograph within its frame at once, and two fingers on it pinch
+   * it larger or smaller. On a touch screen the first touch only chooses: an
+   * unchosen picture leaves the finger to scroll the page, so a drag there
+   * would be cancelled by the scroll anyway.
    *
    * Pan and pinch are one gesture: the fingers' midpoint moves the picture and
    * their spread zooms it. Both are measured from where the fingers were when
@@ -460,6 +498,9 @@ export function FillIn({ id, title, pages, onClose }: Props) {
    * is taken for zoom over the chosen picture instead of zooming the window.
    */
   const listen = useCallback((doc: Document) => {
+    // `load` does not bubble, so it is caught on the way down.
+    doc.addEventListener("load", event => event.target instanceof doc.defaultView!.HTMLImageElement && setLoads(count => count + 1), true);
+
     // Typing in a block makes it the one the Type panel sets.
     doc.addEventListener("focusin", event => {
       const block = (event.target as Element | null)?.closest?.("[contenteditable]") as HTMLElement | null;
@@ -468,14 +509,14 @@ export function FillIn({ id, title, pages, onClose }: Props) {
 
     let gesture: { image: HTMLImageElement; add: (down: PointerEvent) => void } | null = null;
     doc.addEventListener("pointerdown", event => {
-      const image = (event.target as Element | null)?.closest?.("img[data-slot]") as HTMLImageElement | null;
+      const image = photoAt(doc, event);
       if (!image) return;
       // A press on a picture is about the picture: the sidebar goes back to them.
       setTarget(null);
       const slot = image.dataset.slot!;
       if (chosenRef.current !== slot) {
         setChosen(slot);
-        return;
+        if (event.pointerType === "touch") return;
       }
       const view = doc.defaultView;
       if (!view || view.getComputedStyle(image).objectFit !== "cover" || !image.naturalWidth) return;
@@ -547,8 +588,8 @@ export function FillIn({ id, title, pages, onClose }: Props) {
       "wheel",
       event => {
         if (!event.ctrlKey) return;
-        const image = (event.target as Element | null)?.closest?.("img[data-zoomable]") as HTMLImageElement | null;
-        if (!image || image.dataset.slot !== chosenRef.current || !image.naturalWidth) return;
+        const image = photoAt(doc, event);
+        if (!image?.hasAttribute("data-zoomable") || image.dataset.slot !== chosenRef.current || !image.naturalWidth) return;
         event.preventDefault();
         const key = image.dataset.crop!;
         setCrops(current => {
@@ -610,6 +651,13 @@ export function FillIn({ id, title, pages, onClose }: Props) {
     ? docs.current.flatMap(doc => (doc ? Array.from(doc.querySelectorAll<HTMLImageElement>(`img[data-slot="${CSS.escape(chosen)}"]`)) : []))
     : [];
   const chosenGone = chosenAll.length > 0 && chosenAll.every(isDeleted);
+  // A photograph the same shape as its frame has nowhere to go until it is
+  // zoomed, and a drag that does nothing looks broken, so the sidebar says so.
+  const chosenFits = chosenAll.some(image => {
+    if (isDeleted(image) || !image.naturalWidth || !image.hasAttribute("data-zoomable")) return false;
+    const room = roomOf(image, crops[image.dataset.crop!]?.zoom ?? 1);
+    return room.x <= 1 && room.y <= 1;
+  });
 
   /** Hides the boxes round some elements, as one deletion. */
   const remove = (elements: HTMLElement[]) => {
@@ -836,8 +884,7 @@ export function FillIn({ id, title, pages, onClose }: Props) {
               Add your photos
             </Button>
             <p className="text-xs leading-relaxed text-stone-500">
-              They fill the pictures in order. Press a picture on the page to choose it, then drag it to move the photo in its frame, and pinch or use
-              Zoom to enlarge it. Tap any words to rewrite them and change their font, size, alignment and colour. Any box can be deleted and brought back. Nothing is uploaded
+              They fill the pictures in order. Drag any picture on the page to move the photo in its frame, and pinch or use Zoom to enlarge it. Tap any words to rewrite them and change their font, size, alignment and colour. Any box can be deleted and brought back. Nothing is uploaded
               unless you save.
             </p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -898,6 +945,9 @@ export function FillIn({ id, title, pages, onClose }: Props) {
                 </li>
               ))}
             </ul>
+            {chosen && chosenFits && (
+              <p className="text-xs text-stone-500">This photo fits its frame exactly, so there is nothing to drag yet. Zoom in, then drag it.</p>
+            )}
             {chosen && chosenImages.length > 0 && !chosenGone && (
               <Slider label={`Zoom picture ${chosenIndex}`} value={chosenZoom} min={1} max={MAX_ZOOM} step={0.05} unit="×" onHold={() => {}} onPreview={zoomChosen} />
             )}
