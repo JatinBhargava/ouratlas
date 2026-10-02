@@ -132,7 +132,7 @@ async function recordPayment(invoice: Stripe.Invoice, failed: boolean): Promise<
  * Keyed on the Stripe subscription id, so events arriving twice or out of
  * order settle on the same row rather than accumulating duplicates.
  */
-async function mirror(subscription: Stripe.Subscription): Promise<void> {
+async function mirror(subscription: Stripe.Subscription, occurredAt: number = Date.now()): Promise<void> {
   const userId = await resolveUserId(subscription);
   if (!userId) {
     console.error(`[webhook] no account for subscription ${subscription.id}; skipped`);
@@ -155,6 +155,12 @@ async function mirror(subscription: Stripe.Subscription): Promise<void> {
   // subscription; a subscription with several items has one period per item.
   const periodEnd = item?.current_period_end;
 
+  const { data: existing, error: readError } = await admin().from("subscriptions")
+    .select("updated_at").eq("id", subscription.id).maybeSingle();
+  if (readError) throw new HttpError(500, "Could not read subscription event time.");
+  if (existing?.updated_at && Date.parse(existing.updated_at) > occurredAt) return;
+  // A read-then-write race remains for concurrent deliveries; acceptable for this ordering guard.
+
   const { error } = await admin().from("subscriptions").upsert(
     {
       id: subscription.id,
@@ -165,7 +171,7 @@ async function mirror(subscription: Stripe.Subscription): Promise<void> {
       price_id: priceId,
       current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       cancel_at_period_end: subscription.cancel_at_period_end ?? false,
-      updated_at: new Date().toISOString(),
+      updated_at: new Date(occurredAt).toISOString(),
     },
     { onConflict: "id" },
   );
@@ -215,7 +221,7 @@ webhookRoutes.post(
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
-        await mirror(event.data.object);
+        await mirror(event.data.object, event.created * 1000);
         break;
 
       // The ledger. These say what was charged; they never grant a plan —
