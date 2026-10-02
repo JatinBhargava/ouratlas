@@ -19,13 +19,20 @@ import type { Head } from "../seo";
  *   for its own sake and shared rather than searched.
  * - `engineering`: how a feature of Atlas works and why it was built that way,
  *   from the code itself.
+ * - `dispatch`: what design, art, the media industry or technology is talking
+ *   about this week, and what it means for keeping memories, with Atlas only
+ *   where the link is real.
+ * - `spotlight`: a feature that has shipped, for the people who will use it:
+ *   what it lets them do, how, and why it is built the way it is.
  */
-export type PostKind = "guide" | "essay" | "engineering";
+export type PostKind = "guide" | "essay" | "engineering" | "dispatch" | "spotlight";
 
 export const POST_KINDS: Record<PostKind, { label: string; plural: string }> = {
   guide: { label: "Guide", plural: "Guides" },
   essay: { label: "Essay", plural: "Essays" },
   engineering: { label: "From the press room", plural: "From the press room" },
+  dispatch: { label: "Dispatch", plural: "Dispatches" },
+  spotlight: { label: "Spotlight", plural: "Spotlights" },
 };
 
 /** Everything about a post except its body, which is a chunk of its own. */
@@ -44,7 +51,7 @@ export type PostMeta = {
   tags: string[];
   /** The search the post was written to answer, kept so no two posts chase the same one. */
   keyword?: string;
-  /** For engineering posts: the version in `versions.json` whose feature the post explains. */
+  /** For engineering and spotlight posts: the version in `CHANGELOG.md` whose feature the post explains. */
   feature?: string;
   /** At about 220 words a minute, rounded up. */
   minutes: number;

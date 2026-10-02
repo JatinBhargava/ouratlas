@@ -161,7 +161,10 @@ function compile(file: string, source: string, slugs: Set<string>, versions: Set
     if (tag === kind || tag === `${kind}s`) throw new Error(`${file}: tag "${tag}" repeats the kind; tags say what the post is about`);
   }
   const feature = text(file, fields, "feature", false);
-  if (kind === "engineering" && !feature) throw new Error(`${file}: an engineering post names the version it explains in "feature"`);
+  // Both explain a shipped feature, so both say which release shipped it.
+  if ((kind === "engineering" || kind === "spotlight") && !feature) {
+    throw new Error(`${file}: ${kind === "engineering" ? "an engineering" : "a spotlight"} post names the version it explains in "feature"`);
+  }
   if (feature && !versions.has(feature)) {
     throw new Error(`${file}: feature "${feature}" is not a version in CHANGELOG.md (${[...versions].join(", ")})`);
   }
