@@ -33,11 +33,15 @@ export async function newKey(): Promise<{ key: CryptoKey; text: string }> {
   return { key, text: toBase64url(raw) };
 }
 
-/** The key a link carries. Throws on anything that is not one. */
-export async function readKey(text: string): Promise<CryptoKey> {
+/**
+ * The key a link carries. Throws on anything that is not one. Opening only,
+ * unless `seal` is asked for: saving changes to an editable issue seals its
+ * new pages with the same key, so the link everyone already has keeps working.
+ */
+export async function readKey(text: string, usage: "open" | "seal" = "open"): Promise<CryptoKey> {
   const raw = fromBase64url(text);
   if (raw.length !== 32) throw new Error("That link is missing part of its key.");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, usage === "seal" ? ["encrypt", "decrypt"] : ["decrypt"]);
 }
 
 /** Seals `data` into a file ready to upload. */

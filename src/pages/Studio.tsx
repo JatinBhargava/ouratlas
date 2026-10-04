@@ -243,6 +243,7 @@ export function Studio() {
       current => {
         const next = new URLSearchParams(current);
         next.delete("use");
+        next.delete("edit");
         return next;
       },
       { replace: true },
@@ -346,7 +347,7 @@ export function Studio() {
       {openIndex >= 0 && (
         <Viewer places={places} index={openIndex} onMove={index => show(places[index]!.page.id, true)} onClose={shut} onUse={startUsing} />
       )}
-      {using && <FillIn key={use} id={use!} title={using.title} pages={using.pages} onClose={stopUsing} />}
+      {using && <FillIn key={use} id={use!} title={using.title} pages={using.pages} onClose={stopUsing} editId={params.get("edit")} />}
     </div>
   );
 }

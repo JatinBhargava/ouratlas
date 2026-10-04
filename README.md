@@ -78,6 +78,8 @@ Readers can browse page designs made by other Atlas users, like their favourites
 - Save a magazine and share it as a private link, including straight to WhatsApp, Instagram and other apps.
 - **Only people with the link can open it.** The magazine is locked in the person's own browser before it is saved, and the key to open it travels inside the link, never to Atlas.
 - **My magazines** keeps a person's saved issues together, on any device they sign in to.
+- **Invite people to read or edit.** Share a saved magazine by email address, or with its own group code and a password for a whole family or class (each magazine has a separate code, which opens that magazine only; people join from that magazine's own page), choosing for each whether they can read it or edit it. Only the owner decides who is in.
+- **Edit after saving.** Turn on "Allow editing later" when saving, and the owner and anyone invited to edit can reopen it in the desk or Atlas Studio, change anything, and save. The same link then shows the new version.
 - Free saves last up to 30 days. Paid plans can keep a magazine for as long as they like.
 
 ### The Atlas Journal
@@ -92,9 +94,10 @@ An Atlas app for Android is in testing, so people can make a magazine from the p
 
 This is central to the product, and worth stating exactly:
 
-- **Photos and stories are never stored by Atlas.** The magazine is put together inside the person's own browser.
+- **Photos and stories are not stored by Atlas** unless the person asks for it. The magazine is put together inside their own browser.
 - They leave the device only when the person chooses a tool that needs it: the AI editor, the copy desk or voice transcription. Even then Atlas passes them to the AI service for that one task and keeps no copy.
-- **Saving a magazine to share is also the person's choice.** The pages are locked before they leave the device, so Atlas cannot open them.
+- **Saving a magazine to share is also the person's choice.** The pages are locked in the browser before they leave the device. The key travels in the link; it is kept on the account only if the person keeps the magazine in My magazines, which is also what sharing it with people needs.
+- **Editing later is opt-in.** Only if the person turns on "Allow editing later" does the magazine also keep its photos (made smaller) and words, locked the same way, so they and the people they invite can change it.
 - Beyond the locked magazines people choose to save, Atlas stores only what an account needs (an email address, the plan and a record of payments) and the page layouts people choose to send in to the community, with the words and photos taken out.
 
 ## Plans

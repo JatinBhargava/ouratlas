@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { flushSync } from "react-dom";
 import { Link } from "react-router";
 import { Dialog } from "radix-ui";
-import { BookOpen, Check, Copy, Library, Link2, Loader2, Lock, Share2, X } from "lucide-react";
+import { BookOpen, Check, Copy, Library, Link2, Loader2, Lock, PenLine, Share2, Users, X } from "lucide-react";
 
 import { PrintSheet } from "@/components/magazine/print-sheet";
 import { IssueSocialShare } from "@/components/social-share";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/lib/auth";
 import type { Issue } from "@/lib/magazine/types";
-import { saveIssue, type Manifest, type SaveProgress } from "@/lib/saved";
+import { saveChanges, saveIssue, type EditableCopy, type Editing, type Manifest, type SaveProgress } from "@/lib/saved";
 import { cn } from "@/lib/utils";
 import { KEEPS, type Keep } from "@/types";
 
@@ -33,6 +33,9 @@ export function SavePanel({
   open,
   onOpenChange,
   onPress,
+  editable,
+  editing,
+  onSaved,
 }: {
   issue: Issue;
   tilt?: number;
@@ -43,9 +46,15 @@ export function SavePanel({
   onOpenChange: (open: boolean) => void;
   /** The same question an export asks before anything is drawn. False stops here. */
   onPress: () => Promise<boolean>;
+  editable?: () => EditableCopy;
+  editing?: Editing | null;
+  onSaved?: (saved: { id: string; version: number }) => void;
 }) {
   return (
     <SaveDialog
+      editable={editable}
+      editing={editing}
+      onSaved={onSaved}
       title={issue.title}
       pages={issue.pages.length}
       resetOn={issue}
@@ -88,6 +97,9 @@ export function SaveDialog({
   open,
   onOpenChange,
   onPress,
+  editable,
+  editing,
+  onSaved,
 }: {
   title: string;
   pages: number;
@@ -108,8 +120,21 @@ export function SaveDialog({
   onOpenChange: (open: boolean) => void;
   /** Asked before anything is drawn (sign-in, an allowance). False stops here. */
   onPress: () => Promise<boolean>;
+  /**
+   * The editor's work as it stands, for keeping the issue editable. Without
+   * it the save offers no editing, and keeps only pictures of the pages.
+   */
+  editable?: () => EditableCopy;
+  /** Set when this is a saved, editable issue reopened to change: saving replaces it, at the same link. */
+  editing?: Editing | null;
+  /** After a save: the issue saved, and the version it is now at. */
+  onSaved?: (saved: { id: string; version: number }) => void;
 }) {
   const { billing } = useAuth();
+  // Off unless the owner asks: keeping the photographs and words, sealed or
+  // not, is a different promise from keeping pictures of the pages.
+  const [allowEditing, setAllowEditing] = useState(false);
+  const [changed, setChanged] = useState(false);
   const paid = billing.plan !== "free";
   const [keep, setKeep] = useState<Keep>(paid ? "forever" : "30d");
   const [inLibrary, setInLibrary] = useState(true);
@@ -146,9 +171,23 @@ export function SaveDialog({
 
     flushSync(() => setProgress({ stage: "drawing", done: 0, total: pages }));
     const { leaves, done } = draw(sheet.current);
+    const report = (next: SaveProgress) => mine === run.current && setProgress(next);
     try {
-      const result = await saveIssue(leaves, manifest(), { keep, keepInLibrary: inLibrary }, next => mine === run.current && setProgress(next));
-      if (mine === run.current) setSaved(result);
+      if (editing && editable) {
+        const result = await saveChanges(editing, leaves, manifest(), editable(), report);
+        if (mine === run.current) {
+          setSaved({ link: result.link, expiresAt: null });
+          setChanged(true);
+          onSaved?.(result);
+        }
+      } else {
+        const copy = allowEditing && editable ? editable() : undefined;
+        const result = await saveIssue(leaves, manifest(), { keep, keepInLibrary: inLibrary || Boolean(copy), editable: copy }, report);
+        if (mine === run.current) {
+          setSaved(result);
+          onSaved?.({ id: result.id, version: 1 });
+        }
+      }
     } catch (cause) {
       if (mine === run.current) setFailed(cause instanceof Error ? cause.message : "The magazine could not be saved.");
     } finally {
@@ -186,12 +225,16 @@ export function SaveDialog({
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-medium tracking-[0.28em] text-stone-500 uppercase">The archive</span>
                 <Dialog.Title className="font-editorial text-2xl tracking-tight">
-                  {saved ? "Saved. Here is its link." : "Save & share"}
+                  {saved ? (changed ? "Changes saved." : "Saved. Here is its link.") : editing ? "Save changes" : "Save & share"}
                 </Dialog.Title>
                 <Dialog.Description className="text-sm text-stone-600">
                   {saved
-                    ? "Anyone with this link can read the magazine, page by page. Nobody needs an account."
-                    : "Your pages are sealed in this browser before they are sent, and the key goes in the link — so the link is what opens it."}
+                    ? changed
+                      ? "The same link now opens this version, for everyone it is shared with."
+                      : "Anyone with this link can read the magazine, page by page. Nobody needs an account."
+                    : editing
+                      ? "The new pages replace the saved ones at the same link, sealed with the same key. Everyone it is shared with sees this version."
+                      : "Your pages are sealed in this browser before they are sent, and the key goes in the link — so the link is what opens it."}
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
@@ -239,12 +282,24 @@ export function SaveDialog({
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-stone-500">
-                  {saved.expiresAt ? `Available until ${date.format(new Date(saved.expiresAt))}.` : "Kept until you take it down."}{" "}
-                  {inLibrary
-                    ? "It is in My magazines, where you can copy the link again or take it down."
-                    : "Not kept in My magazines: this link is the only way in, so keep it somewhere safe."}
-                </p>
+                {changed ? (
+                  <p className="text-xs text-stone-500">It keeps the expiry it was saved with.</p>
+                ) : (
+                  <p className="text-xs text-stone-500">
+                    {saved.expiresAt ? `Available until ${date.format(new Date(saved.expiresAt))}.` : "Kept until the owner takes it down."}{" "}
+                    {inLibrary || allowEditing
+                      ? "It is in My magazines, where you can copy the link again, share it with people to read or edit, or take it down."
+                      : "Not kept in My magazines: this link is the only way in, so keep it somewhere safe."}
+                  </p>
+                )}
+                {(allowEditing || changed) && (
+                  <Button asChild variant="outline" className="w-fit rounded-full">
+                    <Link to="/magazines">
+                      <Users className="size-4" />
+                      Invite people in My magazines
+                    </Link>
+                  </Button>
+                )}
                 {extra?.(saved.link)}
               </div>
             ) : progress ? (
@@ -259,6 +314,13 @@ export function SaveDialog({
                   value={((progress.stage === "drawing" ? 0 : progress.total) + progress.done) / (progress.total * 2) * 100}
                   className="w-48"
                 />
+              </div>
+            ) : editing ? (
+              <div className="flex justify-end">
+                <Button className="rounded-full" onClick={() => void save()}>
+                  <PenLine className="size-4" />
+                  Save changes
+                </Button>
               </div>
             ) : (
               <>
@@ -297,10 +359,24 @@ export function SaveDialog({
                   )}
                 </fieldset>
 
+                {editable && (
+                  <Switch
+                    on={allowEditing}
+                    onChange={setAllowEditing}
+                    label="Allow editing later"
+                    detail={
+                      allowEditing
+                        ? "Its photos (made smaller) and words are kept too, sealed in this browser with the same key as the pages, so you — and anyone you invite to edit — can change everything later."
+                        : "Only pictures of the pages are kept. Turn this on to change it later, or to invite people to edit it."
+                    }
+                  />
+                )}
+
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={inLibrary}
+                  aria-checked={inLibrary || allowEditing}
+                  disabled={allowEditing}
                   onClick={() => setInLibrary(on => !on)}
                   className="flex items-start gap-3 rounded-xl border border-stone-200 p-3 text-left transition hover:border-stone-300"
                 >
@@ -308,17 +384,19 @@ export function SaveDialog({
                     aria-hidden
                     className={cn(
                       "mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition",
-                      inLibrary ? "bg-stone-900" : "bg-stone-300",
+                      inLibrary || allowEditing ? "bg-stone-900" : "bg-stone-300",
                     )}
                   >
-                    <span className={cn("size-4 rounded-full bg-white shadow transition", inLibrary && "translate-x-4")} />
+                    <span className={cn("size-4 rounded-full bg-white shadow transition", (inLibrary || allowEditing) && "translate-x-4")} />
                   </span>
                   <span className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-stone-900">Keep in My magazines</span>
                     <span className="text-xs text-stone-500">
-                      {inLibrary
-                        ? "Its key is kept on your account, so My magazines opens it on any device."
-                        : "The key stays only in the link. Nobody else can open it — not even us — and neither can you without the link."}
+                      {allowEditing
+                        ? "Needed for editing: the key is kept on your account so you, and the people you share it with, can open it from My magazines."
+                        : inLibrary
+                          ? "Its key is kept on your account, so My magazines opens it on any device, and you can share it with people there."
+                          : "The key stays only in the link. Nobody else can open it — not even us — and neither can you without the link."}
                     </span>
                   </span>
                 </button>
@@ -344,5 +422,26 @@ export function SaveDialog({
       {/* Every page at full size, off the edge of the screen, only while it is being drawn. */}
       {progress && renderSheet?.(sheet)}
     </>
+  );
+}
+
+/** An on/off choice with a line saying what it means, in the dialog's own style. */
+function Switch({ on, onChange, label, detail }: { on: boolean; onChange: (on: boolean) => void; label: string; detail: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      className="flex items-start gap-3 rounded-xl border border-stone-200 p-3 text-left transition hover:border-stone-300"
+    >
+      <span aria-hidden className={cn("mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition", on ? "bg-stone-900" : "bg-stone-300")}>
+        <span className={cn("size-4 rounded-full bg-white shadow transition", on && "translate-x-4")} />
+      </span>
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium text-stone-900">{label}</span>
+        <span className="text-xs text-stone-500">{detail}</span>
+      </span>
+    </button>
   );
 }

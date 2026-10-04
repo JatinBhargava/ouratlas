@@ -10,7 +10,9 @@ import { LEGAL } from "@/lib/legal";
  * checkable against `src/pages/Create.tsx` (photographs and story text stay in
  * the browser), `api/routes/polish.ts`, `api/routes/transcribe.ts` and
  * `api/routes/editor.ts` (the things that leave, each only when asked), and
- * `api/schema.sql` (everything the database holds).
+ * `api/schema.sql` (everything the database holds), and `api/routes/issues.ts`
+ * with `src/lib/saved.ts` (saved magazines, sealed in the browser, and who
+ * they are shared with).
  */
 export function Privacy() {
   return (
@@ -32,7 +34,7 @@ export function Privacy() {
         <Points
           items={[
             "Your photographs. They are read from your device into the browser tab and stay there. Closing the tab discards them.",
-            "Your finished magazine. It is laid out and exported by your own browser's print engine; no copy is sent to us or stored anywhere.",
+            "Your finished magazine, unless you save it to share. It is laid out and exported by your own browser's print engine; no copy is sent to us. Saving is covered below.",
             "Your card details. Payment is taken by our payment provider on their own pages; we never see or hold a card number.",
           ]}
         />
@@ -94,6 +96,30 @@ export function Privacy() {
           those with your story and title to an AI provider, which suggests a style, an order and a crop for your
           issue. Your full-size photographs are never sent. Nothing is stored by us: not logged, not written to a
           database, not kept in a file.
+        </p>
+      </Clause>
+
+      <Clause heading="Magazines you save and share">
+        <p>
+          When you press Save &amp; share, each page is drawn as a picture and locked in your browser with a key made
+          for that magazine alone, before anything is sent. We store the locked pictures, how many pages there are and
+          when it expires. The key goes in the link, after the <code>#</code>, the part of an address a browser never
+          sends to a server. If you keep the magazine in My magazines, the key is also kept on your account, so you can
+          open it on another device.
+        </p>
+        <p>
+          If you turn on <span className="font-medium">Allow editing later</span>, the magazine also keeps its editable
+          copy: your photographs, made smaller, and your words and layout, locked in your browser with the same key as
+          the pages. It is off unless you turn it on, and it is the only way your photographs and words are ever kept.
+          Editing it replaces the stored copy with the new one; taking the magazine down, or its expiry, deletes all of
+          it.
+        </p>
+        <p>
+          You can share a magazine you keep in My magazines with people by email address, or with a group code and a
+          password you choose, for them to read it or, if it can be edited, to edit it with you. We store each address
+          and the access you gave it, and the code with its password as a one-way hash we cannot read back. The people
+          you share it with open it with the key kept on your account. You can change their access or stop sharing at
+          any time.
         </p>
       </Clause>
 

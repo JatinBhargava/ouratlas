@@ -13,7 +13,7 @@ const FAQS = [
   {
     question: "Where are my photos and writing stored?",
     answer:
-      "Nowhere on our side. Everything stays in your browser while you work, and the export is the copy you keep. We do not write your photos or text to a database.",
+      "In your browser while you work, and the export is the copy you keep. If you save a magazine to share, its pages are locked in your browser before they are sent; your photos and words are kept too only if you choose to allow editing later, locked the same way. Nothing is ever written to a database readable as it is.",
   },
   {
     question: "Why only ten photos?",

@@ -218,7 +218,7 @@ export function Account() {
 
       <p className="flex items-start gap-2 text-sm text-white/75 drop-shadow-sm">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        We store your email, your plan and nothing else. Photographs and story text are never stored.
+        We store your email, your plan and the magazines you choose to save, locked in your browser before they are sent. Photographs and story text are kept only in a magazine you allowed to be edited later.
       </p>
     </div>
   );

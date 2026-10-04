@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Loader2, PenLine } from "lucide-react";
+import { KeyRound, Library, Loader2, LogIn, PenLine } from "lucide-react";
 
 import { IssueView } from "@/components/magazine/issue-view";
+import { JoinDialog } from "@/components/share-people";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { DEFAULT_THEME } from "@/lib/magazine/themes";
 import type { Issue, Page } from "@/lib/magazine/types";
 import { openIssue, openPage, type Manifest } from "@/lib/saved";
@@ -16,6 +18,14 @@ const PARALLEL = 4;
 type Opened = { manifest: Manifest; expiresAt: string | null };
 
 /**
+ * Where this tab holds a magazine's key across the sign-in redirect. Signing
+ * in is a trip through Google and back, and the part of the address after the
+ * `#` — where the key lives — is not something that trip can be trusted to
+ * keep. Session storage is this tab's alone and goes when it closes.
+ */
+const keySlot = (id: string) => `atlas:read-key:${id}`;
+
+/**
  * A saved issue, opened from its link: `/read?i=<id>#<key>`.
  *
  * Anyone with the link can read it, signed in or not. The key is after the
@@ -26,13 +36,26 @@ type Opened = { manifest: Manifest; expiresAt: string | null };
 export function Read() {
   const [params] = useSearchParams();
   const id = params.get("i") ?? "";
+  const { user, configured, signInWithGoogle } = useAuth();
+  const [joining, setJoining] = useState(false);
+  const [joined, setJoined] = useState<"read" | "edit" | null>(null);
   const [opened, setOpened] = useState<Opened | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   /** Page pictures as they open, by page index. */
   const [pictures, setPictures] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    const keyText = location.hash.slice(1);
+    let keyText = location.hash.slice(1);
+    // Back from signing in to join: the key this tab held while it was away, put back in the address.
+    if (!keyText && id) {
+      try {
+        keyText = sessionStorage.getItem(keySlot(id)) ?? "";
+        sessionStorage.removeItem(keySlot(id));
+      } catch {
+        keyText = "";
+      }
+      if (keyText) history.replaceState(history.state, "", `${location.pathname}${location.search}#${keyText}`);
+    }
     if (!id || !keyText) {
       setFailed("This link is incomplete. Ask whoever sent it for the whole address.");
       return;
@@ -71,6 +94,16 @@ export function Read() {
       made.forEach(url => URL.revokeObjectURL(url));
     };
   }, [id]);
+
+  // Back from signing in to join: the code dialog again, and the address tidied.
+  useEffect(() => {
+    if (params.get("join") !== "1" || !user || !opened) return;
+    setJoining(true);
+    // Past the router, so the key after the `#` stays in the address to be copied.
+    const next = new URLSearchParams(location.search);
+    next.delete("join");
+    history.replaceState(history.state, "", `${location.pathname}?${next.toString()}${location.hash}`);
+  }, [params, user, opened]);
 
   /**
    * The book wants an issue; a saved one is pages and a title. Each page
@@ -130,6 +163,21 @@ export function Read() {
   }
 
   const { manifest, expiresAt } = opened;
+
+  /** Joining this magazine with its code: straight away when signed in, or after signing in, back on this page. */
+  const startJoin = async () => {
+    if (user) {
+      setJoining(true);
+      return;
+    }
+    try {
+      sessionStorage.setItem(keySlot(id), location.hash.slice(1));
+    } catch {
+      // Without it the reader comes back to an incomplete link, and can open it again from the one they have.
+    }
+    await signInWithGoogle(`/read?i=${encodeURIComponent(id)}&join=1`);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <header className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
@@ -165,6 +213,33 @@ export function Read() {
           )
         }
       />
+
+      {configured && (
+        <section className="mx-auto flex w-full max-w-md flex-col items-center gap-2 rounded-2xl bg-white/85 p-4 text-center text-stone-700 shadow-lg backdrop-blur-md">
+          {joined ? (
+            <>
+              <p className="text-sm">
+                It is in your My magazines{joined === "edit" ? ", where you can also edit it" : ""}.
+              </p>
+              <Button asChild size="sm" className="rounded-full">
+                <Link to="/magazines">
+                  <Library className="size-4" />
+                  My magazines
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm">Invited to this magazine with a code? Join it to keep it in your own My magazines, or to edit it if you were asked to.</p>
+              <Button size="sm" variant="outline" className="rounded-full" onClick={() => void startJoin()}>
+                {user ? <KeyRound className="size-4" /> : <LogIn className="size-4" />}
+                {user ? "Join this magazine" : "Sign in to join this magazine"}
+              </Button>
+            </>
+          )}
+          <JoinDialog issueId={id} title={manifest.title} open={joining} onOpenChange={setJoining} onJoined={setJoined} />
+        </section>
+      )}
 
       <div className="flex flex-col items-center gap-3 text-center">
         <p className="text-sm text-white/80 drop-shadow-sm">

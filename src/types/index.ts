@@ -324,6 +324,12 @@ export const SAVED_MAX_PAGES = 96;
  */
 export const SAVED_MAX_FILE_BYTES = 2 * 1024 * 1024;
 
+/**
+ * The most photographs an editable copy carries. The desk takes ten; a Studio
+ * issue can hold more, one per picture in its pages.
+ */
+export const EDITABLE_MAX_PHOTOS = 40;
+
 /** `POST /api/issues`: what is about to be uploaded. */
 export type SaveRequest = {
   pages: number;
@@ -333,6 +339,12 @@ export type SaveRequest = {
    * copy is in the link, and the issue can be opened by no one without it.
    */
   key?: string;
+  /**
+   * Present when the owner allowed editing later: the issue also carries its
+   * editable copy (the editor's state and this many photographs), sealed with
+   * the same key. Needs `key`, since everyone who edits it must open it.
+   */
+  editable?: { photos: number };
 };
 
 /** One signed place to put one sealed file. */
@@ -343,9 +355,64 @@ export type SaveResponse = {
   /** The sealed manifest's slot first, then one per page in order. */
   manifest: UploadSlot;
   pages: UploadSlot[];
+  /** The editable copy's slots, when one was asked for: its state, then each photograph. */
+  source?: UploadSlot;
+  photos?: UploadSlot[];
   /** ISO time, or null for forever. */
   expiresAt: string | null;
 };
+
+// --- Sharing and editing a saved issue ---------------------------------------
+//
+// An owner can share a saved issue with people by email address, or with a
+// group code and its password, each with read or edit access. Only the owner
+// changes who it is shared with. Editing reopens the issue's editable copy in
+// the editor that made it, and saving puts new pages and a new copy in place
+// of the old, at the same link.
+
+/** What someone may do with a saved issue. */
+export type IssueRole = "owner" | "edit" | "read";
+/** The roles an owner hands out. */
+export type MemberRole = Exclude<IssueRole, "owner">;
+export const MEMBER_ROLES: readonly MemberRole[] = ["read", "edit"];
+
+/** `GET /api/issues/:id/source`: what an editor needs to reopen an editable issue. */
+export type EditableFiles = {
+  id: string;
+  key: string;
+  /** The version being edited; saving changes from it is refused once another save has moved past it. */
+  version: number;
+  pages: number;
+  source: string;
+  photos: string[];
+};
+
+/** `POST /api/issues/:id/edits`: a new set of files about to replace the current one. */
+export type EditRequest = { base: number; pages: number; photos: number };
+export type EditResponse = { folder: string; manifest: UploadSlot; pages: UploadSlot[]; source: UploadSlot; photos: UploadSlot[] };
+/** `POST /api/issues/:id/edits/commit`: every file of the edit is up; swap it in. */
+export type EditCommit = { base: number; folder: string; pages: number; photos: number };
+
+/** One person an issue is shared with. */
+export type Member = { email: string; role: MemberRole; via: "invite" | "code"; joined: boolean };
+
+/** `GET /api/issues/:id/members`: who it is shared with, and its group code if it has one. */
+export type MembersResponse = {
+  members: Member[];
+  code: { code: string; role: MemberRole } | null;
+  /** Whether invitations are emailed on this server. */
+  mails: boolean;
+};
+
+export type InviteRequest = { email: string; role: MemberRole };
+export type CodeRequest = { password: string; role: MemberRole };
+/**
+ * Joining one magazine with its group code. Each saved magazine has a code of
+ * its own and opens nothing else; `id`, when the reader is on that magazine's
+ * page, holds the code to that one magazine.
+ */
+export type JoinRequest = { code: string; password: string; id?: string };
+export type JoinResponse = { id: string; role: MemberRole };
 
 /** `GET /api/issues/:id`: where to fetch a saved issue's sealed files. */
 export type SavedFiles = {
@@ -367,6 +434,16 @@ export type SavedIssue = {
   /** Signed, short-lived: the sealed manifest and the sealed cover, for the card. */
   manifest: string;
   cover: string;
+  /** Whose it is to this account: their own, or shared with them to read or edit. */
+  role: IssueRole;
+  /** Whether it carries its editable copy, so the owner and its editors can change it. */
+  editable: boolean;
+  version: number;
+  /** For a shared issue, who shared it: their name, or their address. */
+  sharedBy?: string;
+  /** For the owner: how many people it is shared with, and whether a group code is on. */
+  members?: number;
+  hasCode?: boolean;
 };
 
 export type SavedList = { issues: SavedIssue[]; canKeepForever: boolean };

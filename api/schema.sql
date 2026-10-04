@@ -348,6 +348,67 @@ create index if not exists issues_expires on public.issues (expires_at) where ex
 
 alter table public.issues enable row level security;
 
+-- Sharing and editing, added once saved issues could be shared with people by
+-- name and changed after they were saved.
+--
+-- `editable` says the issue also carries its editable copy: the editor's state
+-- and its photographs (made smaller), sealed in the browser with the issue's
+-- own key exactly as the pages are, `source_photos` files of them. It is only
+-- ever true when the owner turned on editing, and an editable issue always
+-- keeps its key here, because the people it is shared with need it to open it.
+--
+-- `folder` is where the current files live: null for the issue's own folder
+-- (every issue saved before editing existed), or a folder inside it written by
+-- an edit. An edit uploads a whole new set into `pending_folder` and swaps it
+-- in at once when every file has arrived, so a reader never sees half an edit;
+-- `version` rises by one each time, and a save made from an older version is
+-- refused rather than allowed to overwrite a newer one.
+--
+-- `join_code` is the owner's group code: anyone signed in who gives it and its
+-- password joins with `join_role`. The password is kept only as a salted
+-- scrypt hash.
+alter table public.issues add column if not exists editable boolean not null default false;
+alter table public.issues add column if not exists source_photos integer not null default 0;
+alter table public.issues add column if not exists folder text;
+alter table public.issues add column if not exists pending_folder text;
+alter table public.issues add column if not exists pending_since timestamptz;
+alter table public.issues add column if not exists version integer not null default 1;
+alter table public.issues add column if not exists updated_at timestamptz;
+alter table public.issues add column if not exists updated_by uuid references auth.users (id) on delete set null;
+alter table public.issues add column if not exists join_code text;
+alter table public.issues add column if not exists join_hash text;
+alter table public.issues add column if not exists join_role text;
+create unique index if not exists issues_join_code on public.issues (join_code) where join_code is not null;
+create index if not exists issues_pending on public.issues (pending_since) where pending_folder is not null;
+
+-- ---------------------------------------------------------------------------
+-- issue_members: who else a saved issue is shared with, and how
+-- ---------------------------------------------------------------------------
+--
+-- A row is an issue, an email address and a role: 'read' opens it from My
+-- magazines on any device, 'edit' may also change it. An invitation by email
+-- waits with a null `user_id` until someone signs in with that address; joining
+-- with a group code fills both at once. Only the owner adds, changes or removes
+-- rows, and taking the issue down takes its members with it.
+--
+-- No policies, like `issues`: only the API reads or writes here.
+create table if not exists public.issue_members (
+  issue_id    uuid not null references public.issues (id) on delete cascade,
+  email       text not null check (email = lower(email)),
+  user_id     uuid references auth.users (id) on delete cascade,
+  role        text not null check (role in ('read', 'edit')),
+  -- How they came to be here: invited by address, or joined with the code.
+  via         text not null default 'invite' check (via in ('invite', 'code')),
+  created_at  timestamptz not null default now(),
+  joined_at   timestamptz,
+  primary key (issue_id, email)
+);
+
+create index if not exists issue_members_user on public.issue_members (user_id) where user_id is not null;
+create index if not exists issue_members_email on public.issue_members (email) where user_id is null;
+
+alter table public.issue_members enable row level security;
+
 -- Private: files are reached only through short-lived signed URLs. 2 MB a file
 -- is headroom over a sealed 1080 × 1440 page, and stops the bucket being used
 -- as general storage through a signed upload URL.

@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Dialog } from "radix-ui";
-import { Check, Copy, Loader2, Lock, LogIn, Megaphone, PenLine, Share2, Trash2, X } from "lucide-react";
+import { Check, Copy, Loader2, Lock, LogIn, LogOut, Megaphone, PenLine, Share2, Trash2, Users, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
+import { PeopleDialog } from "@/components/share-people";
 import { SavedSocialShare } from "@/components/social-share";
-import { deleteSaved, linkFor, listSaved, openManifest, openPage, type Manifest } from "@/lib/saved";
+import { deleteSaved, leaveIssue, linkFor, listSaved, openManifest, openPage, type Manifest } from "@/lib/saved";
 import { readKey } from "@/lib/vault";
 import type { SavedIssue } from "@/types";
 
 const date = new Intl.DateTimeFormat("en", { day: "numeric", month: "long", year: "numeric" });
 
 /**
- * My magazines: every issue this account has saved, with its link.
+ * My magazines: every issue this account has saved, with its link, and every
+ * one shared with it by someone else, to read or to edit.
  *
  * The list comes from the server, but a card's title and cover are sealed
  * there and opened here with the key kept on the account. An issue saved
@@ -45,11 +47,17 @@ export function Magazines() {
       </span>
       <h1 className="font-editorial text-4xl tracking-tight text-white drop-shadow-md sm:text-5xl">My magazines</h1>
       <p className="max-w-prose text-sm text-white/85 drop-shadow-sm">
-        Every issue you saved, and the link that opens it. Pages are sealed in your browser before they are sent; the
+        Every issue you saved, and the ones shared with you. Pages are sealed in your browser before they are sent; the
         key to each one is in its link.
       </p>
     </header>
   );
+
+  const update = (id: string, change: Partial<SavedIssue>) =>
+    setIssues(current => current?.map(issue => (issue.id === id ? { ...issue, ...change } : issue)) ?? null);
+  const drop = (id: string) => setIssues(current => current?.filter(other => other.id !== id) ?? null);
+  const yours = issues?.filter(issue => issue.role === "owner") ?? [];
+  const shared = issues?.filter(issue => issue.role !== "owner") ?? [];
 
   if (!configured) {
     return (
@@ -106,22 +114,45 @@ export function Magazines() {
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {issues?.map(issue => (
-            <IssueCard
-              key={issue.id}
-              issue={issue}
-              onDeleted={() => setIssues(current => current?.filter(other => other.id !== issue.id) ?? null)}
-            />
-          ))}
-        </div>
+        <>
+          {yours.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {yours.map(issue => (
+                <IssueCard key={issue.id} issue={issue} onDeleted={() => drop(issue.id)} onChanged={change => update(issue.id, change)} />
+              ))}
+            </div>
+          )}
+          {shared.length > 0 && (
+            <section className="flex flex-col gap-4">
+              <h2 className="font-editorial text-2xl text-white drop-shadow-sm">Shared with you</h2>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {shared.map(issue => (
+                  <IssueCard key={issue.id} issue={issue} onDeleted={() => drop(issue.id)} onChanged={change => update(issue.id, change)} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );
 }
 
+/**
+ * Where an editable issue reopens: the editor that made it, told which saved
+ * issue it is changing. An issue saved before the manifest said so came from the desk.
+ */
+function editPath(issue: SavedIssue, manifest: Manifest | null): string {
+  const source = manifest?.source;
+  if (source?.kind === "studio") return `/studio?use=${encodeURIComponent(source.use)}&edit=${issue.id}`;
+  return `/create?edit=${issue.id}`;
+}
+
 /** One saved issue: its cover, title, how long it lasts, and what can be done with it. */
-function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => void }) {
+function IssueCard({ issue, onDeleted, onChanged }: { issue: SavedIssue; onDeleted: () => void; onChanged: (change: Partial<SavedIssue>) => void }) {
+  const navigate = useNavigate();
+  const [people, setPeople] = useState(false);
+  const owner = issue.role === "owner";
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -169,10 +200,14 @@ function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => v
   };
 
   const remove = async () => {
-    if (!confirm("Take this magazine down? Its link stops working for everyone, and this cannot be undone.")) return;
+    const question = owner
+      ? "Take this magazine down? Its link stops working for everyone it is shared with, and this cannot be undone."
+      : "Leave this magazine? It goes from your My magazines; its owner can share it with you again.";
+    if (!confirm(question)) return;
     setDeleting(true);
     try {
-      await deleteSaved(issue.id);
+      if (owner) await deleteSaved(issue.id);
+      else await leaveIssue(issue.id);
       onDeleted();
     } catch (cause) {
       setFailed(cause instanceof Error ? cause.message : "Could not take it down.");
@@ -212,6 +247,12 @@ function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => v
         <p className="text-[11px] text-white/70 tabular-nums drop-shadow-sm">
           {issue.pages} pages · {lasts}
         </p>
+        {!owner && (
+          <p className="text-[11px] text-white/85 drop-shadow-sm">
+            {issue.role === "edit" ? "You can edit" : "You can read"}
+            {issue.sharedBy && ` · from ${issue.sharedBy}`}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -232,17 +273,40 @@ function IssueCard({ issue, onDeleted }: { issue: SavedIssue; onDeleted: () => v
             </Button>
           </>
         )}
+        {link && issue.editable && issue.role !== "read" && (
+          <Button size="sm" variant="secondary" className="h-7 rounded-full px-2.5 text-xs" onClick={() => navigate(editPath(issue, manifest))}>
+            <PenLine className="size-3.5" />
+            Edit
+          </Button>
+        )}
+        {link && owner && (
+          <Button size="sm" variant="secondary" className="h-7 rounded-full px-2.5 text-xs" onClick={() => setPeople(true)}>
+            <Users className="size-3.5" />
+            {issue.members ? `People · ${issue.members}` : "Share"}
+          </Button>
+        )}
         <Button
           size="icon-sm"
           variant="secondary"
           className="size-7 rounded-full"
           disabled={deleting}
           onClick={() => void remove()}
-          aria-label="Take it down"
+          aria-label={owner ? "Take it down" : "Leave it"}
         >
-          {deleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+          {deleting ? <Loader2 className="size-3.5 animate-spin" /> : owner ? <Trash2 className="size-3.5" /> : <LogOut className="size-3.5" />}
         </Button>
       </div>
+
+      {owner && link && (
+        <PeopleDialog
+          id={issue.id}
+          title={manifest?.title ?? "Your magazine"}
+          editable={issue.editable}
+          open={people}
+          onOpenChange={setPeople}
+          onChanged={(members, hasCode) => onChanged({ members, hasCode })}
+        />
+      )}
 
       {failed && <p className="text-[11px] text-red-100">{failed}</p>}
 

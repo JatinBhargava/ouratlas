@@ -8,6 +8,7 @@ import { TypePanel, type TypeChange } from "@/components/studio/type-panel";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { popRecord, putRecord } from "@/lib/draft";
+import { openEditable, type EditableCopy, type Editing } from "@/lib/saved";
 import { photoSlots, samplePhoto, slotOf, type StudioPage } from "@/lib/studio";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +58,12 @@ type Parked = {
   styles?: string[][];
   /** Per page, where the deleted boxes are among the body's elements in document order (`allElements`). */
   deleted?: number[][];
+  /** A saved issue reopened to change, so the save after signing in replaces it. */
+  editing?: Editing;
 };
+
+/** The editor as it is kept in a saved issue's editable copy: a parked editor without its files, which are sealed beside it. */
+type StudioState = Omit<Parked, "photos" | "editing">;
 
 /**
  * What the editor adds to a page while it is being worked on: a caret over
@@ -355,6 +361,8 @@ type Props = {
   title: string;
   pages: StudioPage[];
   onClose: () => void;
+  /** A saved issue to reopen here and change: its editable copy fills the pages, and saving replaces it. */
+  editId?: string | null;
 };
 
 /**
@@ -372,7 +380,7 @@ type Props = {
  * here by the magazine's press. A save goes the way the desk's does: the pages
  * drawn as pictures, sealed in this browser, and the key in the link.
  */
-export function FillIn({ id, title, pages, onClose }: Props) {
+export function FillIn({ id, title, pages, onClose, editId }: Props) {
   const { user, signInWithGoogle } = useAuth();
   const slots = useMemo(() => photoSlots(pages), [pages]);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -382,6 +390,8 @@ export function FillIn({ id, title, pages, onClose }: Props) {
   const [busy, setBusy] = useState<"pdf" | "png" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
+  // A saved issue reopened here to change: its save replaces it at the same link.
+  const [editing, setEditing] = useState<Editing | null>(null);
   // The block of words the Type panel sets: the last one the reader typed in.
   // An element in a page's frame rather than an index, so it survives the
   // reader stepping out of the page into the panel.
@@ -449,6 +459,22 @@ export function FillIn({ id, title, pages, onClose }: Props) {
     setDeletions(current => [...current, gone]);
   };
 
+  /**
+   * Puts a parked editor back: one put away before signing in, or a saved
+   * issue's editable copy. Pages already drawn take their words and type at
+   * once; the rest take them as each one loads.
+   */
+  const applyParked = (parked: Parked) => {
+    const restored = parked.photos.map(photo => ({ ...photo, url: URL.createObjectURL(photo.file) }));
+    // New photographs must not take an id a restored one already has.
+    for (const photo of restored) counter = Math.max(counter, Number(photo.id.replace(/\D/g, "")) || 0);
+    setPhotos(restored);
+    setAssigned(parked.assigned);
+    setCrops(parked.crops);
+    restoring.current = parked;
+    docs.current.forEach((doc, index) => doc && restorePage(doc, parked, index));
+  };
+
   // Back from signing in: the parked editor, if it was this layout's, and
   // straight on to the save the reader had asked for.
   useEffect(() => {
@@ -456,19 +482,32 @@ export function FillIn({ id, title, pages, onClose }: Props) {
     void popRecord(PARK_KEY).then(value => {
       const parked = value as Parked | null;
       if (cancelled || !parked || parked.use !== id) return;
-      const restored = parked.photos.map(photo => ({ ...photo, url: URL.createObjectURL(photo.file) }));
-      counter += restored.length;
-      setPhotos(restored);
-      setAssigned(parked.assigned);
-      setCrops(parked.crops);
-      restoring.current = parked;
-      docs.current.forEach((doc, index) => doc && restorePage(doc, parked, index));
+      applyParked(parked);
+      setEditing(parked.editing ?? null);
       setSaveOpen(true);
     });
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  // A saved issue opened from My magazines' Edit: its copy, once there is an account to open it with.
+  useEffect(() => {
+    if (!editId || !user || editing?.id === editId) return;
+    let cancelled = false;
+    setError(null);
+    openEditable<StudioState>(editId)
+      .then(opened => {
+        if (cancelled) return;
+        if (opened.origin.kind !== "studio" || opened.origin.use !== id) throw new Error("That magazine was made from a different layout.");
+        applyParked({ ...opened.state, photos: opened.photos.map(photo => ({ id: photo.id, name: photo.file.name, file: photo.file })) });
+        setEditing({ id: opened.id, keyText: opened.keyText, version: opened.version });
+      })
+      .catch(cause => !cancelled && setError(cause instanceof Error ? cause.message : "That magazine could not be opened to edit."));
+    return () => {
+      cancelled = true;
+    };
+  }, [editId, user, id]);
 
   const urls = useMemo(() => {
     const byId = new Map(photos.map(photo => [photo.id, photo.url]));
@@ -799,16 +838,29 @@ export function FillIn({ id, title, pages, onClose }: Props) {
    * editor is parked first — photographs as the files they are, the words as
    * typed, every crop — and the save dialog opens again on the way back.
    */
+  /** The editor's work, without its photographs: what is parked, and what an editable copy keeps. */
+  const snapshot = (): StudioState => ({
+    use: id,
+    assigned,
+    crops,
+    blocks: docs.current.map(doc => (doc ? editable(doc).map(block => block.innerHTML) : [])),
+    styles: docs.current.map(doc => (doc ? editable(doc).map(block => block.getAttribute("style") ?? "") : [])),
+    deleted: docs.current.map(doc => (doc ? allElements(doc).flatMap((element, index) => (element.hasAttribute(DELETED) ? [index] : [])) : [])),
+  });
+
+  /** The editor as an editable copy, its photographs handed over as files. */
+  const studioCopy = (): EditableCopy<StudioState> => ({
+    origin: { kind: "studio", use: id },
+    state: snapshot(),
+    photos: photos.map(photo => ({ id: photo.id, file: photo.file })),
+  });
+
   const claimSave = async () => {
     if (user) return true;
     const parked: Parked = {
-      use: id,
+      ...snapshot(),
       photos: photos.map(({ id: photoId, name, file }) => ({ id: photoId, name, file })),
-      assigned,
-      crops,
-      blocks: docs.current.map(doc => (doc ? editable(doc).map(block => block.innerHTML) : [])),
-      styles: docs.current.map(doc => (doc ? editable(doc).map(block => block.getAttribute("style") ?? "") : [])),
-      deleted: docs.current.map(doc => (doc ? allElements(doc).flatMap((element, index) => (element.hasAttribute(DELETED) ? [index] : [])) : [])),
+      ...(editing ? { editing } : {}),
     };
     await putRecord(PARK_KEY, parked);
     await signInWithGoogle(`${window.location.pathname}${window.location.search}`);
@@ -852,7 +904,7 @@ export function FillIn({ id, title, pages, onClose }: Props) {
           <div className="flex min-w-0 flex-col">
             <span className="text-[11px] tracking-[0.24em] text-stone-500 uppercase">Atlas Studio</span>
             <h2 id="fill-in-title" ref={heading} tabIndex={-1} className="font-editorial truncate text-2xl text-stone-900 outline-none">
-              {title}
+              {editing ? `Editing · ${title}` : title}
             </h2>
           </div>
         </div>
@@ -1050,6 +1102,9 @@ export function FillIn({ id, title, pages, onClose }: Props) {
           onPress={claimSave}
           manifest={manifest}
           draw={forPress}
+          editable={studioCopy}
+          editing={editing}
+          onSaved={saved => editing && setEditing({ ...editing, version: saved.version })}
         />
       )}
     </div>

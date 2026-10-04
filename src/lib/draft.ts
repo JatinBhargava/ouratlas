@@ -75,6 +75,8 @@ export type DeskDraft = {
    * against.
    */
   resume?: "press" | "speak" | "editor";
+  /** A saved issue reopened to change, so the save after signing in replaces it rather than making a new one. */
+  editing?: { id: string; keyText: string; version: number };
 };
 
 /** True when `park` ran and `take` has not yet collected it. */

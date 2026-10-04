@@ -18,7 +18,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isSignInReturn, settleSignInReturn, useAuth } from "@/lib/auth";
-import { isParked, park, take } from "@/lib/draft";
+import { isParked, park, take, type DeskDraft } from "@/lib/draft";
+import { openEditable, type EditableCopy, type Editing } from "@/lib/saved";
 import { HttpError } from "@/lib/api";
 import { claimExport, readAllowance } from "@/lib/exports";
 import { canvasToSample, getLayout } from "@/lib/layouts";
@@ -53,6 +54,12 @@ function dekOf(story: string): string {
   const opening = /^[\s\S]*?[.!?](?=\s)/.exec(text)?.[0] ?? text;
   return opening.length > 180 ? `${opening.slice(0, 177).trimEnd()}…` : opening;
 }
+
+/**
+ * The desk as it is kept in a saved issue's editable copy: a parked draft
+ * without its files, which are sealed beside it, one per photograph.
+ */
+type DeskState = Omit<DeskDraft, "photos" | "resume" | "editing"> & { photos: { id: string; focus?: DeskDraft["photos"][number]["focus"]; caption?: string }[] };
 
 export function Create() {
   const { ready, user, configured, signInWithGoogle, billing } = useAuth();
@@ -254,12 +261,43 @@ export function Create() {
   const [carouselOpen, setCarouselOpen] = useState(false);
   /** The save panel, likewise. */
   const [saveOpen, setSaveOpen] = useState(false);
+  // A saved, editable issue reopened here (`?edit=`): its save replaces it at the same link.
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [editFailed, setEditFailed] = useState<string | null>(null);
   /**
    * The issue an export was last granted for. Sending the same magazine out
    * again — as a carousel after the PDF, or the PDF twice — spends nothing
    * more; any change recomposes a new issue, and that one asks again.
    */
   const claimedFor = useRef<Issue | null>(null);
+
+  /** Sets the desk from a draft: one parked before signing in, or a saved issue's editable copy. */
+  const restore = (draft: DeskDraft) => {
+    restoredSeed.current = draft.seed;
+    setTitle(draft.title);
+    setStory(draft.story);
+    setPolished(draft.polished);
+    setPlateSizes(draft.plateSizes);
+    setSeed(draft.seed);
+    // A desk parked before themes existed has none; that is the house style.
+    setTheme(themeOf(draft.theme).id);
+    setTilt(draft.tilt ?? null);
+    if (draft.design) setDesign(draft.design);
+    if (draft.type) setType(clampType(draft.type));
+    setWantsSketch(draft.wantsSketch ?? false);
+    setSketches(draft.sketches ?? {});
+    setLeaves(draft.leaves ?? {});
+    setPhotos(current => {
+      current.forEach(photo => URL.revokeObjectURL(photo.url));
+      return draft.photos.map(photo => ({
+        id: photo.id,
+        file: photo.file,
+        url: URL.createObjectURL(photo.file),
+        focus: photo.focus,
+        caption: photo.caption,
+      }));
+    });
+  };
 
   /**
    * Brings back the desk that was put away before signing in.
@@ -283,29 +321,8 @@ export function Create() {
         } else {
           returning.current = true;
         }
-        restoredSeed.current = draft.seed;
-        setTitle(draft.title);
-        setStory(draft.story);
-        setPolished(draft.polished);
-        setPlateSizes(draft.plateSizes);
-        setSeed(draft.seed);
-        // A desk parked before themes existed has none; that is the house style.
-        setTheme(themeOf(draft.theme).id);
-        setTilt(draft.tilt ?? null);
-        if (draft.design) setDesign(draft.design);
-        if (draft.type) setType(clampType(draft.type));
-        setWantsSketch(draft.wantsSketch ?? false);
-        setSketches(draft.sketches ?? {});
-        setLeaves(draft.leaves ?? {});
-        setPhotos(
-          draft.photos.map(photo => ({
-            id: photo.id,
-            file: photo.file,
-            url: URL.createObjectURL(photo.file),
-            focus: photo.focus,
-            caption: photo.caption,
-          })),
-        );
+        restore(draft);
+        setEditing(draft.editing ?? null);
       }
 
       // Only a fruitless read ends the wait here. A recovered desk stays behind
@@ -318,6 +335,56 @@ export function Create() {
       cancelled = true;
     };
   }, []);
+
+  /**
+   * Opens a saved issue's editable copy, from My magazines' Edit (`?edit=`),
+   * once any desk parked across a sign-in has been put back: that one is the
+   * newer, and already knows which issue it is editing.
+   */
+  const editId = params.get("edit");
+  useEffect(() => {
+    if (!editId || !draftLoaded || !user || editing?.id === editId) return;
+    let cancelled = false;
+    setEditFailed(null);
+    setStaging(true);
+    openEditable<DeskState>(editId)
+      .then(opened => {
+        if (cancelled) return;
+        if (opened.origin.kind !== "desk") throw new Error("This magazine was made in Atlas Studio. Open it from My magazines to edit it there.");
+        const meta = new Map(opened.state.photos.map(photo => [photo.id, photo]));
+        restore({
+          ...opened.state,
+          photos: opened.photos.map(photo => ({ id: photo.id, file: photo.file, focus: meta.get(photo.id)?.focus, caption: meta.get(photo.id)?.caption })),
+        });
+        setEditing({ id: opened.id, keyText: opened.keyText, version: opened.version });
+      })
+      .catch(cause => !cancelled && setEditFailed(cause instanceof Error ? cause.message : "That magazine could not be opened to edit."))
+      .finally(() => !cancelled && setStaging(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [editId, draftLoaded, user]);
+
+  /** The desk as an editable copy: everything a parked draft holds, its photographs handed over as files. */
+  const deskCopy = (): EditableCopy<DeskState> => ({
+    origin: { kind: "desk" },
+    state: {
+      title,
+      story,
+      polished,
+      plateSizes,
+      seed,
+      theme,
+      tilt,
+      design,
+      type,
+      wantsSketch,
+      sketches,
+      leaves,
+      photos: photos.map(photo => ({ id: photo.id, focus: photo.focus, caption: photo.caption })),
+    },
+    photos: photos.map(photo => ({ id: photo.id, file: photo.file })),
+  });
 
   // Object URLs are a manual resource: release them when the page goes away.
   const photosRef = useRef<Photo[]>([]);
@@ -791,6 +858,7 @@ export function Create() {
       leaves,
       photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus, caption: photo.caption })),
       resume,
+      ...(editing ? { editing } : {}),
     });
 
     try {
@@ -1154,6 +1222,9 @@ export function Create() {
               open={saveOpen}
               onOpenChange={setSaveOpen}
               onPress={claimSave}
+              editable={deskCopy}
+              editing={editing}
+              onSaved={saved => editing && setEditing({ ...editing, version: saved.version })}
             />
           </>
         )}
@@ -1291,6 +1362,9 @@ export function Create() {
               open={saveOpen}
               onOpenChange={setSaveOpen}
               onPress={claimSave}
+              editable={deskCopy}
+              editing={editing}
+              onSaved={saved => editing && setEditing({ ...editing, version: saved.version })}
             />
           </>
         )}
@@ -1305,10 +1379,17 @@ export function Create() {
           <span aria-hidden className="h-px w-6 bg-white/40" />
           The desk
         </span>
-        <h1 className="font-editorial text-5xl tracking-tight text-white drop-shadow-md">New story</h1>
+        <h1 className="font-editorial text-5xl tracking-tight text-white drop-shadow-md">{editing ? "Editing a saved magazine" : "New story"}</h1>
         <p className="max-w-prose text-white/90 drop-shadow-sm">
-          Ten photos and the story behind them, set as a magazine. Everything stays in this tab until you export.
+          {editing
+            ? "Change anything: photos, words, the look. Press it, then Save changes, and the same link shows the new version to everyone it is shared with."
+            : "Ten photos and the story behind them, set as a magazine. Everything stays in this tab until you export."}
         </p>
+        {editFailed && (
+          <p className="max-w-prose rounded-xl bg-red-50/95 px-4 py-2 text-sm text-red-700" role="alert">
+            {editFailed}
+          </p>
+        )}
       </header>
 
       <Card className="border-white/50 bg-white/90 backdrop-blur-md">
