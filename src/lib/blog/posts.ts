@@ -4,6 +4,21 @@ import type { PostMeta } from "./types";
 /** Every published post, newest first. */
 export const POSTS: PostMeta[] = [
   {
+    "slug": "magazine-layout-with-your-own-photos",
+    "title": "Fill a ready-made magazine layout with your own photos",
+    "description": "Atlas Studio holds over two hundred finished magazine pages. Open one, put your own photos and words in it, and download the PDF with no account.",
+    "kind": "spotlight",
+    "date": "2026-10-19",
+    "tags": [
+      "photo albums",
+      "print",
+      "privacy"
+    ],
+    "keyword": "magazine layout with your own photos",
+    "feature": "1.1.0",
+    "minutes": 7
+  },
+  {
     "slug": "paginate-text-by-measuring-type",
     "title": "How to paginate text by measuring type, not guessing",
     "description": "How Atlas cuts a long story into magazine columns that never overflow, by binary-searching word counts against real type in the browser.",
@@ -22,5 +37,6 @@ export const POSTS: PostMeta[] = [
 
 /** Each post's rendered HTML, a chunk of its own so only the post being read is fetched. */
 export const BODIES: Record<string, () => Promise<{ default: string }>> = {
+  "magazine-layout-with-your-own-photos": () => import("./bodies/magazine-layout-with-your-own-photos"),
   "paginate-text-by-measuring-type": () => import("./bodies/paginate-text-by-measuring-type"),
 };
