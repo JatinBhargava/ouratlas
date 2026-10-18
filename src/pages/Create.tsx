@@ -39,7 +39,17 @@ import { TypePanel } from "@/components/type-panel";
 import { clampType, DEFAULT_TYPE, type TypeChoice } from "@/lib/magazine/typography";
 import { defaultDesign, type CustomBox, type CustomDesign, type CustomLeaves, type CustomSlot } from "@/lib/magazine/custom";
 import type { Issue } from "@/lib/magazine/types";
-import { countWords, EDITOR_NEEDS_SIGN_IN, PLAN_LIMITS, sanitizeDesign, type ExportAllowance, type Focus, type Photo } from "@/types";
+import {
+  countWords,
+  DEFAULT_DIRECTION,
+  EDITOR_NEEDS_SIGN_IN,
+  PLAN_LIMITS,
+  sanitizeDesign,
+  type EditorDirection,
+  type ExportAllowance,
+  type Focus,
+  type Photo,
+} from "@/types";
 
 
 /**
@@ -224,6 +234,12 @@ export function Create() {
    * marks. Nothing here is ever poured into or dealt to; it is only kept.
    */
   const [sketches, setSketches] = useState<Record<string, string>>({});
+  /**
+   * The look the reader wants the editor to make up the issue in. Held here,
+   * not in the panel, because the editor's sign-in parks the desk: a brief
+   * typed and then lost to the Google redirect would have to be typed again.
+   */
+  const [direction, setDirection] = useState<EditorDirection>(DEFAULT_DIRECTION);
   const keepSketch = (id: string, dataUrl: string) =>
     setSketches(current => ({ ...current, [id]: dataUrl }));
   const ownType = theme === "custom" ? type : undefined;
@@ -263,6 +279,11 @@ export function Create() {
   const [saveOpen, setSaveOpen] = useState(false);
   // A saved, editable issue reopened here (`?edit=`): its save replaces it at the same link.
   const [editing, setEditing] = useState<Editing | null>(null);
+  // The issue the editor designed: every page drawn for it, set as the custom
+  // style but shown as its own choice, with no shared pages to edit. Kept
+  // aside so choosing it again after trying a house style needs no new design.
+  const [editorMade, setEditorMade] = useState(false);
+  const [editorPick, setEditorPick] = useState<{ design: CustomDesign; leaves: CustomLeaves; type: TypeChoice | null } | null>(null);
   const [editFailed, setEditFailed] = useState<string | null>(null);
   /**
    * The issue an export was last granted for. Sending the same magazine out
@@ -287,6 +308,9 @@ export function Create() {
     setWantsSketch(draft.wantsSketch ?? false);
     setSketches(draft.sketches ?? {});
     setLeaves(draft.leaves ?? {});
+    setEditorMade(draft.editorMade ?? false);
+    setEditorPick(draft.editorMade && draft.design ? { design: draft.design, leaves: draft.leaves ?? {}, type: draft.type ?? null } : null);
+    setDirection(draft.direction ?? DEFAULT_DIRECTION);
     setPhotos(current => {
       current.forEach(photo => URL.revokeObjectURL(photo.url));
       return draft.photos.map(photo => ({
@@ -381,6 +405,8 @@ export function Create() {
       wantsSketch,
       sketches,
       leaves,
+      direction,
+      editorMade,
       photos: photos.map(photo => ({ id: photo.id, focus: photo.focus, caption: photo.caption })),
     },
     photos: photos.map(photo => ({ id: photo.id, file: photo.file })),
@@ -493,7 +519,7 @@ export function Create() {
    * it keeps its place at the end rather than being dropped.
    */
   const applyEditor = (plan: EditorResult): (() => void) => {
-    const before = { title, theme, tilt, photos, plateSizes, design, type, leaves };
+    const before = { title, theme, tilt, photos, plateSizes, design, type, leaves, editorMade, editorPick };
 
     const byId = new Map(photos.map(photo => [photo.id, photo]));
     const placed = plan.order.flatMap(id => (byId.has(id) ? [byId.get(id)!] : []));
@@ -513,6 +539,8 @@ export function Create() {
     // pages; each can still be pulled about on the proof like any other.
     setLeaves(plan.leaves);
     if (plan.type) setType(plan.type);
+    setEditorMade(Boolean(plan.design));
+    if (plan.design) setEditorPick({ design: plan.design, leaves: plan.leaves, type: plan.type });
     setPlateSizes({});
     // The lean only means anything on a theme that leans; elsewhere the
     // theme's own (none) stands.
@@ -537,6 +565,8 @@ export function Create() {
       setLeaves(before.leaves);
       setType(before.type);
       setTitle(before.title);
+      setEditorMade(before.editorMade);
+      setEditorPick(before.editorPick);
     };
   };
 
@@ -553,7 +583,9 @@ export function Create() {
    * when the issue was first sent to press, and nothing since has changed them.
    */
   const chooseTheme = (next: ThemeId) => {
-    if (next === theme) return;
+    // "Your own" chosen over the editor's issue is a change, though both are set in the custom style.
+    if (next === theme && !editorMade) return;
+    setEditorMade(false);
     setTheme(next);
     setPlateSizes({});
     setLeaves({});
@@ -561,6 +593,37 @@ export function Create() {
     setTilt(null);
     if (issue) setIssue(composeIssue({ title, photos, story, polished, plateSizes: {}, seed, theme: next, custom: design, type: next === "custom" ? type : undefined, sketch: wantsSketch, leaves: {} }));
   };
+
+  /** Sets the issue in the editor's design again, as it was made, after the reader tried another style. */
+  const chooseEditor = () => {
+    if (!editorPick || editorMade) return;
+    setEditorMade(true);
+    setTheme("custom");
+    setDesign(editorPick.design);
+    setLeaves(editorPick.leaves);
+    if (editorPick.type) setType(editorPick.type);
+    setPlateSizes({});
+    setTilt(null);
+    if (issue) {
+      setIssue(
+        composeIssue({
+          title,
+          photos,
+          story,
+          polished,
+          plateSizes: {},
+          seed,
+          theme: "custom",
+          custom: editorPick.design,
+          type: editorPick.type ?? type,
+          sketch: wantsSketch,
+          leaves: editorPick.leaves,
+        }),
+      );
+    }
+  };
+
+  const editorChoice = editorPick ? { chosen: editorMade, onChoose: chooseEditor } : undefined;
 
   /**
    * Takes the reader's drawing and sets the issue again from it.
@@ -856,8 +919,10 @@ export function Create() {
       wantsSketch,
       sketches,
       leaves,
+      direction,
       photos: photos.map(photo => ({ id: photo.id, file: photo.file, focus: photo.focus, caption: photo.caption })),
       resume,
+      editorMade,
       ...(editing ? { editing } : {}),
     });
 
@@ -1108,9 +1173,18 @@ export function Create() {
               place the choice can actually be judged. Picking here re-lays the
               magazine under the reader rather than sending them back a step. */}
           <div className="flex flex-col gap-4 rounded-2xl border border-white/50 bg-white/85 p-4 backdrop-blur-md">
-            <ThemePicker theme={theme} onChoose={chooseTheme} />
+            <ThemePicker theme={theme} onChoose={chooseTheme} editor={editorChoice} />
             {leaning && <TiltControl tilt={tiltNow} onChange={setTilt} />}
-            {theme === "custom" && (
+            {theme === "custom" && editorMade && (
+              <>
+                <p className="text-xs text-stone-500">
+                  Every page of this issue was drawn for it by the editor, in its own colours — there are no shared pages to edit. Drag
+                  any box on the proof below to change that page, ask the editor again for a new design, or choose a style above.
+                </p>
+                <TypePanel type={type} onChange={changeType} />
+              </>
+            )}
+            {theme === "custom" && !editorMade && (
               <>
                 <LayoutDesigner design={design} onChange={changeDesign} />
                 {/* The designer and the proof edit different things, and the
@@ -1407,7 +1481,7 @@ export function Create() {
             />
           </div>
 
-          <ThemePicker theme={theme} onChoose={chooseTheme} />
+          <ThemePicker theme={theme} onChoose={chooseTheme} editor={editorChoice} />
           {leaning && <TiltControl tilt={tiltNow} onChange={setTilt} />}
 
           {/* A leaf of the issue given over to whatever the reader wants to
@@ -1428,7 +1502,7 @@ export function Create() {
             </span>
           </label>
           {layoutNotice && <p className="-mt-6 text-sm text-emerald-800">{layoutNotice}</p>}
-          {theme === "custom" && (
+          {theme === "custom" && !editorMade && (
             <>
               <LayoutDesigner design={design} onChange={changeDesign} />
               {/* Pages drawn here can go to the directory for others to start from. */}
@@ -1473,6 +1547,8 @@ export function Create() {
             title={title}
             story={story}
             photos={photos}
+            direction={direction}
+            onDirection={setDirection}
             onApply={applyEditor}
             onUseTitle={setTitle}
             needsSignIn={EDITOR_NEEDS_SIGN_IN && configured && !user}

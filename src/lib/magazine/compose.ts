@@ -3,7 +3,6 @@ import { fitBox } from "@/lib/magazine/fit";
 import { isSpent, remaining, START, toParagraphs, wordCount, type Cursor, type Slice } from "@/lib/magazine/copy";
 import { boxesFor, PLAIN, plateSize, STACK_GAP, TEMPLATES, type PlateBox, type Template } from "@/lib/magazine/templates";
 import { COLUMN_WIDTH, GUTTER, TEXT_HEIGHT, TEXT_WIDTH } from "@/lib/magazine/geometry";
-import { buildArchetype, quoteSplit, textPage } from "@/lib/magazine/archetypes";
 
 /**
  * Where the body of the issue begins: after the cover, the contents and the
@@ -363,14 +362,13 @@ export function composeIssue({
     const plate = plateSize(template.id, plateSizes?.[index]);
     let design = designFor(template.id);
     // A drawn page wants photographs the pool may no longer have. Rather than
-    // print empty frames — grey holes in the middle of a feature — it is set
-    // with what there is: a single photograph over two columns when one is
-    // left for a page that wanted more; once they are gone, text broken by a
-    // pull quote while quotes last, and plain columns after that.
+    // print empty frames — grey holes in the middle of a feature — or swap in
+    // a stock page that was never designed for this issue, the page keeps its
+    // own design and its spare frames carry the story on instead, the way its
+    // spare quote boxes do below.
     if (design && !options.plates && plateBoxes(design).length > pool.length) {
-      design = {
-        boxes: pool.length > 0 ? buildArchetype("hero-top", 0.45) : quotePool.length > 0 ? quoteSplit() : textPage(),
-      };
+      const spare = new Set(plateBoxes(design).slice(pool.length).map(b => b.id));
+      design = { ...design, boxes: design.boxes.map(b => (spare.has(b.id) ? { ...b, kind: "text" as const } : b)) };
     }
     // More quote boxes than quotes left: the spare boxes are set as text, so
     // a band meant for a pull quote carries the story on rather than printing

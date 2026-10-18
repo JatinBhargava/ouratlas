@@ -12,7 +12,18 @@ import { planIssue } from "@api/editor";
 import { asyncRoute, HttpError } from "@api/http";
 import { allowanceOf, burst, claimAi, planOf, releaseAi } from "@api/limits";
 import { authenticate } from "@api/supabase";
-import { countWords, EDITOR_MAX_PHOTOS, EDITOR_NEEDS_SIGN_IN, MAX_STORY_WORDS, PLAN_LIMITS, type EditorRequest } from "@/types";
+import {
+  cleanNote,
+  countWords,
+  DIRECTION_IDS,
+  DIRECTION_NOTE_MAX,
+  EDITOR_MAX_PHOTOS,
+  EDITOR_NEEDS_SIGN_IN,
+  MAX_STORY_WORDS,
+  PLAN_LIMITS,
+  type DirectionId,
+  type EditorRequest,
+} from "@/types";
 
 export const editorRoutes = Router();
 
@@ -80,10 +91,12 @@ function read(body: unknown): EditorRequest {
     throw new HttpError(400, "The list of typefaces could not be read.");
   }
 
+  // Sent only by a desk built before the editor drew its own pages; it is no
+  // longer offered to the model, but a malformed one is still refused.
   const layouts = input.layouts;
   if (
-    !Array.isArray(layouts) ||
-    layouts.length === 0 ||
+    layouts !== undefined &&
+    (!Array.isArray(layouts) ||
     layouts.length > 20 ||
     !layouts.every(
       layout =>
@@ -94,12 +107,30 @@ function read(body: unknown): EditorRequest {
         Number.isInteger(layout?.quotes) &&
         Number.isFinite(layout?.minShare) &&
         Number.isFinite(layout?.maxShare),
-    )
+      ))
   ) {
     throw new HttpError(400, "The list of page layouts could not be read.");
   }
 
-  return input as EditorRequest;
+  // Absent on a desk built before directions: the editor's own judgement.
+  // The note is the one free text from the reader that reaches the prompt, so
+  // it is held to a paragraph here as well as on the desk.
+  const direction = input.direction as { id?: unknown; note?: unknown } | undefined;
+  if (direction !== undefined) {
+    if (
+      typeof direction !== "object" ||
+      direction === null ||
+      !DIRECTION_IDS.includes(direction.id as DirectionId) ||
+      !text(direction.note, DIRECTION_NOTE_MAX * 2)
+    ) {
+      throw new HttpError(400, "The art direction could not be read.");
+    }
+  }
+
+  return {
+    ...(input as EditorRequest),
+    direction: direction ? { id: direction.id as DirectionId, note: cleanNote(direction.note as string) } : undefined,
+  };
 }
 
 editorRoutes.post(

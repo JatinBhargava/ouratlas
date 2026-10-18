@@ -8,19 +8,33 @@
  */
 
 import { api } from "@/lib/api";
-import { ARCHETYPE_IDS, ARCHETYPES, buildPage, isArchetype } from "@/lib/magazine/archetypes";
+import { buildPage, isArchetype } from "@/lib/magazine/archetypes";
 import {
   defaultDesign,
   CUSTOM_SLOTS,
   type CustomDesign,
   type CustomLeaves,
+  type CustomPage,
   type CustomSlot,
   type Palette,
 } from "@/lib/magazine/custom";
 import { BODY_START } from "@/lib/magazine/compose";
+import { buildGrid, editorPage, inventGrid } from "@/lib/magazine/grid";
 import { THEMES, type ThemeId } from "@/lib/magazine/themes";
 import { clampType, FACES, FACE_IDS, type FaceId, type TypeChoice } from "@/lib/magazine/typography";
-import type { EditorDesign, EditorFace, EditorLayout, EditorPlan, EditorRequest, EditorTheme, Focus, Photo } from "@/types";
+import {
+  cleanNote,
+  DEFAULT_DIRECTION,
+  type EditorDesign,
+  type EditorDirection,
+  type EditorFace,
+  type EditorPage,
+  type EditorPlan,
+  type EditorRequest,
+  type EditorTheme,
+  type Focus,
+  type Photo,
+} from "@/types";
 
 /** Longest side of a preview. Models look at about this much of an image anyway. */
 const PREVIEW_PX = 512;
@@ -58,12 +72,16 @@ const SUITS: Record<ThemeId, string> = {
     "Only stories that happen after dark or in low light — dusk, night markets, candlelit dinners, lamplit rooms, deep winter — or a quiet, literary, melancholy story. Never a sunny daylight one.",
   zine: "Casual days with friends, road trips, parties, festivals, phone snapshots, and a chatty or funny voice.",
   custom:
-    "Choose this when most photographs are portrait-shaped, when there are four or fewer photographs, or when one photograph is far stronger than the rest — the ready styles are built around landscape pictures and crop portraits badly. You pick a layout for each page from the page layouts below.",
+    "Choose this when most photographs are portrait-shaped, when there are four or fewer photographs, when one photograph is far stronger than the rest — the ready styles are built around landscape pictures and crop portraits badly — or whenever the issue deserves pages designed for it alone. You draw every page yourself, as a grid.",
 };
 
-/** Every style, "Your own" included: choosing it means the editor draws the pages itself. */
+/**
+ * The one style the editor is offered: its own design. It draws every page of
+ * every issue new, so the house styles — the reader's to choose by hand on the
+ * desk — are never what it hands back.
+ */
 export function offeredThemes(): EditorTheme[] {
-  return Object.values(THEMES).map(theme => ({
+  return [THEMES.custom].map(theme => ({
     id: theme.id,
     name: theme.name,
     blurb:
@@ -84,17 +102,6 @@ const MAGAZINE_FACES: FaceId[] = FACE_IDS.filter(id => id !== "typewriter");
 export const offeredFaces = (): EditorFace[] =>
   MAGAZINE_FACES.map(id => ({ id, name: FACES[id].name, body: FACES[id].body }));
 
-export const offeredLayouts = (): EditorLayout[] =>
-  ARCHETYPE_IDS.map(id => ({
-    id,
-    name: ARCHETYPES[id].name,
-    description: ARCHETYPES[id].description,
-    plates: ARCHETYPES[id].plates,
-    quotes: ARCHETYPES[id].quotes ?? 0,
-    minShare: ARCHETYPES[id].share.min,
-    maxShare: ARCHETYPES[id].share.max,
-  }));
-
 /**
  * The kind of page each body page is, in order, as the "custom" style deals
  * them: its fixed sequence, repeated. Sent to the editor so its page plan
@@ -106,27 +113,51 @@ function rhythm(count = 24): CustomSlot[] {
   return Array.from({ length: count }, (_, k) => fixed[k % fixed.length]!.replace("custom-", "") as CustomSlot);
 }
 
-/** The editor's body plan as single pages, from the first page of the body on. */
+/**
+ * One planned page, drawn: the grid the editor drew, the full-bleed page, or
+ * from a server that still sends it, a fixed layout and its share.
+ */
+function drawPlanned(page: EditorPage): CustomPage | null {
+  if (page.layout !== undefined) return isArchetype(page.layout) ? buildPage(page.layout, page.share ?? Number.NaN) : null;
+  return editorPage(page);
+}
+
+/** The most body pages an issue can run to, past which there is nothing left to design. */
+const BODY_PAGES = 96 - BODY_START;
+
+/**
+ * The editor's body plan as single pages, from the first page of the body on,
+ * and every page after the end of its plan invented to follow it — so an
+ * issue it designs never falls back on the three shared pages, however long
+ * the story runs. A page the composer never reaches costs nothing.
+ */
 function planLeaves(pages: EditorDesign["pages"]): CustomLeaves {
-  const slots = rhythm(pages.length);
+  const slots = rhythm(BODY_PAGES);
   const leaves: CustomLeaves = {};
   pages.forEach((page, k) => {
-    if (!isArchetype(page.layout)) return;
-    leaves[BODY_START + k] = { slot: slots[k]!, page: buildPage(page.layout, page.share) };
+    const drawn = drawPlanned(page);
+    if (drawn) leaves[BODY_START + k] = { slot: slots[k]!, page: drawn };
   });
+  let previous: ReturnType<typeof inventGrid> | undefined;
+  for (let k = pages.length; k < BODY_PAGES; k++) {
+    if (leaves[BODY_START + k]) continue;
+    previous = inventGrid(Math.random, previous);
+    leaves[BODY_START + k] = { slot: slots[k]!, page: { boxes: buildGrid(previous), ...(previous.stock ? { stock: previous.stock } : {}) } };
+  }
   return leaves;
 }
 
 /**
- * Builds the three pages from the layouts the editor chose. A layout this
- * build does not know (an older server, a model answering off-list) leaves
- * that page as the reader's starting design rather than a broken one.
+ * The three shared pages of an issue the editor made, invented rather than
+ * taken from its plan. Every page it reaches has a leaf of its own
+ * (`planLeaves`), so these are never the issue's pages; they are only what the
+ * reader starts from if they turn the issue into a design of their own.
  */
-function settleDesign(chosen: EditorDesign): CustomDesign {
+function settleDesign(): CustomDesign {
   const design = defaultDesign();
   for (const slot of CUSTOM_SLOTS) {
-    const page = chosen[slot];
-    if (page && isArchetype(page.layout)) design[slot] = buildPage(page.layout, page.share);
+    const invented = inventGrid();
+    design[slot] = { boxes: buildGrid(invented), ...(invented.stock ? { stock: invented.stock } : {}) };
   }
   return design;
 }
@@ -217,10 +248,46 @@ async function preview(photo: Photo): Promise<{ data: string; width: number; hei
   return { data: canvas.toDataURL("image/jpeg", PREVIEW_QUALITY), ...size };
 }
 
+/**
+ * The direction as it goes out. "Your own" with nothing written is the
+ * editor's own judgement, which is what it would get anyway; a named look
+ * carries no note, because the panel only offers one for "Your own".
+ */
+function sendable(direction: EditorDirection | undefined): EditorDirection {
+  if (!direction) return DEFAULT_DIRECTION;
+  if (direction.id !== "custom") return { id: direction.id, note: "" };
+  const note = cleanNote(direction.note);
+  return note ? { id: "custom", note } : DEFAULT_DIRECTION;
+}
+
+/**
+ * Where a request to the editor has got to. The previews and the setting of
+ * the pages happen here and are counted as they go; the editor's own work
+ * happens far away in one call that says nothing until it answers, so that
+ * stretch is "thinking", started at a known moment and ended by the answer.
+ */
+export type EditorStep = { stage: "previews"; done: number; total: number } | { stage: "thinking"; since: number } | { stage: "setting" };
+
 /** Sends the desk to the editor and returns its plan in desk terms. */
-export async function askEditor(input: { title: string; story: string; photos: Photo[] }): Promise<EditorResult> {
+export async function askEditor(
+  input: {
+    title: string;
+    story: string;
+    photos: Photo[];
+    direction?: EditorDirection;
+  },
+  onStep?: (step: EditorStep) => void,
+): Promise<EditorResult> {
   const labels = input.photos.map((_, index) => `p${index + 1}`);
-  const previews = await Promise.all(input.photos.map(preview));
+  let made = 0;
+  onStep?.({ stage: "previews", done: 0, total: input.photos.length });
+  const previews = await Promise.all(
+    input.photos.map(async photo => {
+      const shot = await preview(photo);
+      onStep?.({ stage: "previews", done: ++made, total: input.photos.length });
+      return shot;
+    }),
+  );
 
   const request: EditorRequest = {
     title: input.title,
@@ -229,7 +296,7 @@ export async function askEditor(input: { title: string; story: string; photos: P
     rhythm: rhythm(),
     themes: offeredThemes(),
     faces: offeredFaces(),
-    layouts: offeredLayouts(),
+    direction: sendable(input.direction),
     photos: previews.map((shot, index) => ({
       id: labels[index]!,
       preview: shot.data,
@@ -238,7 +305,9 @@ export async function askEditor(input: { title: string; story: string; photos: P
     })),
   };
 
+  onStep?.({ stage: "thinking", since: Date.now() });
   const plan = await api.post<EditorPlan>("/api/editor", request);
+  onStep?.({ stage: "setting" });
 
   const idOf = new Map(labels.map((label, index) => [label, input.photos[index]!.id]));
   const order = plan.order.map(label => idOf.get(label)).filter((id): id is string => Boolean(id));
@@ -258,7 +327,7 @@ export async function askEditor(input: { title: string; story: string; photos: P
     focus,
     tilt: plan.tilt,
     design: designed
-      ? { ...settleDesign(plan.design!), palette: settlePalette(plan.palette), quotes: settleQuotes(plan.quotes, input.story) }
+      ? { ...settleDesign(), palette: settlePalette(plan.palette), quotes: settleQuotes(plan.quotes, input.story) }
       : null,
     type: designed && plan.type ? settleType(plan.type) : null,
     leaves: designed ? planLeaves(plan.design!.pages ?? []) : {},

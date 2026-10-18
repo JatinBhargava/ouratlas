@@ -1,5 +1,7 @@
 /** Shared types used across the app. */
 
+import type { EditorDirection } from "./directions";
+
 export type ApiError = {
   status: number;
   message: string;
@@ -150,14 +152,80 @@ export type EditorRequest = {
   photos: EditorPhoto[];
   themes: EditorTheme[];
   faces: EditorFace[];
-  layouts: EditorLayout[];
+  /** The fixed layouts an older editor chose from. No longer offered: the editor draws every page. */
+  layouts?: EditorLayout[];
+  /**
+   * The look the reader asked for (`directions.ts`). Optional, so a desk
+   * built before directions still gets the editor's own judgement.
+   */
+  direction?: EditorDirection;
 };
 
 /**
- * One designed page: which layout, and how much of the page's depth the
- * photograph takes. The desk builds the boxes; the editor never places them.
+ * A page the editor drew: cut first into bands — horizontal (`rows`) or
+ * vertical (`columns`) — and each band cut the other way into cells, each a
+ * photograph, a run of the story, or a pull quote. Sizes are relative shares,
+ * not measurements: the desk snaps every edge to the magazine's six-column grid,
+ * its gutters and its margins, so a grid always fills its page edge to edge with
+ * nothing overlapping, whatever shape the editor asked for. Two cuts deep is
+ * the grammar every magazine grid is made of, and it cannot draw a page that
+ * leaves a hole.
  */
-export type EditorPage = { layout: string; share: number };
+export type GridCellKind = "photo" | "text" | "quote" | "color";
+export type GridCell = { kind: GridCellKind; size: number; tone: "accent" | "ink" | "paper" };
+export type GridBand = { size: number; cells: GridCell[] };
+/** `stock` "ink" prints the page dark, its words reversed out of it. */
+export type EditorGrid = { split: "rows" | "columns"; bands: GridBand[]; stock?: "ink" };
+
+/** How much one page may hold, so every cell stays big enough to do its job. */
+export const GRID_LIMITS = { bands: 4, cells: 3, photos: 4, quotes: 2, colors: 3 } as const;
+
+/**
+ * A grid as it may be drawn: known kinds, positive sizes, within the limits.
+ * Used by the API on the editor's answer and by the desk on what it applies,
+ * so the two can never disagree about what a page may be. Cells past a limit
+ * are dropped rather than the page refused; a page left with nothing is null.
+ */
+export function cleanGrid(raw: unknown): EditorGrid | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const grid = raw as Record<string, any>;
+  const split = grid.split === "columns" ? "columns" : "rows";
+  const size = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.min(100, Math.max(0.05, value)) : 1);
+  let photos = 0;
+  let quotes = 0;
+  let colors = 0;
+  const bands: GridBand[] = [];
+  for (const band of Array.isArray(grid.bands) ? grid.bands.slice(0, GRID_LIMITS.bands) : []) {
+    const cells: GridCell[] = [];
+    for (const cell of Array.isArray(band?.cells) ? band.cells.slice(0, GRID_LIMITS.cells) : []) {
+      const kind: GridCellKind | null =
+        cell?.kind === "photo" || cell?.kind === "text" || cell?.kind === "quote" || cell?.kind === "color" ? cell.kind : null;
+      if (!kind) continue;
+      if (kind === "photo" && ++photos > GRID_LIMITS.photos) continue;
+      if (kind === "quote" && ++quotes > GRID_LIMITS.quotes) continue;
+      if (kind === "color" && ++colors > GRID_LIMITS.colors) continue;
+      const tone = cell.tone === "ink" || cell.tone === "paper" ? cell.tone : "accent";
+      cells.push({ kind, size: size(cell.size), tone });
+    }
+    if (cells.length > 0) bands.push({ size: size(band.size), cells });
+  }
+  // A page of nothing but colour has nowhere for the story to go or a picture to sit.
+  if (!bands.some(band => band.cells.some(cell => cell.kind !== "color"))) return null;
+  return { split, bands, ...(grid.stock === "ink" ? { stock: "ink" as const } : {}) };
+}
+
+/** The photographs and pull quotes a grid takes. */
+export const gridCounts = (grid: EditorGrid) => {
+  const cells = grid.bands.flatMap(band => band.cells);
+  return { photos: cells.filter(cell => cell.kind === "photo").length, quotes: cells.filter(cell => cell.kind === "quote").length };
+};
+
+/**
+ * One designed page: a grid the editor drew, or the full-bleed page (one
+ * photograph to the trim, a pull quote over it). `layout` and `share` are the
+ * older form, a choice from fixed layouts, still read from a server that sends it.
+ */
+export type EditorPage = { grid?: EditorGrid | null; bleed?: boolean; layout?: string; share?: number };
 
 /**
  * A designed issue. The three named pages are the shared design every page of
@@ -472,3 +540,4 @@ export type AdminStats = {
 
 /** Layouts readers submit to the directory, and the sanitizer every submission passes through. */
 export * from "./layouts";
+export * from "./directions";

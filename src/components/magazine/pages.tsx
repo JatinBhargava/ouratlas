@@ -37,6 +37,7 @@ import {
 import { DEFAULT_THEME, THEMES, type Surface, type ThemeId } from "@/lib/magazine/themes";
 import {
   clampBox,
+  blockBoxes,
   plateBoxes,
   quoteBoxes,
   sketchBoxes,
@@ -1030,9 +1031,15 @@ function CustomLayout({ page, sketches }: { page: Page; sketches?: Record<string
   const plates = plateBoxes(page.layout);
   const pads = sketchBoxes(page.layout);
   const quotes = quoteBoxes(page.layout);
+  const blocks = blockBoxes(page.layout);
 
   return (
     <div className="relative" style={{ width: TEXT_WIDTH, height: TEXT_HEIGHT }}>
+      {blocks.map(box => (
+        <DrawnBox key={box.id} index={page.index} slot={slot} box={box}>
+          {drawn => <ColourField tone={box.tone} width={drawn.width} height={drawn.height} />}
+        </DrawnBox>
+      ))}
       {texts.map((box, n) => (
         <DrawnBox key={box.id} index={page.index} slot={slot} box={box}>
           {drawn => (
@@ -1252,6 +1259,12 @@ function quoteSize(text: string, width: number, height: number): number {
  * A pull quote: a line from the story, set large in the display face on a
  * block of the issue's accent or ink, or straight onto the paper in accent.
  */
+/** A field of one of the issue's colours, drawn by the editor as part of a page's design. */
+function ColourField({ tone = "accent", width, height }: { tone?: QuoteTone; width: number; height: number }) {
+  const { accent, ink, paper } = use(SurfaceContext);
+  return <div aria-hidden style={{ width, height, background: tone === "ink" ? ink : tone === "paper" ? paper : accent }} />;
+}
+
 function QuoteBlock({
   text,
   width,
@@ -1872,9 +1885,14 @@ export function MagazinePage({
   const typed = type ? { ...themed, ...surfaceOf(type) } : themed;
   // A designed issue's own colours. Only colours: the body face and size are
   // what the fitter measured, and a palette changes neither.
-  const base = palette
+  const coloured = palette
     ? { ...typed, paper: palette.paper, ink: palette.ink, accent: palette.accent, copy: { ...typed.copy, color: palette.ink } }
     : typed;
+  // A page the editor printed on ink: paper and ink change places, words and
+  // all. The palette holds ink and paper to print contrast, so reversed type
+  // reads as well as the page beside it.
+  const base =
+    page.layout?.stock === "ink" ? { ...coloured, paper: coloured.ink, ink: coloured.paper, copy: { ...coloured.copy, color: coloured.paper } } : coloured;
   // The reader's lean wins over the theme's, and none at all is a real answer
   // rather than "unset" — hence the explicit undefined check.
   const surface = { ...leafOf(base, page.folio), tilt: tilt ?? base.tilt };

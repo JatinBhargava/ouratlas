@@ -181,7 +181,7 @@ export type PolishProviderName = "openai" | "anthropic";
 export const editor = {
   /** "anthropic" | "openai". Unset means Anthropic when there is a key for it. */
   preference: process.env.EDITOR_PROVIDER?.trim().toLowerCase(),
-  anthropicModel: process.env.ANTHROPIC_EDITOR_MODEL?.trim() || "claude-opus-5",
+  anthropicModel: process.env.ANTHROPIC_EDITOR_MODEL?.trim() || "claude-opus-5-5",
   openaiModel: process.env.OPENAI_EDITOR_MODEL?.trim() || "gpt-5.6-luna",
 } as const;
 

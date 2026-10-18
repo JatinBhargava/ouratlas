@@ -33,9 +33,11 @@ const SKIN: Record<CustomKind, string> = {
   sketch: "border-dashed border-emerald-500 bg-emerald-50/60",
   // A block of colour with a line in it, which is what a pull quote prints as.
   quote: "bg-amber-200/80 border-amber-500",
+  // A field of colour and nothing else, as the editor draws them.
+  block: "bg-orange-300 border-orange-500",
 };
 
-const KIND_LABEL: Record<CustomKind, string> = { text: "Text", plate: "Photo", sketch: "Draw", quote: "Quote" };
+const KIND_LABEL: Record<CustomKind, string> = { text: "Text", plate: "Photo", sketch: "Draw", quote: "Quote", block: "Colour" };
 
 type Drag =
   | { mode: "move"; id: string; fromX: number; fromY: number; box: CustomBox }

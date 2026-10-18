@@ -21,7 +21,7 @@ import type { PlateBox } from "@/lib/magazine/templates";
 import type { CustomDesign, CustomLeaves } from "@/lib/magazine/custom";
 import type { ThemeId } from "@/lib/magazine/themes";
 import type { TypeChoice } from "@/lib/magazine/typography";
-import type { Focus } from "@/types";
+import type { EditorDirection, Focus } from "@/types";
 
 const DB_NAME = "atlas";
 const STORE = "draft";
@@ -68,6 +68,11 @@ export type DeskDraft = {
   /** Single pages redrawn on the proof, which sign-in happens from. */
   leaves?: CustomLeaves;
   /**
+   * The look picked for the editor, and the reader's own words for it: the
+   * editor's sign-in leaves from the panel where they were chosen.
+   */
+  direction?: EditorDirection;
+  /**
    * What the reader was doing when they left to sign in. "press" (and absent,
    * on a draft parked before voice) resumes the export; "speak" goes back to
    * the Speak tab and leaves the issue unpressed; "editor" goes back to the
@@ -75,6 +80,8 @@ export type DeskDraft = {
    * against.
    */
   resume?: "press" | "speak" | "editor";
+  /** The issue is the editor's own design, every page drawn for it, rather than the reader's "Your own" pages. */
+  editorMade?: boolean;
   /** A saved issue reopened to change, so the save after signing in replaces it rather than making a new one. */
   editing?: { id: string; keyText: string; version: number };
 };

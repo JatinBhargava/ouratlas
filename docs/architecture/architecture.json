@@ -1,0 +1,2745 @@
+{
+ "meta": {
+  "name": "Atlas",
+  "repo": "JatinBhargava/ouratlas",
+  "url": "https://github.com/JatinBhargava/ouratlas",
+  "commit": "499e0b2+wip",
+  "date": "15 Oct 2026",
+  "summary": "Atlas turns up to ten photos and a story into a paginated magazine that is composed and printed to PDF entirely in the browser. A React 19 SPA on Vercel talks to one Express 5 API on Render, which checks accounts and allowances against Supabase, calls Anthropic or OpenAI for the AI editor, copy desk and voice, and takes payments through Dodo (or Stripe). Saved issues are sealed in the browser and stored as encrypted page pictures.",
+  "facts": [
+   {
+    "label": "frontend",
+    "value": "React 19 · Bun · Vercel"
+   },
+   {
+    "label": "API",
+    "value": "Express 5 · Bun · Render"
+   },
+   {
+    "label": "data",
+    "value": "Supabase Postgres · 10 tables"
+   },
+   {
+    "label": "AI",
+    "value": "Claude Opus 5.5 · OpenAI"
+   },
+   {
+    "label": "billing",
+    "value": "Dodo (Stripe alt)"
+   },
+   {
+    "label": "saved issues",
+    "value": "AES-GCM · key after #"
+   }
+  ]
+ },
+ "zones": [
+  {
+   "id": "clients",
+   "label": "People & clients"
+  },
+  {
+   "id": "edge",
+   "label": "Vercel · frontend"
+  },
+  {
+   "id": "app",
+   "label": "Render · API container"
+  },
+  {
+   "id": "data",
+   "label": "Supabase"
+  },
+  {
+   "id": "outside",
+   "label": "Outside services"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "web",
+   "zone": "clients",
+   "title": "Reader's browser",
+   "sub": "React 19 SPA · the desk",
+   "kind": "client",
+   "evidence": [
+    "src/pages/Create.tsx",
+    "src/lib/api.ts:76"
+   ]
+  },
+  {
+   "id": "link",
+   "zone": "clients",
+   "title": "Link holder",
+   "sub": "/read?i=…#key · no account",
+   "kind": "client",
+   "evidence": [
+    "src/pages/Read.tsx:48"
+   ]
+  },
+  {
+   "id": "android",
+   "zone": "clients",
+   "title": "Android app",
+   "sub": "Capacitor · same bundle",
+   "kind": "client",
+   "evidence": [
+    "capacitor.config.ts:18",
+    "api/cors.ts:1"
+   ]
+  },
+  {
+   "id": "editors",
+   "zone": "clients",
+   "title": "Atlas editors",
+   "sub": "ADMIN_EMAILS · review queue",
+   "kind": "client",
+   "evidence": [
+    "api/supabase.ts:65"
+   ]
+  },
+  {
+   "id": "vercel",
+   "zone": "edge",
+   "title": "Vercel",
+   "sub": "dist/ · rewrites /api/*",
+   "kind": "cdn",
+   "evidence": [
+    "vercel.json"
+   ]
+  },
+  {
+   "id": "api",
+   "zone": "app",
+   "title": "Express API",
+   "sub": "Bun · Express 5 · 39 routes",
+   "kind": "service",
+   "big": true,
+   "evidence": [
+    "api/app.ts:32",
+    "Dockerfile.api"
+   ],
+   "endpoints": [
+    {
+     "method": "GET",
+     "path": "/api/health",
+     "label": "Health and version",
+     "evidence": [
+      "api/app.ts:66"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/me",
+     "label": "Who is signed in, plan",
+     "evidence": [
+      "api/routes/auth.ts:37"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/editor",
+     "label": "AI editor designs issue",
+     "evidence": [
+      "api/routes/editor.ts:136"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/ai/allowance",
+     "label": "AI allowance left",
+     "evidence": [
+      "api/routes/editor.ts:178"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/polish",
+     "label": "Copy desk (streamed)",
+     "evidence": [
+      "api/routes/polish.ts:19"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/transcribe/session",
+     "label": "Mint realtime secret",
+     "evidence": [
+      "api/routes/transcribe.ts:86"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/transcribe/file",
+     "label": "Transcribe a WAV piece",
+     "evidence": [
+      "api/routes/transcribe.ts:168"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/exports",
+     "label": "Export allowance",
+     "evidence": [
+      "api/routes/exports.ts:68"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/exports",
+     "label": "Spend one export",
+     "evidence": [
+      "api/routes/exports.ts:87"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/issues",
+     "label": "Start a save",
+     "evidence": [
+      "api/routes/issues.ts:274"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/issues/:id/ready",
+     "label": "Finish a save",
+     "evidence": [
+      "api/routes/issues.ts:320"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/issues",
+     "label": "My magazines",
+     "evidence": [
+      "api/routes/issues.ts:337"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/issues/join",
+     "label": "Join with group code",
+     "evidence": [
+      "api/routes/issues.ts:423"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/issues/:id",
+     "label": "Sealed files (no sign-in)",
+     "evidence": [
+      "api/routes/issues.ts:471"
+     ]
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/issues/:id",
+     "label": "Take an issue down",
+     "evidence": [
+      "api/routes/issues.ts:484"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/issues/:id/source",
+     "label": "Editable copy",
+     "evidence": [
+      "api/routes/issues.ts:505"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/issues/:id/edits",
+     "label": "Start saving changes",
+     "evidence": [
+      "api/routes/issues.ts:524"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/issues/:id/edits/commit",
+     "label": "Swap in an edit",
+     "evidence": [
+      "api/routes/issues.ts:551"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/issues/:id/members",
+     "label": "Who it's shared with",
+     "evidence": [
+      "api/routes/issues.ts:622"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/issues/:id/members",
+     "label": "Share by email",
+     "evidence": [
+      "api/routes/issues.ts:632"
+     ]
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/issues/:id/members/:email",
+     "label": "Unshare",
+     "evidence": [
+      "api/routes/issues.ts:669"
+     ]
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/issues/:id/membership",
+     "label": "Leave a shared issue",
+     "evidence": [
+      "api/routes/issues.ts:682"
+     ]
+    },
+    {
+     "method": "PUT",
+     "path": "/api/issues/:id/code",
+     "label": "Set group code",
+     "evidence": [
+      "api/routes/issues.ts:721"
+     ]
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/issues/:id/code",
+     "label": "Turn code off",
+     "evidence": [
+      "api/routes/issues.ts:747"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/layouts",
+     "label": "Layout directory",
+     "evidence": [
+      "api/routes/layouts.ts:183"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/layouts/mine",
+     "label": "My submissions",
+     "evidence": [
+      "api/routes/layouts.ts:199"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/layouts/:id",
+     "label": "One layout",
+     "evidence": [
+      "api/routes/layouts.ts:212"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/layouts",
+     "label": "Submit a layout",
+     "evidence": [
+      "api/routes/layouts.ts:230"
+     ]
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/layouts/:id",
+     "label": "Withdraw a layout",
+     "evidence": [
+      "api/routes/layouts.ts:276"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/layouts/:id/like",
+     "label": "Like / unlike",
+     "evidence": [
+      "api/routes/layouts.ts:291"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/admin/layouts",
+     "label": "Review queue",
+     "evidence": [
+      "api/routes/layouts.ts:307"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/admin/layouts/:id/review",
+     "label": "Accept or reject",
+     "evidence": [
+      "api/routes/layouts.ts:350"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/admin/stats",
+     "label": "Editors' dashboard",
+     "evidence": [
+      "api/routes/admin.ts:59"
+     ]
+    },
+    {
+     "method": "GET",
+     "path": "/api/visits",
+     "label": "Visitor count",
+     "evidence": [
+      "api/routes/visits.ts:79"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/waitlist",
+     "label": "Join newsletter",
+     "evidence": [
+      "api/routes/waitlist.ts:35"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/billing/checkout",
+     "label": "Start checkout",
+     "evidence": [
+      "api/routes/billing.ts:107"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/billing/portal",
+     "label": "Billing portal",
+     "evidence": [
+      "api/routes/billing.ts:176"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/dodo/webhook",
+     "label": "Dodo events",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:175"
+     ]
+    },
+    {
+     "method": "POST",
+     "path": "/api/stripe/webhook",
+     "label": "Stripe events",
+     "evidence": [
+      "api/routes/webhook.ts:176"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cron",
+   "zone": "app",
+   "title": "In-process cron",
+   "sub": "setInterval · 3 jobs",
+   "kind": "cron",
+   "evidence": [
+    "api/cron.ts:77"
+   ]
+  },
+  {
+   "id": "auth",
+   "zone": "data",
+   "title": "Supabase Auth",
+   "sub": "Google OAuth · PKCE",
+   "kind": "auth",
+   "evidence": [
+    "src/lib/auth.tsx:250",
+    "api/supabase.ts:50"
+   ]
+  },
+  {
+   "id": "db",
+   "zone": "data",
+   "title": "Postgres",
+   "sub": "10 tables · RLS on all",
+   "kind": "db",
+   "evidence": [
+    "api/schema.sql"
+   ],
+   "entities": [
+    {
+     "name": "profiles",
+     "evidence": [
+      "api/schema.sql:14"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "uuid",
+       "key": "pk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "email",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "full_name",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "avatar_url",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "stripe_customer_id",
+       "type": "text",
+       "nullable": true,
+       "unique": true
+      },
+      {
+       "name": "dodo_customer_id",
+       "type": "text",
+       "nullable": true,
+       "unique": true
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      },
+      {
+       "name": "updated_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Account mirror + customer ids"
+    },
+    {
+     "name": "subscriptions",
+     "evidence": [
+      "api/schema.sql:79"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "fk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "provider",
+       "type": "text",
+       "default": "'stripe'"
+      },
+      {
+       "name": "status",
+       "type": "text"
+      },
+      {
+       "name": "plan",
+       "type": "text"
+      },
+      {
+       "name": "price_id",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "current_period_end",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "cancel_at_period_end",
+       "type": "boolean",
+       "default": "false"
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      },
+      {
+       "name": "updated_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Plan per account (webhook-written)"
+    },
+    {
+     "name": "payments",
+     "evidence": [
+      "api/schema.sql:127"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "fk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "provider",
+       "type": "text",
+       "default": "'stripe'"
+      },
+      {
+       "name": "subscription_id",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "status",
+       "type": "text"
+      },
+      {
+       "name": "last_attempt_failed",
+       "type": "boolean",
+       "default": "false"
+      },
+      {
+       "name": "amount_due",
+       "type": "integer"
+      },
+      {
+       "name": "amount_paid",
+       "type": "integer"
+      },
+      {
+       "name": "currency",
+       "type": "text"
+      },
+      {
+       "name": "invoice_number",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "hosted_invoice_url",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "invoice_pdf",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "period_start",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "period_end",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "paid_at",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      },
+      {
+       "name": "updated_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Append-only payment ledger"
+    },
+    {
+     "name": "waitlist",
+     "evidence": [
+      "api/schema.sql:200"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "uuid",
+       "key": "pk",
+       "default": "gen_random_uuid()"
+      },
+      {
+       "name": "email",
+       "type": "text"
+      },
+      {
+       "name": "source",
+       "type": "text",
+       "default": "'footer'"
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Newsletter sign-ups"
+    },
+    {
+     "name": "exports",
+     "evidence": [
+      "api/schema.sql:248"
+     ],
+     "columns": [
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "pk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "times",
+       "type": "integer",
+       "default": "0"
+      },
+      {
+       "name": "period_start",
+       "type": "date"
+      },
+      {
+       "name": "updated_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Monthly export count"
+    },
+    {
+     "name": "issues",
+     "evidence": [
+      "api/schema.sql:334"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "uuid",
+       "key": "pk",
+       "default": "gen_random_uuid()"
+      },
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "fk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "pages",
+       "type": "integer"
+      },
+      {
+       "name": "key",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "expires_at",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "ready",
+       "type": "boolean",
+       "default": "false"
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      },
+      {
+       "name": "editable",
+       "type": "boolean",
+       "default": "false",
+       "note": "added in api/schema.sql:370"
+      },
+      {
+       "name": "source_photos",
+       "type": "integer",
+       "default": "0",
+       "note": "added in api/schema.sql:371"
+      },
+      {
+       "name": "folder",
+       "type": "text",
+       "nullable": true,
+       "note": "added in api/schema.sql:372"
+      },
+      {
+       "name": "pending_folder",
+       "type": "text",
+       "nullable": true,
+       "note": "added in api/schema.sql:373"
+      },
+      {
+       "name": "pending_since",
+       "type": "timestamptz",
+       "nullable": true,
+       "note": "added in api/schema.sql:374"
+      },
+      {
+       "name": "version",
+       "type": "integer",
+       "default": "1",
+       "note": "added in api/schema.sql:375"
+      },
+      {
+       "name": "updated_at",
+       "type": "timestamptz",
+       "nullable": true,
+       "note": "added in api/schema.sql:376"
+      },
+      {
+       "name": "updated_by",
+       "type": "uuid",
+       "key": "fk",
+       "ref": "auth.users.id",
+       "nullable": true,
+       "note": "added in api/schema.sql:377"
+      },
+      {
+       "name": "join_code",
+       "type": "text",
+       "nullable": true,
+       "note": "added in api/schema.sql:378"
+      },
+      {
+       "name": "join_hash",
+       "type": "text",
+       "nullable": true,
+       "note": "added in api/schema.sql:379"
+      },
+      {
+       "name": "join_role",
+       "type": "text",
+       "nullable": true,
+       "note": "added in api/schema.sql:380"
+      }
+     ],
+     "label": "Saved issue rows (no content)"
+    },
+    {
+     "name": "issue_members",
+     "evidence": [
+      "api/schema.sql:395"
+     ],
+     "columns": [
+      {
+       "name": "issue_id",
+       "type": "uuid",
+       "key": "pk",
+       "ref": "public.issues.id"
+      },
+      {
+       "name": "email",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "fk",
+       "ref": "auth.users.id",
+       "nullable": true
+      },
+      {
+       "name": "role",
+       "type": "text"
+      },
+      {
+       "name": "via",
+       "type": "text",
+       "default": "'invite'"
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      },
+      {
+       "name": "joined_at",
+       "type": "timestamptz",
+       "nullable": true
+      }
+     ],
+     "label": "Sharing: invites and code joins"
+    },
+    {
+     "name": "ai_usage",
+     "evidence": [
+      "api/schema.sql:430"
+     ],
+     "columns": [
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "pk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "kind",
+       "type": "text",
+       "key": "pk"
+      },
+      {
+       "name": "used",
+       "type": "integer",
+       "default": "0"
+      },
+      {
+       "name": "period_start",
+       "type": "date"
+      },
+      {
+       "name": "updated_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Monthly AI allowance count"
+    },
+    {
+     "name": "layouts",
+     "evidence": [
+      "api/schema.sql:515"
+     ],
+     "columns": [
+      {
+       "name": "id",
+       "type": "uuid",
+       "key": "pk",
+       "default": "gen_random_uuid()"
+      },
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "fk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "kind",
+       "type": "text"
+      },
+      {
+       "name": "title",
+       "type": "text"
+      },
+      {
+       "name": "description",
+       "type": "text",
+       "default": "''"
+      },
+      {
+       "name": "design",
+       "type": "jsonb"
+      },
+      {
+       "name": "sample_path",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "status",
+       "type": "text",
+       "default": "'pending'"
+      },
+      {
+       "name": "review_note",
+       "type": "text",
+       "nullable": true
+      },
+      {
+       "name": "reviewed_at",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "notified_at",
+       "type": "timestamptz",
+       "nullable": true
+      },
+      {
+       "name": "likes",
+       "type": "integer",
+       "default": "0"
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Submitted layouts, scrubbed"
+    },
+    {
+     "name": "layout_likes",
+     "evidence": [
+      "api/schema.sql:541"
+     ],
+     "columns": [
+      {
+       "name": "layout_id",
+       "type": "uuid",
+       "key": "pk",
+       "ref": "public.layouts.id"
+      },
+      {
+       "name": "user_id",
+       "type": "uuid",
+       "key": "pk",
+       "ref": "auth.users.id"
+      },
+      {
+       "name": "created_at",
+       "type": "timestamptz",
+       "default": "now()"
+      }
+     ],
+     "label": "Who liked which layout"
+    }
+   ]
+  },
+  {
+   "id": "issues",
+   "zone": "data",
+   "title": "issues bucket",
+   "sub": "private · sealed pages · 2 MB",
+   "kind": "storage",
+   "evidence": [
+    "api/schema.sql:415"
+   ]
+  },
+  {
+   "id": "layoutsb",
+   "zone": "data",
+   "title": "layouts bucket",
+   "sub": "private · sample pictures",
+   "kind": "storage",
+   "evidence": [
+    "api/schema.sql:585"
+   ]
+  },
+  {
+   "id": "anthropic",
+   "zone": "outside",
+   "title": "Anthropic",
+   "sub": "Opus 5.5 editor · copy desk",
+   "kind": "ai",
+   "evidence": [
+    "api/editor.ts:307",
+    "api/env.ts:184"
+   ]
+  },
+  {
+   "id": "openai",
+   "zone": "outside",
+   "title": "OpenAI",
+   "sub": "voice · copy desk · editor alt",
+   "kind": "ai",
+   "evidence": [
+    "api/routes/transcribe.ts:98",
+    "api/polish.ts:227"
+   ]
+  },
+  {
+   "id": "dodo",
+   "zone": "outside",
+   "title": "Dodo Payments",
+   "sub": "live billing provider",
+   "kind": "payment",
+   "evidence": [
+    "api/dodo.ts:27",
+    "api/env.ts:352"
+   ]
+  },
+  {
+   "id": "stripe",
+   "zone": "outside",
+   "title": "Stripe",
+   "sub": "alternate provider",
+   "kind": "payment",
+   "evidence": [
+    "api/stripe.ts",
+    "api/routes/webhook.ts:176"
+   ]
+  },
+  {
+   "id": "resend",
+   "zone": "outside",
+   "title": "Resend",
+   "sub": "layout decision mail",
+   "kind": "email",
+   "evidence": [
+    "api/mail.ts:20"
+   ]
+  },
+  {
+   "id": "google",
+   "zone": "outside",
+   "title": "Google",
+   "sub": "identity provider",
+   "kind": "auth",
+   "evidence": [
+    "src/lib/auth.tsx:251"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "id": "signin",
+   "name": "Sign in with Google",
+   "summary": "Sign-in is a full-page redirect, so the desk parks itself first and comes back exactly once.",
+   "toggles": [
+    {
+     "id": "expired",
+     "label": "Token expired or forged",
+     "hint": "401"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "web",
+     "kind": "check",
+     "text": "Park the desk in IndexedDB",
+     "detail": "Photos (as File handles), story, theme and every desk choice go into DeskDraft, because the redirect will throw the page away.",
+     "evidence": [
+      "src/pages/Create.tsx:909"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "auth",
+     "kind": "req",
+     "text": "signInWithOAuth({ provider: 'google' })",
+     "detail": "prompt=select_account so Google always asks which account; the PKCE verifier is kept in the browser.",
+     "evidence": [
+      "src/lib/auth.tsx:250"
+     ]
+    },
+    {
+     "from": "auth",
+     "to": "google",
+     "kind": "req",
+     "text": "Google consent screen",
+     "evidence": [
+      "src/lib/auth.tsx:251"
+     ],
+     "proto": "OAuth 2.0"
+    },
+    {
+     "from": "google",
+     "to": "auth",
+     "kind": "res",
+     "text": "Authorization code",
+     "evidence": [
+      "src/lib/auth.tsx:253"
+     ]
+    },
+    {
+     "from": "auth",
+     "to": "web",
+     "kind": "res",
+     "text": "Redirect back with a Supabase session",
+     "detail": "Back to the page that asked; the desk reads its parked draft once.",
+     "evidence": [
+      "src/lib/auth.tsx:253",
+      "src/pages/Create.tsx:336"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "GET /api/me",
+     "detail": "The API client attaches the Supabase access token.",
+     "evidence": [
+      "src/lib/api.ts:80"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Rewrite to api.ouratlas.co.in",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "GET /api/me"
+    },
+    {
+     "from": "api",
+     "to": "auth",
+     "kind": "check",
+     "text": "auth.getUser(token)",
+     "detail": "The token is verified by Supabase, never just decoded here.",
+     "evidence": [
+      "api/supabase.ts:50"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "401 · That session has expired",
+     "detail": "authenticate stops the request.",
+     "evidence": [
+      "api/supabase.ts:53"
+     ],
+     "when": "expired"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT subscriptions (live statuses)",
+     "detail": "active, trialing, past_due and on_hold unlock the plan; newest row wins.",
+     "evidence": [
+      "api/supabase.ts:131"
+     ],
+     "when": "!expired"
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "{ user, billing, admin }",
+     "detail": "The browser uses the plan only to decide what to show.",
+     "evidence": [
+      "api/routes/auth.ts:53"
+     ],
+     "when": "!expired"
+    }
+   ]
+  },
+  {
+   "id": "editor",
+   "name": "The AI editor designs an issue",
+   "summary": "The only call that sends photographs: 512px previews and the story go to the model, a page-by-page plan comes back.",
+   "toggles": [
+    {
+     "id": "burst",
+     "label": "Fourth try in ten minutes",
+     "hint": "429"
+    },
+    {
+     "id": "spent",
+     "label": "Monthly designs spent",
+     "hint": "402"
+    },
+    {
+     "id": "declined",
+     "label": "Model refuses or fails",
+     "hint": "422/502"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "web",
+     "kind": "check",
+     "text": "Shrink photos to 512px JPEG previews",
+     "detail": "Drawn on a canvas in the browser; the originals never leave.",
+     "evidence": [
+      "src/lib/editor.ts:248"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "POST /api/editor",
+     "detail": "Up to 10 previews, the story, art direction id and note.",
+     "evidence": [
+      "src/lib/editor.ts:309"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "detail": "Its own 4 MB JSON parser runs before the 1 MB global one.",
+     "evidence": [
+      "vercel.json",
+      "api/app.ts:57"
+     ],
+     "endpoint": "POST /api/editor"
+    },
+    {
+     "from": "api",
+     "to": "auth",
+     "kind": "check",
+     "text": "authenticate (EDITOR_NEEDS_SIGN_IN)",
+     "detail": "Sign-in is on for the editor in src/types.",
+     "evidence": [
+      "api/routes/editor.ts:38",
+      "src/types/index.ts:108"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "burst('editor', 3, 10 min)",
+     "detail": "In-memory sliding window per account.",
+     "evidence": [
+      "api/routes/editor.ts:141"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "429 · That was a lot at once",
+     "detail": "Sends Retry-After.",
+     "evidence": [
+      "api/limits.ts:65"
+     ],
+     "when": "burst"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "read(body): validate every field",
+     "detail": "Photo count, data-URL shape, size caps, theme and face lists, direction id. A bad request is refused before anything is spent.",
+     "evidence": [
+      "api/routes/editor.ts:43"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT subscriptions → plan",
+     "detail": "Then the story is checked against the plan's word limit (413).",
+     "evidence": [
+      "api/limits.ts:95",
+      "api/routes/editor.ts:159"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "rpc claim_ai (ai_usage)",
+     "detail": "One statement decides and increments, so a double-click can't slip two claims past it. Free 2, Traveller 5, Cartographer 12 a month.",
+     "evidence": [
+      "api/limits.ts:114",
+      "src/types/index.ts:343"
+     ],
+     "entities": [
+      "ai_usage"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "402 · That is all of this month's designs",
+     "evidence": [
+      "api/limits.ts:121"
+     ],
+     "when": "spent"
+    },
+    {
+     "from": "api",
+     "to": "anthropic",
+     "kind": "req",
+     "text": "beta.messages.create (structured output)",
+     "detail": "Opus 5.5, adaptive thinking at medium effort, a JSON schema for the plan, and a server-side fallback model if the request is declined. One retry, 150s timeout.",
+     "evidence": [
+      "api/editor.ts:307",
+      "api/editor.ts:289"
+     ],
+     "proto": "HTTPS · API key"
+    },
+    {
+     "from": "anthropic",
+     "to": "api",
+     "kind": "res",
+     "text": "stop_reason: refusal / error",
+     "evidence": [
+      "api/editor.ts:327"
+     ],
+     "when": "declined"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "rpc release_ai",
+     "detail": "Nothing reached the reader, so the design is given back.",
+     "evidence": [
+      "api/routes/editor.ts:169",
+      "api/limits.ts:132"
+     ],
+     "entities": [
+      "ai_usage"
+     ],
+     "when": "declined"
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "422 · The editor declined / 502",
+     "evidence": [
+      "api/editor.ts:327",
+      "api/editor.ts:547"
+     ],
+     "when": "declined"
+    },
+    {
+     "from": "anthropic",
+     "to": "api",
+     "kind": "res",
+     "text": "Issue plan JSON",
+     "evidence": [
+      "api/editor.ts:332"
+     ],
+     "when": "!declined"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "settle(raw): clamp and verify",
+     "detail": "Bounds every number, checks fonts against the list offered, and refuses an answer without a usable design.",
+     "evidence": [
+      "api/editor.ts:544",
+      "api/editor.ts:547"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "EditorPlan (no-store)",
+     "detail": "Create.tsx applies it with an undo.",
+     "evidence": [
+      "api/routes/editor.ts:173",
+      "src/pages/Create.tsx:521"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "export",
+   "name": "Export to PDF",
+   "summary": "Composition is entirely in the browser; the server only counts free accounts' exports before the print sheet is drawn.",
+   "toggles": [
+    {
+     "id": "limit",
+     "label": "Free month's exports spent",
+     "hint": "402"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "POST /api/exports",
+     "detail": "Claimed before printing, because a print dialog never says whether a file was saved.",
+     "evidence": [
+      "src/pages/Create.tsx:855",
+      "src/lib/exports.ts:19"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "POST /api/exports"
+    },
+    {
+     "from": "api",
+     "to": "auth",
+     "kind": "check",
+     "text": "authenticate",
+     "evidence": [
+      "api/routes/exports.ts:89"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT subscriptions",
+     "detail": "A paid plan, or EXPORT_LIMIT_FREE unset, is uncounted and writes nothing.",
+     "evidence": [
+      "api/routes/exports.ts:36",
+      "api/env.ts:280"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "rpc claim_export (exports)",
+     "detail": "Decide and increment in one statement.",
+     "evidence": [
+      "api/routes/exports.ts:103"
+     ],
+     "entities": [
+      "exports"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "402 · Wanderer's exports are spent",
+     "detail": "The sheet is never put into the page.",
+     "evidence": [
+      "api/routes/exports.ts:111",
+      "src/pages/Create.tsx:810"
+     ],
+     "when": "limit"
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "{ used, limit, remaining }",
+     "evidence": [
+      "api/routes/exports.ts:117"
+     ],
+     "when": "!limit"
+    },
+    {
+     "from": "web",
+     "to": "web",
+     "kind": "check",
+     "text": "window.print()",
+     "detail": "Pages are 520×693 CSS px, matching @page, so the PDF comes out 1:1. Any other failure lets the export through.",
+     "evidence": [
+      "src/pages/Create.tsx:874",
+      "src/pages/Create.tsx:799"
+     ],
+     "when": "!limit"
+    }
+   ]
+  },
+  {
+   "id": "save",
+   "name": "Save & share an issue",
+   "summary": "Pages are sealed in the browser with a per-issue AES-GCM key and uploaded straight to storage; the key goes in the link after #.",
+   "toggles": [
+    {
+     "id": "forever",
+     "label": "Keep forever on Wanderer",
+     "hint": "403"
+    },
+    {
+     "id": "missing",
+     "label": "An upload didn't arrive",
+     "hint": "409"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "web",
+     "kind": "check",
+     "text": "newKey() · AES-GCM 256",
+     "detail": "A fresh key per issue, made with WebCrypto.",
+     "evidence": [
+      "src/lib/vault.ts:30"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "POST /api/issues",
+     "detail": "Page count, how long to keep it, and the key only if 'Keep in My magazines' is on.",
+     "evidence": [
+      "src/lib/saved.ts:179"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "POST /api/issues"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "Validate pages, keep, key shape",
+     "detail": "1–96 pages; an editable copy must keep its key on the account.",
+     "evidence": [
+      "api/routes/issues.ts:280",
+      "api/routes/issues.ts:287"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT subscriptions (forever?)",
+     "detail": "Forever is for paid plans only.",
+     "evidence": [
+      "api/routes/issues.ts:290"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "403 · Forever comes with paid plans",
+     "evidence": [
+      "api/routes/issues.ts:291"
+     ],
+     "when": "forever"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT issues (ready = false)",
+     "detail": "Owner, page count, expiry, optional key. No title, no words.",
+     "evidence": [
+      "api/routes/issues.ts:296"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "issues",
+     "kind": "req",
+     "text": "createSignedUploadUrl × each file",
+     "evidence": [
+      "api/routes/issues.ts:147"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "201 · id + one upload slot per file",
+     "evidence": [
+      "api/routes/issues.ts:310"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "web",
+     "kind": "check",
+     "text": "seal() each page and the manifest",
+     "detail": "1080×1440 carousel slides; title and dek live inside the sealed manifest.",
+     "evidence": [
+      "src/lib/saved.ts:181",
+      "src/lib/vault.ts:48"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "issues",
+     "kind": "req",
+     "text": "PUT sealed blobs to signed URLs",
+     "detail": "Bytes never pass through the API.",
+     "evidence": [
+      "src/lib/saved.ts:83"
+     ],
+     "proto": "signed URL"
+    },
+    {
+     "from": "web",
+     "to": "api",
+     "kind": "req",
+     "text": "POST /api/issues/:id/ready",
+     "evidence": [
+      "src/lib/saved.ts:198"
+     ],
+     "endpoint": "POST /api/issues/:id/ready"
+    },
+    {
+     "from": "api",
+     "to": "issues",
+     "kind": "check",
+     "text": "list(folder) · count files",
+     "detail": "Checked against the bucket, not taken on trust.",
+     "evidence": [
+      "api/routes/issues.ts:325"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "409 · Some pages did not arrive",
+     "detail": "The row stays unready; the hourly sweep clears it after a day.",
+     "evidence": [
+      "api/routes/issues.ts:325"
+     ],
+     "when": "missing"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE issues SET ready = true",
+     "evidence": [
+      "api/routes/issues.ts:327"
+     ],
+     "when": "!missing"
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "ok → link /read?i=<id>#<key>",
+     "detail": "The key sits after the #, which browsers never send to a server.",
+     "evidence": [
+      "api/routes/issues.ts:329"
+     ],
+     "when": "!missing"
+    }
+   ]
+  },
+  {
+   "id": "read",
+   "name": "Open a shared link",
+   "summary": "Anyone with the link can read it, with no account; the server hands out sealed bytes it cannot open.",
+   "toggles": [
+    {
+     "id": "gone",
+     "label": "Expired or taken down",
+     "hint": "404"
+    },
+    {
+     "id": "badkey",
+     "label": "Key in link is wrong",
+     "hint": "client"
+    }
+   ],
+   "steps": [
+    {
+     "from": "link",
+     "to": "link",
+     "kind": "check",
+     "text": "Read the key from location.hash",
+     "evidence": [
+      "src/pages/Read.tsx:48"
+     ]
+    },
+    {
+     "from": "link",
+     "to": "vercel",
+     "kind": "req",
+     "text": "GET /api/issues/:id",
+     "detail": "Only the id travels; no sign-in on this route.",
+     "evidence": [
+      "src/lib/saved.ts:318"
+     ]
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "GET /api/issues/:id"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT issues WHERE ready",
+     "detail": "Expiry is checked on every read, so an issue is unreachable the moment it expires.",
+     "evidence": [
+      "api/routes/issues.ts:186",
+      "api/routes/issues.ts:189"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "link",
+     "kind": "block",
+     "text": "404 · This magazine has expired",
+     "detail": "Says nothing about whether it ever existed.",
+     "evidence": [
+      "api/routes/issues.ts:189"
+     ],
+     "when": "gone"
+    },
+    {
+     "from": "api",
+     "to": "issues",
+     "kind": "req",
+     "text": "createSignedUrls (1 hour)",
+     "evidence": [
+      "api/routes/issues.ts:133",
+      "api/routes/issues.ts:74"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "link",
+     "kind": "res",
+     "text": "{ manifest, urls } · no-store",
+     "evidence": [
+      "api/routes/issues.ts:477"
+     ]
+    },
+    {
+     "from": "link",
+     "to": "issues",
+     "kind": "req",
+     "text": "GET sealed manifest",
+     "evidence": [
+      "src/lib/saved.ts:322"
+     ],
+     "proto": "signed URL"
+    },
+    {
+     "from": "link",
+     "to": "link",
+     "kind": "check",
+     "text": "unseal(key, manifest)",
+     "detail": "AES-GCM decrypt in the browser.",
+     "evidence": [
+      "src/lib/saved.ts:322"
+     ]
+    },
+    {
+     "from": "link",
+     "to": "link",
+     "kind": "block",
+     "text": "This link's key does not open the magazine",
+     "evidence": [
+      "src/lib/saved.ts:324"
+     ],
+     "when": "badkey"
+    },
+    {
+     "from": "link",
+     "to": "issues",
+     "kind": "req",
+     "text": "GET each sealed page as it's turned to",
+     "detail": "Pages are opened on demand, not all 96 up front.",
+     "evidence": [
+      "src/lib/saved.ts:315"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "billing",
+   "name": "Subscribe with Dodo",
+   "summary": "Checkout only hands out a URL; the webhook is the only thing that grants a plan.",
+   "toggles": [
+    {
+     "id": "already",
+     "label": "Already subscribed",
+     "hint": "portal"
+    },
+    {
+     "id": "forged",
+     "label": "Forged webhook",
+     "hint": "400"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "POST /api/billing/checkout",
+     "detail": "Paid-plan buttons are on only with BUN_PUBLIC_CHECKOUT=on.",
+     "evidence": [
+      "api/routes/billing.ts:107"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "POST /api/billing/checkout"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT subscriptions",
+     "evidence": [
+      "api/routes/billing.ts:119"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "dodo",
+     "kind": "req",
+     "text": "customers.customerPortal.create",
+     "detail": "A second checkout would bill twice; the portal is where plan changes happen.",
+     "evidence": [
+      "api/routes/billing.ts:126",
+      "api/routes/billing.ts:98"
+     ],
+     "when": "already"
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "{ url: portal }",
+     "detail": "The reader is sent to manage the plan they hold.",
+     "evidence": [
+      "api/routes/billing.ts:137"
+     ],
+     "when": "already"
+    },
+    {
+     "from": "api",
+     "to": "dodo",
+     "kind": "req",
+     "text": "checkoutSessions.create",
+     "detail": "metadata.supabase_user_id lets the webhook map the payment back.",
+     "evidence": [
+      "api/routes/billing.ts:78"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "{ url: checkout_url }",
+     "evidence": [
+      "api/routes/billing.ts:142"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "dodo",
+     "kind": "req",
+     "text": "Pay on Dodo's page",
+     "evidence": [
+      "api/routes/billing.ts:83"
+     ]
+    },
+    {
+     "from": "dodo",
+     "to": "api",
+     "kind": "req",
+     "text": "subscription.active webhook",
+     "detail": "Raw body parser mounted before express.json so the signature sees the original bytes.",
+     "evidence": [
+      "api/app.ts:52",
+      "api/routes/dodo-webhook.ts:175"
+     ],
+     "proto": "webhook-signature",
+     "endpoint": "POST /api/dodo/webhook"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "webhooks.unwrap(payload, headers)",
+     "detail": "Needs webhook-id, -signature and -timestamp.",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:186",
+      "api/routes/dodo-webhook.ts:194"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "dodo",
+     "kind": "block",
+     "text": "400 · Signature verification failed",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:199"
+     ],
+     "when": "forged"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "resolve user · UPDATE profiles",
+     "detail": "From metadata, else by dodo_customer_id; links the customer id.",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:51",
+      "api/routes/dodo-webhook.ts:62"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "UPSERT subscriptions",
+     "detail": "Idempotent on the Dodo subscription id; unknown products are skipped.",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:93",
+      "api/routes/dodo-webhook.ts:102"
+     ]
+    },
+    {
+     "from": "dodo",
+     "to": "api",
+     "kind": "req",
+     "text": "payment.succeeded webhook",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:218"
+     ],
+     "endpoint": "POST /api/dodo/webhook"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "UPSERT payments",
+     "detail": "Append-only ledger with no foreign key to subscriptions: webhooks arrive out of order.",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:148",
+      "api/schema.sql:134"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "dodo",
+     "kind": "res",
+     "text": "{ received: true, handled: true }",
+     "evidence": [
+      "api/routes/dodo-webhook.ts:234"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Speak a story (live)",
+   "summary": "The API only mints a one-use key; audio streams from the browser straight to OpenAI.",
+   "toggles": [
+    {
+     "id": "daily",
+     "label": "40 sessions today",
+     "hint": "429"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "POST /api/transcribe/session",
+     "detail": "Open to everyone for now (VOICE_NEEDS_SIGN_IN = false).",
+     "evidence": [
+      "src/lib/transcribe.ts:232",
+      "src/types/index.ts:73"
+     ]
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "POST /api/transcribe/session"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "burst 10/10 min · daily 40",
+     "detail": "Counted per IP when signed out, in memory.",
+     "evidence": [
+      "api/routes/transcribe.ts:93",
+      "api/routes/transcribe.ts:94",
+      "api/limits.ts:31"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "429 · That is today's recording limit",
+     "detail": "Resets at midnight UTC.",
+     "evidence": [
+      "api/limits.ts:86"
+     ],
+     "when": "daily"
+    },
+    {
+     "from": "api",
+     "to": "openai",
+     "kind": "req",
+     "text": "POST /v1/realtime/client_secrets",
+     "detail": "Expires 60 seconds after it's made; server VAD and near-field noise reduction.",
+     "evidence": [
+      "api/routes/transcribe.ts:98",
+      "api/routes/transcribe.ts:35"
+     ],
+     "proto": "HTTPS · API key"
+    },
+    {
+     "from": "openai",
+     "to": "api",
+     "kind": "res",
+     "text": "Ephemeral secret",
+     "evidence": [
+      "api/routes/transcribe.ts:119"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "{ secret, expiresAt } · no-store",
+     "evidence": [
+      "api/routes/transcribe.ts:123"
+     ]
+    },
+    {
+     "from": "web",
+     "to": "openai",
+     "kind": "req",
+     "text": "WebSocket wss://…/v1/realtime",
+     "detail": "24 kHz PCM from the microphone; never touches the Atlas server.",
+     "evidence": [
+      "src/lib/transcribe.ts:378"
+     ],
+     "proto": "WebSocket · ephemeral key"
+    },
+    {
+     "from": "openai",
+     "to": "web",
+     "kind": "res",
+     "text": "Transcript deltas, phrase by phrase",
+     "detail": "Written live into the Write box.",
+     "evidence": [
+      "src/lib/transcribe.ts:246"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "layouts",
+   "name": "Submit and review a layout",
+   "summary": "The one place a design is kept: rebuilt server-side with every photo dropped and every word replaced, plus one consented sample picture.",
+   "toggles": [
+    {
+     "id": "pending",
+     "label": "Too many awaiting review",
+     "hint": "429"
+    },
+    {
+     "id": "notadmin",
+     "label": "Reviewer not an editor",
+     "hint": "403"
+    }
+   ],
+   "steps": [
+    {
+     "from": "web",
+     "to": "vercel",
+     "kind": "req",
+     "text": "POST /api/layouts",
+     "detail": "Kind, title, description, the design and one sample picture; its own larger JSON parser.",
+     "evidence": [
+      "api/routes/layouts.ts:230",
+      "api/app.ts:59"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "vercel",
+     "to": "api",
+     "kind": "req",
+     "text": "Forward to the API",
+     "evidence": [
+      "vercel.json"
+     ],
+     "endpoint": "POST /api/layouts"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "burst 5/hour · sanitizeDesign",
+     "detail": "Photos dropped, words replaced with placeholders, colours, fonts and numbers validated; 200 KB cap.",
+     "evidence": [
+      "api/routes/layouts.ts:233",
+      "api/routes/layouts.ts:244",
+      "src/types/layouts.ts:339"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "COUNT layouts WHERE pending (own)",
+     "evidence": [
+      "api/routes/layouts.ts:250"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "block",
+     "text": "429 · Layouts waiting for review",
+     "evidence": [
+      "api/routes/layouts.ts:253"
+     ],
+     "when": "pending"
+    },
+    {
+     "from": "api",
+     "to": "layoutsb",
+     "kind": "req",
+     "text": "upload sample.<ext>",
+     "evidence": [
+      "api/routes/layouts.ts:258"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "INSERT layouts",
+     "detail": "If the insert fails the sample is removed again.",
+     "evidence": [
+      "api/routes/layouts.ts:261",
+      "api/routes/layouts.ts:267"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "web",
+     "kind": "res",
+     "text": "201 · the submission",
+     "evidence": [
+      "api/routes/layouts.ts:271"
+     ]
+    },
+    {
+     "from": "editors",
+     "to": "api",
+     "kind": "req",
+     "text": "POST /api/admin/layouts/:id/review",
+     "detail": "Accept or reject, with an optional note.",
+     "evidence": [
+      "api/routes/layouts.ts:350"
+     ],
+     "proto": "Bearer JWT"
+    },
+    {
+     "from": "api",
+     "to": "api",
+     "kind": "check",
+     "text": "requireAdmin (ADMIN_EMAILS)",
+     "evidence": [
+      "api/routes/layouts.ts:353",
+      "api/supabase.ts:65"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "editors",
+     "kind": "block",
+     "text": "403 · For the Atlas editors only",
+     "evidence": [
+      "api/supabase.ts:66"
+     ],
+     "when": "notadmin"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE layouts SET status, reviewed_at",
+     "evidence": [
+      "api/routes/layouts.ts:361"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT profiles.email (submitter)",
+     "evidence": [
+      "api/routes/layouts.ts:370"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "resend",
+     "kind": "req",
+     "text": "POST /emails",
+     "detail": "Only when RESEND_API_KEY and EMAIL_FROM are set; 15 s timeout; a failure just leaves notified_at empty.",
+     "evidence": [
+      "api/mail.ts:20",
+      "api/mail.ts:24",
+      "api/routes/layouts.ts:374"
+     ],
+     "proto": "HTTPS · API key"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE layouts SET notified_at",
+     "evidence": [
+      "api/routes/layouts.ts:375"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "editors",
+     "kind": "res",
+     "text": "{ status, emailed }",
+     "evidence": [
+      "api/routes/layouts.ts:377"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cron",
+   "name": "Hourly clean-up and keep-alive",
+   "summary": "setInterval jobs inside the API process, started once it is listening.",
+   "steps": [
+    {
+     "from": "cron",
+     "to": "api",
+     "kind": "req",
+     "text": "GET /api/health every 10 min",
+     "detail": "Keeps the Render service from idling; uses RENDER_EXTERNAL_URL or KEEPALIVE_URL. 30s timeout.",
+     "evidence": [
+      "api/cron.ts:42",
+      "api/env.ts:106",
+      "api/env.ts:91"
+     ]
+    },
+    {
+     "from": "api",
+     "to": "cron",
+     "kind": "res",
+     "text": "{ ok, version }",
+     "evidence": [
+      "api/app.ts:67"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT issues expired or unready > 1 day",
+     "detail": "Hourly, and once at boot so a restart catches up. 100 at a time.",
+     "evidence": [
+      "api/cron.ts:91",
+      "api/routes/issues.ts:768"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "issues",
+     "kind": "req",
+     "text": "remove(files) in batches of 900",
+     "detail": "Files first, rows second, so a failure leaves a row the next sweep retries.",
+     "evidence": [
+      "api/routes/issues.ts:241",
+      "api/routes/issues.ts:164"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "db",
+     "kind": "req",
+     "text": "DELETE issues",
+     "detail": "issue_members go with them.",
+     "evidence": [
+      "api/routes/issues.ts:245"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT issues WHERE pending_since stale",
+     "detail": "Edits begun and never committed.",
+     "evidence": [
+      "api/routes/issues.ts:777"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "issues",
+     "kind": "req",
+     "text": "clearFolder(pending edit)",
+     "evidence": [
+      "api/routes/issues.ts:781"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "db",
+     "kind": "req",
+     "text": "SELECT layouts rejected > 1 month",
+     "detail": "Every 6 hours.",
+     "evidence": [
+      "api/cron.ts:108",
+      "api/routes/layouts.ts:388"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "layoutsb",
+     "kind": "req",
+     "text": "remove(sample pictures)",
+     "detail": "The row and the decision stay; only the picture goes.",
+     "evidence": [
+      "api/routes/layouts.ts:392"
+     ]
+    },
+    {
+     "from": "cron",
+     "to": "db",
+     "kind": "req",
+     "text": "UPDATE layouts SET sample_path = null",
+     "evidence": [
+      "api/routes/layouts.ts:393"
+     ]
+    }
+   ]
+  }
+ ],
+ "components": [
+  {
+   "name": "Desk and magazine engine",
+   "tech": "React 19, Tailwind 4, shadcn",
+   "where": "Browser",
+   "role": "Composes the issue by measuring real type (fit.ts) and pours it through layouts; photos stay object URLs.",
+   "evidence": [
+    "src/lib/magazine/fit.ts",
+    "src/lib/magazine/compose.ts"
+   ]
+  },
+  {
+   "name": "Static site",
+   "tech": "Bun build → dist/",
+   "where": "Vercel",
+   "role": "Serves prerendered pages and rewrites /api/* to api.ouratlas.co.in.",
+   "evidence": [
+    "vercel.json",
+    "build.ts"
+   ]
+  },
+  {
+   "name": "API",
+   "tech": "Express 5 on Bun, Dockerfile.api",
+   "where": "Render (or docker-compose behind nginx)",
+   "role": "Auth checks, allowances, AI calls, saved-issue bookkeeping, billing and webhooks. Every integration is optional and returns 503 when unconfigured.",
+   "evidence": [
+    "api/app.ts:32",
+    "api/http.ts:38",
+    "docker-compose.yml"
+   ]
+  },
+  {
+   "name": "Cron",
+   "tech": "setInterval in the API process",
+   "where": "Render",
+   "role": "Keep-alive ping, saved-issue prune, rejected-sample prune.",
+   "evidence": [
+    "api/cron.ts:77"
+   ]
+  },
+  {
+   "name": "Supabase",
+   "tech": "Auth, Postgres with RLS, private storage",
+   "where": "Supabase",
+   "role": "Accounts (Google sign-in), subscriptions, counters, saved-issue rows, two private buckets. The API uses the service-role key after resolving the user.",
+   "evidence": [
+    "api/supabase.ts:20",
+    "api/schema.sql"
+   ]
+  },
+  {
+   "name": "AI providers",
+   "tech": "@anthropic-ai/sdk, fetch to OpenAI",
+   "where": "Anthropic / OpenAI",
+   "role": "Editor (Opus 5.5 by default), copy desk (OpenAI by default), transcription (OpenAI gpt-4o-transcribe).",
+   "evidence": [
+    "api/env.ts:184",
+    "api/env.ts:211",
+    "api/env.ts:233"
+   ]
+  },
+  {
+   "name": "Billing",
+   "tech": "dodopayments, stripe",
+   "where": "Dodo / Stripe",
+   "role": "Checkout and portal; webhooks are the only writers of subscriptions and payments.",
+   "evidence": [
+    "api/routes/billing.ts:107",
+    "api/routes/dodo-webhook.ts:175"
+   ]
+  },
+  {
+   "name": "Android app",
+   "tech": "Capacitor",
+   "where": "Phone",
+   "role": "Loads the same bundle and calls the API cross-origin, which api/cors.ts allows.",
+   "evidence": [
+    "capacitor.config.ts:18",
+    "api/cors.ts:25"
+   ]
+  }
+ ],
+ "data": [
+  {
+   "name": "profiles",
+   "holds": "Account mirror + customer ids",
+   "evidence": [
+    "api/schema.sql:14"
+   ]
+  },
+  {
+   "name": "subscriptions",
+   "holds": "Plan per account (webhook-written)",
+   "evidence": [
+    "api/schema.sql:79"
+   ]
+  },
+  {
+   "name": "payments",
+   "holds": "Append-only payment ledger",
+   "evidence": [
+    "api/schema.sql:127"
+   ]
+  },
+  {
+   "name": "waitlist",
+   "holds": "Newsletter sign-ups",
+   "evidence": [
+    "api/schema.sql:200"
+   ]
+  },
+  {
+   "name": "exports",
+   "holds": "Monthly export count",
+   "evidence": [
+    "api/schema.sql:248"
+   ]
+  },
+  {
+   "name": "issues",
+   "holds": "Saved issue rows (no content)",
+   "evidence": [
+    "api/schema.sql:334"
+   ]
+  },
+  {
+   "name": "issue_members",
+   "holds": "Sharing: invites and code joins",
+   "evidence": [
+    "api/schema.sql:395"
+   ]
+  },
+  {
+   "name": "ai_usage",
+   "holds": "Monthly AI allowance count",
+   "evidence": [
+    "api/schema.sql:430"
+   ]
+  },
+  {
+   "name": "layouts",
+   "holds": "Submitted layouts, scrubbed",
+   "evidence": [
+    "api/schema.sql:515"
+   ]
+  },
+  {
+   "name": "layout_likes",
+   "holds": "Who liked which layout",
+   "evidence": [
+    "api/schema.sql:541"
+   ]
+  },
+  {
+   "name": "issues (bucket)",
+   "holds": "Sealed manifest, pages, editable copy and photos; 2 MB a file",
+   "evidence": [
+    "api/schema.sql:415"
+   ]
+  },
+  {
+   "name": "layouts (bucket)",
+   "holds": "One consented sample picture per submitted layout",
+   "evidence": [
+    "api/schema.sql:585"
+   ]
+  },
+  {
+   "name": "IndexedDB desk draft",
+   "holds": "The whole desk, parked across the Google redirect and read back once",
+   "evidence": [
+    "src/lib/draft.ts:123",
+    "src/lib/draft.ts:212"
+   ]
+  }
+ ],
+ "guards": [
+  {
+   "what": "AI editor",
+   "limit": "3 per 10 min · 2/5/12 a month by plan",
+   "checks": "Sign-in, field-by-field validation, plan word limit, claim_ai with release on failure",
+   "evidence": [
+    "api/routes/editor.ts:141",
+    "src/types/index.ts:343",
+    "api/limits.ts:114"
+   ]
+  },
+  {
+   "what": "Copy desk",
+   "limit": "3 per 10 min · 2/5/15 a month by plan",
+   "checks": "Sign-in, plan word limit, claim_ai released if the first chunk fails",
+   "evidence": [
+    "api/routes/polish.ts:24",
+    "api/routes/polish.ts:66"
+   ]
+  },
+  {
+   "what": "Voice (live)",
+   "limit": "10 per 10 min · 40 a day",
+   "checks": "No sign-in; per IP, in memory; 60 s secret",
+   "evidence": [
+    "api/routes/transcribe.ts:93",
+    "api/routes/transcribe.ts:94"
+   ]
+  },
+  {
+   "what": "Voice (file pieces)",
+   "limit": "45 per 10 min · 90 a day",
+   "checks": "WAV only, ≤ 4.4 MB a piece",
+   "evidence": [
+    "api/routes/transcribe.ts:174",
+    "api/routes/transcribe.ts:142",
+    "src/types/index.ts:97"
+   ]
+  },
+  {
+   "what": "Export",
+   "limit": "EXPORT_LIMIT_FREE a month on Wanderer",
+   "checks": "claim_export in one statement; paid plans uncounted",
+   "evidence": [
+    "api/routes/exports.ts:103",
+    "api/env.ts:280"
+   ]
+  },
+  {
+   "what": "Save issue",
+   "limit": "1–96 pages · forever paid-only",
+   "checks": "Key shape, upload count verified against the bucket",
+   "evidence": [
+    "api/routes/issues.ts:255",
+    "api/routes/issues.ts:325"
+   ]
+  },
+  {
+   "what": "Edit a shared issue",
+   "limit": "—",
+   "checks": "Owner or edit role; version and pending_folder compare-and-swap",
+   "evidence": [
+    "api/routes/issues.ts:497",
+    "api/routes/issues.ts:580"
+   ]
+  },
+  {
+   "what": "Join with group code",
+   "limit": "10 per 15 min",
+   "checks": "scrypt hash, timing-safe compare, code must match the magazine",
+   "evidence": [
+    "api/routes/issues.ts:426",
+    "api/routes/issues.ts:703"
+   ]
+  },
+  {
+   "what": "Submit layout",
+   "limit": "5 an hour · pending cap",
+   "checks": "sanitizeDesign drops photos and words; 200 KB design cap",
+   "evidence": [
+    "api/routes/layouts.ts:233",
+    "api/routes/layouts.ts:244"
+   ]
+  },
+  {
+   "what": "Webhooks",
+   "limit": "1 MB raw body",
+   "checks": "Dodo standard-webhooks signature; Stripe constructEventAsync",
+   "evidence": [
+    "api/app.ts:51",
+    "api/routes/dodo-webhook.ts:194"
+   ]
+  },
+  {
+   "what": "Waitlist",
+   "limit": "10 a minute",
+   "checks": "Email shape; duplicate is a quiet success",
+   "evidence": [
+    "api/routes/waitlist.ts:37"
+   ]
+  },
+  {
+   "what": "Editors' routes",
+   "limit": "—",
+   "checks": "authenticate + requireAdmin (ADMIN_EMAILS)",
+   "evidence": [
+    "api/supabase.ts:65"
+   ]
+  }
+ ],
+ "unknowns": [
+  "Render region and instance count aren't in the repository; the in-memory burst and daily limits are per process, so they loosen with more than one instance (api/limits.ts says so).",
+  "Supabase project region and plan aren't in the repository.",
+  "No error tracking or metrics service: failures are console.error lines in the host's log.",
+  "The open voice routes count by IP from X-Forwarded-For with trust proxy on, which is spoofable when the API host is called directly (api/limits.ts notes this).",
+  "No automated tests run in CI beyond typecheck, build and a boot check; two small test files exist under api/.",
+  "The Stripe flow mirrors the Dodo one but isn't drawn here; Dodo is the live provider."
+ ]
+}

@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, WandSparkles } from "lucide-react";
 
 import { THEME_LIST, type PreviewRow, type Surface, type Theme, type ThemeId } from "@/lib/magazine/themes";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,41 @@ function ThemeCard({ theme, chosen, onChoose }: { theme: Theme; chosen: boolean;
 }
 
 /** The widest lean worth offering. Past this the prints stop reading as pasted and start reading as fallen. */
+/** The editor's own design, beside the house styles: a different shape on every page. */
+function EditorCard({ chosen, onChoose }: { chosen: boolean; onChoose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onChoose}
+      aria-pressed={chosen}
+      className={cn(
+        "flex w-40 shrink-0 flex-col gap-3 rounded-xl border p-3 text-left transition-colors",
+        chosen ? "border-emerald-600 bg-emerald-50/80 ring-1 ring-emerald-600" : "border-stone-200 bg-white/70 hover:border-stone-400",
+      )}
+    >
+      <div className="aspect-[520/693] w-full overflow-hidden rounded-[3px] border border-stone-200 bg-[#f6efe4] p-[5px]">
+        <div className="grid h-full grid-cols-6 grid-rows-8 gap-[3px]">
+          <div className="col-span-4 row-span-3 rounded-[1px] bg-stone-400" />
+          <div className="col-span-2 row-span-3 rounded-[1px] bg-[#c4533a]" />
+          <div className="col-span-3 row-span-5 rounded-[1px] bg-[repeating-linear-gradient(to_bottom,var(--color-stone-400)_0_1px,transparent_1px_3px)] opacity-70" />
+          <div className="col-span-3 row-span-2 rounded-[1px] bg-stone-800" />
+          <div className="col-span-3 row-span-3 rounded-[1px] bg-stone-400" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-stone-900">
+          <WandSparkles className="size-3.5 text-stone-500" aria-hidden />
+          The editor's design
+          {chosen && <Check className="size-3.5 text-emerald-600" aria-hidden />}
+        </span>
+        <span className="text-[11px] leading-[1.45] text-stone-500">
+          Every page drawn for this issue alone, from your photographs and story, in its own colours.
+        </span>
+      </div>
+    </button>
+  );
+}
+
 export const MAX_TILT = 6;
 
 /**
@@ -125,10 +160,17 @@ export function ThemePicker({
   theme,
   onChoose,
   className,
+  editor,
 }: {
   theme: ThemeId;
   onChoose: (id: ThemeId) => void;
   className?: string;
+  /**
+   * The issue the editor designed, once there is one: shown first, and chosen
+   * while it is what the issue is set in, so none of the house styles appears
+   * chosen for an issue none of them made.
+   */
+  editor?: { chosen: boolean; onChoose: () => void };
 }) {
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -140,8 +182,9 @@ export function ThemePicker({
       {/* Scrolls rather than wraps, so adding a theme later cannot turn one
           row into a grid of two-then-one that reads as two separate groups. */}
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+        {editor && <EditorCard chosen={editor.chosen} onChoose={editor.onChoose} />}
         {THEME_LIST.map(entry => (
-          <ThemeCard key={entry.id} theme={entry} chosen={entry.id === theme} onChoose={() => onChoose(entry.id)} />
+          <ThemeCard key={entry.id} theme={entry} chosen={!editor?.chosen && entry.id === theme} onChoose={() => onChoose(entry.id)} />
         ))}
       </div>
     </div>

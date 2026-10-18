@@ -19,7 +19,7 @@ import { TEXT_HEIGHT, TEXT_WIDTH } from "@/lib/magazine/geometry";
  * photographs are dealt to plates. It is not poured from the story, so the
  * fitter never measures it.
  */
-export type CustomKind = "text" | "plate" | "sketch" | "quote";
+export type CustomKind = "text" | "plate" | "sketch" | "quote" | "block";
 
 /** The colour a quote is set on: a block of accent, a block of ink, or the page itself. */
 export type QuoteTone = "accent" | "ink" | "paper";
@@ -31,7 +31,7 @@ export type CustomBox = {
   y: number;
   width: number;
   height: number;
-  /** Quote boxes only. */
+  /** Quote and colour boxes: the colour they are set on. */
   tone?: QuoteTone;
   /**
    * Quote boxes only: a sign-off rather than a quotation — the issue's title
@@ -48,6 +48,12 @@ export type CustomPage = {
    * over the picture.
    */
   bleed?: boolean;
+  /**
+   * The paper the page is printed on: "ink" prints it dark, with the words
+   * reversed out in the paper colour. Colours only — the type the fitter
+   * measured is the same either way. Absent, it is the issue's own paper.
+   */
+  stock?: "ink";
 };
 
 /** Paper, ink and accent for a designed issue, drawn from its photographs. */
@@ -121,6 +127,8 @@ export const MIN_BOX: Record<CustomKind, { width: number; height: number }> = {
   sketch: { width: 70, height: 40 },
   // Room for a short line at the smallest size a quote is set.
   quote: { width: 120, height: 60 },
+  // A colour field may be a hairline rule or a bar as well as a panel.
+  block: { width: 8, height: 4 },
 };
 
 let counter = 0;
@@ -169,6 +177,8 @@ export const plateBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter
  */
 export const sketchBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "sketch"));
 export const quoteBoxes = (page: CustomPage) => inReadingOrder(page.boxes.filter(b => b.kind === "quote"));
+/** Plain fields of colour: nothing is poured into them, dealt to them or measured in them. */
+export const blockBoxes = (page: CustomPage) => page.boxes.filter(b => b.kind === "block");
 
 const box = (kind: CustomKind, x: number, y: number, width: number, height: number): CustomBox => ({
   id: newBoxId(),
