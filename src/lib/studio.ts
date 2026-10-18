@@ -1,4 +1,11 @@
 import beachPalms from "@/assets/studio/beach-palms.jpg";
+import blrChinnaswamy from "@/assets/studio/blr-chinnaswamy.jpg";
+import blrKrMarket from "@/assets/studio/blr-kr-market.jpg";
+import blrPinkLine from "@/assets/studio/blr-pink-line.jpg";
+import blrPuja from "@/assets/studio/blr-puja.jpg";
+import blrTownHall from "@/assets/studio/blr-town-hall.jpg";
+import blrVidhanaSoudha from "@/assets/studio/blr-vidhana-soudha.jpg";
+import blrViaduct from "@/assets/studio/blr-viaduct.jpg";
 import boatUmbrella from "@/assets/studio/boat-umbrella.jpg";
 import brickFacades from "@/assets/studio/brick-facades.jpg";
 import cafeStreet from "@/assets/studio/cafe-street.jpg";
@@ -70,13 +77,21 @@ export const STUDIO_GROUPS: { id: StudioGroup; label: string; blurb: string }[] 
   {
     id: "issues",
     label: "Complete issues",
-    blurb: "Ten-page issues from cover to colophon, each in a house style of its own, from Swiss and Gazette to Riviera, Garden and Noir.",
+    blurb: "Whole issues from cover to colophon, each in a house style of its own, from Swiss and Gazette to Riviera, Garden and Noir, and a twelve-page City Edition for a week in one city.",
   },
 ];
 
 /** Bundled, so each gets a hashed address and the long cache; the pages name them as `%photo:<name>%`. */
 const PHOTOS: Record<string, string> = {
   "beach-palms": beachPalms,
+  // The City Edition's (`studio/city-edition.ts`), openly licensed and credited on its last page.
+  "blr-chinnaswamy": blrChinnaswamy,
+  "blr-kr-market": blrKrMarket,
+  "blr-pink-line": blrPinkLine,
+  "blr-puja": blrPuja,
+  "blr-town-hall": blrTownHall,
+  "blr-viaduct": blrViaduct,
+  "blr-vidhana-soudha": blrVidhanaSoudha,
   "boat-umbrella": boatUmbrella,
   "brick-facades": brickFacades,
   "cafe-street": cafeStreet,
@@ -94,10 +109,16 @@ const PHOTOS: Record<string, string> = {
 
 let loading: Promise<StudioSection[]> | null = null;
 
-/** The sections, fetched once. Forgotten on failure so the next visit can try again. */
+/**
+ * The sections, fetched once. Forgotten on failure so the next visit can try again.
+ *
+ * The City Edition is written in code rather than drawn on the canvas, so it
+ * comes from its own module and joins the canvas's sections at the end of the
+ * complete issues.
+ */
 export function loadStudio(): Promise<StudioSection[]> {
-  loading ??= import("./studio/pages.json")
-    .then(module => (module.default as { sections: StudioSection[] }).sections)
+  loading ??= Promise.all([import("./studio/pages.json"), import("./studio/city-edition")])
+    .then(([pages, city]) => [...(pages.default as { sections: StudioSection[] }).sections, city.CITY_EDITION])
     .catch(error => {
       loading = null;
       throw error;
