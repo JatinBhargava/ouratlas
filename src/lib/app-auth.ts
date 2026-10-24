@@ -51,6 +51,17 @@ function safePath(to: string | null): string {
   return to && to.startsWith("/") && !to.startsWith("//") ? to : "/account";
 }
 
+/** Resolve a return path without allowing URL parsing to leave the app origin. */
+export function resolveReturn(to: string | null, origin: string): URL {
+  const fallback = new URL("/account", origin);
+  try {
+    const target = new URL(safePath(to), origin);
+    return target.origin === fallback.origin ? target : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Reloads the app at the page sign-in began from, with the provider's answer. */
 function resume(link: string): void {
   let incoming: URL;
@@ -61,7 +72,7 @@ function resume(link: string): void {
   }
   if (`${incoming.protocol}//${incoming.host}` !== RETURN) return;
 
-  const target = new URL(safePath(incoming.searchParams.get("to")), window.location.origin);
+  const target = resolveReturn(incoming.searchParams.get("to"), window.location.origin);
   // The same four the website's return reads: a code to exchange, or the
   // refusal Google or Supabase reported instead.
   for (const key of ["code", "error", "error_description"]) {
