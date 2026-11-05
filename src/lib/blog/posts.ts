@@ -4,6 +4,34 @@ import type { PostMeta } from "./types";
 /** Every published post, newest first. */
 export const POSTS: PostMeta[] = [
   {
+    "slug": "google-photos-data-for-ads",
+    "title": "Google can now use connected Photos data for ads",
+    "description": "Google's policy now lets Photos and Gmail data you connect to its AI shape your ads. What changed, what didn't, and how to keep your pictures yours.",
+    "kind": "dispatch",
+    "date": "2026-11-02",
+    "tags": [
+      "technology",
+      "privacy",
+      "photography"
+    ],
+    "keyword": "google photos data used for ads",
+    "minutes": 5
+  },
+  {
+    "slug": "apple-music-new-logo-made-by-sound",
+    "title": "Apple Music's new logo started as sound, not a sketch",
+    "description": "Apple Music's new identity was filmed from music played into a bath of oil. What the backlash misses, and how to take a look from your own material.",
+    "kind": "dispatch",
+    "date": "2026-10-26",
+    "tags": [
+      "design",
+      "typography",
+      "photography"
+    ],
+    "keyword": "apple music new logo",
+    "minutes": 6
+  },
+  {
     "slug": "magazine-layout-with-your-own-photos",
     "title": "Fill a ready-made magazine layout with your own photos",
     "description": "Atlas Studio holds over two hundred finished magazine pages. Open one, put your own photos and words in it, and download the PDF with no account.",
@@ -37,6 +65,8 @@ export const POSTS: PostMeta[] = [
 
 /** Each post's rendered HTML, a chunk of its own so only the post being read is fetched. */
 export const BODIES: Record<string, () => Promise<{ default: string }>> = {
+  "google-photos-data-for-ads": () => import("./bodies/google-photos-data-for-ads"),
+  "apple-music-new-logo-made-by-sound": () => import("./bodies/apple-music-new-logo-made-by-sound"),
   "magazine-layout-with-your-own-photos": () => import("./bodies/magazine-layout-with-your-own-photos"),
   "paginate-text-by-measuring-type": () => import("./bodies/paginate-text-by-measuring-type"),
 };
