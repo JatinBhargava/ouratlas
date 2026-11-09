@@ -4,6 +4,21 @@ import type { PostMeta } from "./types";
 /** Every published post, newest first. */
 export const POSTS: PostMeta[] = [
   {
+    "slug": "voice-note-to-written-story",
+    "title": "Tell your story out loud and Atlas writes it down",
+    "description": "The Speak tab turns your voice, live or from a voice note you already have, into the written story of your magazine. How to use it, and what to know.",
+    "kind": "spotlight",
+    "date": "2026-11-09",
+    "tags": [
+      "writing",
+      "family history",
+      "privacy"
+    ],
+    "keyword": "voice note to written story",
+    "feature": "0.1.0",
+    "minutes": 7
+  },
+  {
     "slug": "google-photos-data-for-ads",
     "title": "Google can now use connected Photos data for ads",
     "description": "Google's policy now lets Photos and Gmail data you connect to its AI shape your ads. What changed, what didn't, and how to keep your pictures yours.",
@@ -65,6 +80,7 @@ export const POSTS: PostMeta[] = [
 
 /** Each post's rendered HTML, a chunk of its own so only the post being read is fetched. */
 export const BODIES: Record<string, () => Promise<{ default: string }>> = {
+  "voice-note-to-written-story": () => import("./bodies/voice-note-to-written-story"),
   "google-photos-data-for-ads": () => import("./bodies/google-photos-data-for-ads"),
   "apple-music-new-logo-made-by-sound": () => import("./bodies/apple-music-new-logo-made-by-sound"),
   "magazine-layout-with-your-own-photos": () => import("./bodies/magazine-layout-with-your-own-photos"),
