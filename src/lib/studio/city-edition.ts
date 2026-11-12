@@ -235,8 +235,6 @@ const CSS = `.page {
 
 const page = (id: string, title: string, html: string): StudioPage => ({ id: `city-${id}`, title, width: 780, height: 1040, css: CSS, html });
 
-const page = (id: string, title: string, html: string): StudioPage => ({ id: `city-${id}`, title, width: 780, height: 1040, css: CSS, html });
-
 export const CITY_EDITION: StudioSection = {
   id: "city-edition",
   group: "issues",
