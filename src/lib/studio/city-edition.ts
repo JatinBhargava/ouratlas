@@ -422,7 +422,7 @@ export const CITY_EDITION: StudioSection = {
 <div class="rows">
 <div class="row"><span>Fixture</span><span>Bengaluru FC v Mumbai City FC</span></div>
 <div class="row"><span>Ground</span><span>Sree Kanteerava Stadium</span></div>
-<div class="row"><span>Day</span><span>19 or 20 Nov <span class="flag">2 reports</span></span></div>
+<div class="row"><span>Day</span><span>19 or 20 Nov, the outlets differ</span></div>
 <div class="row"><span>The break</span><span>No league games 7 to 20 Nov, per Khel Now</span></div>
 </div>
 </div>
