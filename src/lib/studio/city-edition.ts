@@ -140,7 +140,7 @@ const CSS = `.page {
 /* 08 Interchange */
 .swap h3 { font-size: 7.4cqw; }
 .swap .stand { font-size: 2.3cqw; color: var(--muted); max-width: 90%; }
-.swap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.swap svg { display: block; width: 80%; margin: 0 auto; height: auto; overflow: visible; }
 .swap .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 0.25cqw solid var(--ink); }
 .swap .f { display: grid; gap: 0.6cqw; align-content: start; padding: 1.7cqw 2.4cqw 1.5cqw 0; border-bottom: 0.15cqw solid var(--rule); }
 .swap .f:nth-child(even) { padding-left: 2.6cqw; padding-right: 0; border-left: 0.15cqw solid var(--rule); }
@@ -314,7 +314,7 @@ export const CITY_EDITION: StudioSection = {
 </div>
 <div class="col c3">
 <p>The Federal's first-day report found gaps. Riders on Bannerghatta Road said they save time, and asked for shorter waits between trains and for feeder buses before Monday's rush.</p>
-<p>One caution. We read several of these reports through search summaries, not whole articles, and found no fare. Check BMRCL for fares and timings.</p>
+<p>One caution: we read several reports as summaries, not whole articles, and found no fare. Check BMRCL.</p>
 <p class="src">Deccan Herald · News24 · Inshorts · News Karnataka · The Federal · The Week (PTI)</p>
 </div>
 </div>
@@ -400,7 +400,7 @@ export const CITY_EDITION: StudioSection = {
 <text x="30" y="78" text-anchor="middle">RV Road</text>
 <text x="110" y="78" text-anchor="middle">Ragigudda</text>
 <text x="296" y="78" text-anchor="middle">BTM Layout</text>
-<text x="216" y="74">Jayadeva Hospital</text>
+<text x="184" y="124" text-anchor="end">Jayadeva Hospital</text>
 <text x="214" y="28">Tavarekere</text>
 <text x="214" y="134">JP Nagar 4th Phase</text>
 <text x="214" y="160">IIM-B</text>
@@ -416,7 +416,7 @@ export const CITY_EDITION: StudioSection = {
 <div class="f" style="--c:var(--green)"><span class="k">The rank</span><b>The third of its kind</b><p>The Federal described it, before the opening, as the city's third interchange after Majestic and RV Road.</p></div>
 <div class="f" style="--c:var(--pink)"><span class="k">Day one</span><b>The most footfall</b><p>Jayadeva Hospital recorded the line's highest footfall on Saturday. The Federal found the station less ready than the crowd.</p></div>
 </div>
-<p class="src">OneIndia · Swarajya · The Federal · News Karnataka. Platform walking times were not in any report we found.</p>
+<p class="src">OneIndia · Swarajya · The Federal · News Karnataka. No report gave platform walking times.</p>
 </div><div class="folio"><span>Interchange</span><span>08</span></div></div>`),
     page("09-questions", "Questions & Answers", `<div class="page qa"><div class="pin">
 <span class="lbl c" style="--c:var(--pink)">Rider questions</span>
@@ -478,7 +478,7 @@ export const CITY_EDITION: StudioSection = {
 <div class="row"><span>6 Nov</span><span>Won 2–1 at FC Goa, in stoppage time</span></div>
 </div>
 </div>
-<p class="src">Khel Now · District · Deccan Herald · Devdiscourse · Mykhel. No match was played in this edition's window.</p>
+<p class="src">Khel Now · District · Deccan Herald · Devdiscourse · Mykhel</p>
 </div><div class="folio"><span>Field &amp; ground</span><span>12</span></div></div>`),
     page("13-week-ahead", "Week Ahead", `<div class="page week"><div class="pin">
 <span class="lbl c" style="--c:var(--purple)">The week ahead</span>
