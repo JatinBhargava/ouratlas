@@ -1,6 +1,6 @@
 /**
- * The City Edition: fourteen pages for a weekly issue about one city, set with a
- * sample week of Bengaluru news (9–11 November 2026).
+ * The City Edition: fifteen pages for a weekly issue about one city, set with a
+ * sample edition of Bengaluru news (12–15 November 2026).
  *
  * Written here rather than drawn on the design canvas, so it is not in
  * `pages.json` (which only `scripts/studio.ts` writes). `loadStudio` adds it to
@@ -9,7 +9,7 @@
  * The other complete issues tell one story; a city edition carries many short
  * ones, so its pages are built for that: a front page with teasers, contents by
  * section, big figures, briefs, two outlets disagreeing side by side, a transit
- * route, rider questions answered, a timeline of dates, a funding table,
+ * route, an interchange drawn as a diagram, rider questions answered, a timeline of dates, a funding table,
  * scorecards, a week of dates, a reader's page and a sources page. Every page is sized in container units (`cqw`) against its own
  * 780px width, so it draws the same at any scale the studio shows it.
  *
@@ -65,9 +65,9 @@ const CSS = `.page {
 
 /* 02 Section Index */
 .index .route { position: relative; display: grid; gap: 0; margin-top: 1cqw; }
-.index .route::before { content: ""; position: absolute; left: 3.1cqw; top: 3cqw; bottom: 3cqw; width: 0.9cqw; background: linear-gradient(var(--purple) 0 16%, var(--green) 16% 32%, var(--pink) 32% 48%, var(--blue) 48% 64%, var(--yellow) 64% 80%, var(--purple) 80% 100%); border-radius: 1cqw; }
-.stop { position: relative; display: grid; grid-template-columns: 7cqw minmax(0, 1fr) auto; gap: 2.2cqw; align-items: center; padding: 0.85cqw 0; }
-.stop .dot { width: 7cqw; height: 7cqw; border-radius: 50%; background: var(--paper); border: 0.9cqw solid var(--c); display: grid; place-items: center; font-family: var(--mono); font-size: 1.9cqw; font-weight: 500; position: relative; z-index: 1; }
+.index .route::before { content: ""; position: absolute; left: 2.85cqw; top: 3cqw; bottom: 3cqw; width: 0.9cqw; background: linear-gradient(var(--purple) 0 16%, var(--green) 16% 32%, var(--pink) 32% 48%, var(--blue) 48% 64%, var(--yellow) 64% 80%, var(--purple) 80% 100%); border-radius: 1cqw; }
+.stop { position: relative; display: grid; grid-template-columns: 6.6cqw minmax(0, 1fr) auto; gap: 2.2cqw; align-items: center; padding: 0.5cqw 0; }
+.stop .dot { width: 6.6cqw; height: 6.6cqw; border-radius: 50%; background: var(--paper); border: 0.9cqw solid var(--c); display: grid; place-items: center; font-family: var(--mono); font-size: 1.9cqw; font-weight: 500; position: relative; z-index: 1; }
 .stop b { font-family: var(--display); font-weight: 400; font-size: 4.1cqw; line-height: 1; display: block; }
 .stop span { font-size: 1.95cqw; color: var(--muted); }
 .stop .pg { font-family: var(--mono); font-size: 1.6cqw; color: var(--muted); }
@@ -137,7 +137,18 @@ const CSS = `.page {
 .ahead strong { font-family: var(--display); font-weight: 400; font-size: 3.4cqw; line-height: 1; }
 .ahead span { font-size: 1.8cqw; line-height: 1.3; }
 
-/* 08 Questions & Answers */
+/* 08 Interchange */
+.swap h3 { font-size: 7.4cqw; }
+.swap .stand { font-size: 2.3cqw; color: var(--muted); max-width: 90%; }
+.swap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.swap .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 0.25cqw solid var(--ink); }
+.swap .f { display: grid; gap: 0.6cqw; align-content: start; padding: 1.7cqw 2.4cqw 1.5cqw 0; border-bottom: 0.15cqw solid var(--rule); }
+.swap .f:nth-child(even) { padding-left: 2.6cqw; padding-right: 0; border-left: 0.15cqw solid var(--rule); }
+.swap .f .k { font-family: var(--mono); font-size: 1.45cqw; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c); }
+.swap .f b { font-family: var(--display); font-weight: 400; font-size: 3.4cqw; line-height: 1; }
+.swap .f p { font-size: 1.9cqw; line-height: 1.4; }
+
+/* 09 Questions & Answers */
 .qa h3 { font-size: 7.4cqw; }
 .qa .list { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); border-top: 0.25cqw solid var(--ink); }
 .qa .item { display: grid; grid-template-columns: 8cqw minmax(0, 1fr); gap: 0 2cqw; padding: 1.3cqw 0; border-bottom: 0.15cqw solid var(--rule); min-height: 0; }
@@ -147,7 +158,7 @@ const CSS = `.page {
 .qa .item p { font-size: 1.9cqw; line-height: 1.38; }
 .qa .who { font-family: var(--mono); font-size: 1.4cqw; color: var(--muted); }
 
-/* 09 Timeline */
+/* 10 Timeline */
 .timeline h3 { font-size: 7.4cqw; }
 .timeline .stand { font-size: 2.2cqw; color: var(--muted); max-width: 88%; }
 .tl { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); position: relative; border-top: 0.25cqw solid var(--ink); }
@@ -166,7 +177,7 @@ const CSS = `.page {
 .tl b { font-family: var(--display); font-weight: 400; font-size: 3.5cqw; line-height: 1; }
 .tl li > div > span:last-child { font-size: 1.85cqw; line-height: 1.32; color: var(--muted); }
 
-/* 10 Ledger Table */
+/* 11 Ledger Table */
 .ledger-pg h3 { font-size: 7.4cqw; }
 .ledger-pg table { width: 100%; border-collapse: collapse; }
 .ledger-pg th { font-family: var(--sans); font-weight: 600; font-size: 1.5cqw; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 0 1.5cqw 1cqw 0; border-bottom: 0.25cqw solid var(--ink); }
@@ -178,7 +189,7 @@ const CSS = `.page {
 .ledger-pg td.amt small { display: block; font-family: var(--mono); font-size: 1.35cqw; color: var(--muted); margin-top: 0.6cqw; }
 .ledger-pg .foot { margin-top: auto; font-size: 1.8cqw; color: var(--muted); border-top: 0.15cqw solid var(--rule); padding-top: 1.4cqw; }
 
-/* 11 Scoreboard */
+/* 12 Scoreboard */
 .score .ph { height: 40%; flex: none; position: relative; }
 .score .ph .cap { position: absolute; left: 1.2cqw; bottom: 1cqw; color: #fff; text-shadow: 0 0 0.6cqw rgba(0,0,0,0.75); font-size: 1.4cqw; }
 .score h3 { font-size: 7cqw; }
@@ -193,7 +204,7 @@ const CSS = `.page {
 .card .big .sc { font-size: 6.6cqw; color: var(--yellow); font-variant-numeric: tabular-nums; }
 .card .big span:last-child { text-align: right; }
 
-/* 12 Week Ahead */
+/* 13 Week Ahead */
 .week h3 { font-size: 7.4cqw; }
 .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 0.25cqw solid var(--ink); }
 .day { border-right: 0.15cqw solid var(--rule); padding: 1cqw 0.9cqw 1.2cqw; min-height: 22cqw; display: flex; flex-direction: column; gap: 0.7cqw; }
@@ -207,7 +218,7 @@ const CSS = `.page {
 .later b { font-family: var(--display); font-weight: 400; font-size: 3cqw; line-height: 1; display: block; }
 .later span { font-size: 1.85cqw; color: var(--muted); }
 
-/* 13 Reader's Page */
+/* 14 Reader's Page */
 .reader .top { height: 47%; flex: none; display: grid; grid-template-columns: 41% minmax(0, 1fr); gap: 3cqw; min-height: 0; }
 .reader .shot { margin: 0; display: flex; flex-direction: column; gap: 0.8cqw; min-height: 0; }
 .reader .shot img { flex: 1 1 auto; min-height: 0; }
@@ -226,12 +237,13 @@ const CSS = `.page {
 .reader .send b { font-family: var(--display); font-weight: 400; font-size: 3.2cqw; line-height: 1; }
 .reader .send span { font-size: 1.85cqw; line-height: 1.4; color: var(--muted); }
 
-/* 14 Sources & Credits */
+/* 15 Sources & Credits */
 .credits h3 { font-size: 7cqw; }
 .credits .cols { flex: 1; min-height: 0; columns: 2; column-gap: 3cqw; column-rule: 0.15cqw solid var(--rule); font-size: 1.62cqw; line-height: 1.38; }
 .credits .cols div { break-inside: avoid; margin-bottom: 1.5cqw; }
 .credits .cols b { font-family: var(--sans); font-weight: 600; font-size: 1.45cqw; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 0.3cqw; }
 .credits .made { border-top: 0.25cqw solid var(--ink); padding-top: 1.6cqw; font-size: 1.9cqw; line-height: 1.4; display: grid; gap: 0.8cqw; }`;
+
 
 const page = (id: string, title: string, html: string): StudioPage => ({ id: `city-${id}`, title, width: 780, height: 1040, css: CSS, html });
 
@@ -239,70 +251,71 @@ export const CITY_EDITION: StudioSection = {
   id: "city-edition",
   group: "issues",
   name: "City Edition · Bengaluru",
-  blurb: "A week in one city on fourteen pages: front page, contents by section, the numbers, briefs, two reports side by side, the metro line, rider questions answered, a timeline of dates, the ledger, the scoreboard and the week ahead",
+  blurb: "An edition of one city on fifteen pages: front page, contents by section, the numbers, briefs, two reports side by side, the metro line, an interchange drawn out, rider questions answered, a timeline of dates, the ledger, the scoreboard and the week ahead",
   pages: [
     page("01-front", "City Front", `<div class="page front"><div class="pin">
-<div class="mast"><h3 class="hd">Atlas <i>Bengaluru</i></h3><div class="date">Week 46<br>9–11 Nov 2026<br>Issue 03</div></div>
+<div class="mast"><h3 class="hd">Atlas <i>Bengaluru</i></h3><div class="date">Week 47<br>12–15 Nov 2026<br>Issue 04</div></div>
 <div class="lines" aria-hidden="true"><i style="background:var(--purple)"></i><i style="background:var(--green)"></i><i style="background:var(--yellow)"></i><i style="background:var(--pink)"></i><i style="background:var(--blue)"></i></div>
 <div class="hero"><img class="photo" src="%photo:blr-viaduct%" alt="Traffic under the Namma Metro viaduct near Jayadeva Hospital"><span class="cap">Namma Metro viaduct near Jayadeva Hospital · Gpkp, CC BY-SA 4.0</span></div>
 <div class="lead">
-<h4 class="hd">A metro line gets its opening day</h4>
-<p>Friday 13 November is the day set to inaugurate the Pink Line's elevated stretch, with passengers expected from Saturday morning.</p>
+<h4 class="hd">The Pink Line's first weekend</h4>
+<p>Inaugurated on Friday 13 November, open to riders from Saturday. Reports put the first day at 33,409 riders.</p>
 </div>
 <div class="teasers">
 <div style="--c:var(--pink)"><b>Friday, then Saturday</b><span>p. 04</span></div>
-<div style="--c:var(--pink)"><b>Six rider questions</b><span>p. 08</span></div>
-<div style="--c:var(--yellow)"><b>Home after the break</b><span>p. 11</span></div>
+<div style="--c:var(--yellow)"><b>Where two lines meet</b><span>p. 08</span></div>
+<div style="--c:var(--green)"><b>Friday night at the Kanteerava</b><span>p. 12</span></div>
 </div>
 </div><div class="folio"><span>Atlas Bengaluru</span><span>01</span></div></div>`),
     page("02-index", "Section Index", `<div class="page index"><div class="pin">
 <span class="lbl">In this issue</span>
 <div class="route">
-<div class="stop" style="--c:var(--purple)"><span class="dot">03</span><div><b>By the numbers</b><span>The week in six figures</span></div><span class="pg">p. 03</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">04</span><div><b>Friday, then Saturday</b><span>The Pink Line's opening</span></div><span class="pg">p. 04</span></div>
-<div class="stop" style="--c:var(--green)"><span class="dot">05</span><div><b>City desk</b><span>Ward One, the football break, the summit</span></div><span class="pg">p. 05</span></div>
+<div class="stop" style="--c:var(--purple)"><span class="dot">03</span><div><b>By the numbers</b><span>The edition in six figures</span></div><span class="pg">p. 03</span></div>
+<div class="stop" style="--c:var(--pink)"><span class="dot">04</span><div><b>Friday, then Saturday</b><span>The Pink Line's first weekend</span></div><span class="pg">p. 04</span></div>
+<div class="stop" style="--c:var(--green)"><span class="dot">05</span><div><b>City desk</b><span>Feeder buses, the summit, a fee cut</span></div><span class="pg">p. 05</span></div>
 <div class="stop" style="--c:var(--pink)"><span class="dot">06</span><div><b>Two reports</b><span>A match day and a summit venue</span></div><span class="pg">p. 06</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">07</span><div><b>On the line</b><span>Six stations, 7.5 km</span></div><span class="pg">p. 07</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">08</span><div><b>Rider questions</b><span>Six answers before the first ride</span></div><span class="pg">p. 08</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">09</span><div><b>Timeline</b><span>Seven dates for one line</span></div><span class="pg">p. 09</span></div>
-<div class="stop" style="--c:var(--blue)"><span class="dot">10</span><div><b>The ledger</b><span>Bengaluru companies and their money</span></div><span class="pg">p. 10</span></div>
-<div class="stop" style="--c:var(--yellow)"><span class="dot">11</span><div><b>Field &amp; ground</b><span>Bengaluru FC, back at home</span></div><span class="pg">p. 11</span></div>
-<div class="stop" style="--c:var(--purple)"><span class="dot">12</span><div><b>The week ahead</b><span>Opening, the summit and later</span></div><span class="pg">p. 12</span></div>
-<div class="stop" style="--c:var(--purple)"><span class="dot">13</span><div><b>Reader's page</b><span>Your Bengaluru, in your words</span></div><span class="pg">p. 13</span></div>
+<div class="stop" style="--c:var(--pink)"><span class="dot">07</span><div><b>On the line</b><span>Six stations, 7.5 km, now open</span></div><span class="pg">p. 07</span></div>
+<div class="stop" style="--c:var(--yellow)"><span class="dot">08</span><div><b>Where two lines meet</b><span>Jayadeva Hospital, drawn out</span></div><span class="pg">p. 08</span></div>
+<div class="stop" style="--c:var(--pink)"><span class="dot">09</span><div><b>Rider questions</b><span>Six answers for the first week</span></div><span class="pg">p. 09</span></div>
+<div class="stop" style="--c:var(--pink)"><span class="dot">10</span><div><b>Timeline</b><span>Seven dates for one line</span></div><span class="pg">p. 10</span></div>
+<div class="stop" style="--c:var(--blue)"><span class="dot">11</span><div><b>The ledger</b><span>A quiet week for Bengaluru rounds</span></div><span class="pg">p. 11</span></div>
+<div class="stop" style="--c:var(--green)"><span class="dot">12</span><div><b>Field &amp; ground</b><span>Bengaluru FC, back at home</span></div><span class="pg">p. 12</span></div>
+<div class="stop" style="--c:var(--purple)"><span class="dot">13</span><div><b>The week ahead</b><span>The summit, a home match and later</span></div><span class="pg">p. 13</span></div>
+<div class="stop" style="--c:var(--purple)"><span class="dot">14</span><div><b>Reader's page</b><span>Your Bengaluru, in your words</span></div><span class="pg">p. 14</span></div>
 </div>
 <div class="how"><span>Every item ends with its source. <span class="flag">2 reports</span> marks a date or figure the papers disagree on.</span></div>
 </div><div class="folio"><span>Contents</span><span>02</span></div></div>`),
     page("03-numbers", "By the Numbers", `<div class="page numbers"><div class="pin">
 <span class="lbl">By the numbers</span>
-<h3 class="hd" style="font-size:7.4cqw">The week, counted</h3>
+<h3 class="hd" style="font-size:7.4cqw">The edition, counted</h3>
 <div class="grid">
-<div class="n" style="--c:var(--pink)"><strong>13 Nov</strong><p>The day set for the Prime Minister to inaugurate the Pink Line's elevated stretch.</p><span class="src">Construction World; Deccan Herald</span></div>
-<div class="n" style="--c:var(--pink)"><strong>100 km</strong><p>The length Namma Metro passes once the new stretch joins the network.</p><span class="src">NewsBytes</span></div>
-<div class="n" style="--c:var(--pink)"><strong>8 min</strong><p>The gap between trains reported for the first days of service.</p><span class="src">The Hans India</span></div>
-<div class="n" style="--c:var(--pink)"><strong>5 trains</strong><p>Allocated to the line, as reported: four in service and one on standby.</p><span class="src">The Hans India</span></div>
+<div class="n" style="--c:var(--pink)"><strong>33,409</strong><p>People reported riding the Pink Line on its first day of service, Saturday 14 November.</p><span class="src">Inshorts; News Karnataka, 15 Nov</span></div>
+<div class="n" style="--c:var(--pink)"><strong>7.5 km</strong><p>The elevated stretch that opened, with six stations from Kalena Agrahara to Tavarekere.</p><span class="src">Construction World; OneIndia</span></div>
+<div class="n" style="--c:var(--pink)"><strong>100 km</strong><p>The length Namma Metro passes with the new stretch, as reported before the opening.</p><span class="src">NewsBytes</span></div>
+<div class="n" style="--c:var(--blue)"><strong>17–19 Nov</strong><p>Dates of the 29th Bengaluru Tech Summit, themed "AI &amp; Beyond".</p><span class="src">BioSpectrum; YourStory</span></div>
+<div class="n" style="--c:var(--green)"><strong>20 Nov</strong><p>Bengaluru FC at home to Mumbai City FC, 7:30 pm, in two listings. Deccan Herald had 19 Nov.</p><span class="src">District; Khel Now; Deccan Herald</span></div>
 <div class="n" style="--c:var(--green)"><strong>369</strong><p>Wards across the five city corporations, since the final delimitation of 19 November 2025.</p><span class="src">ThePrint (PTI), 28 Oct; South First</span></div>
-<div class="n" style="--c:var(--blue)"><strong>$2.7M</strong><p>Pre-seed round for Venomics AI, a Bengaluru biotech spun out of IISc.</p><span class="src">YourStory, 5 Nov</span></div>
 </div>
 </div><div class="folio"><span>By the numbers</span><span>03</span></div></div>`),
     page("04-lead", "Broadsheet Lead", `<div class="page lead-pg"><div class="pin">
 <span class="lbl c" style="--c:var(--pink)">Friday, then Saturday</span>
-<h3 class="hd">The Pink Line gets its day</h3>
-<p class="stand">After months of moved dates, the elevated stretch has an inauguration day, and passengers a likely first morning.</p>
+<h3 class="hd">The Pink Line's first weekend</h3>
+<p class="stand">The line was inaugurated on Friday and carried its first riders on Saturday. Here is what the weekend's reports say, and what they leave out.</p>
 <div class="body">
 <div class="ph"><img class="photo" src="%photo:blr-pink-line%" alt="Pink Line route map above the doors inside a metro coach"><span class="cap">The Pink Line map inside a coach · Mallikarjunasj, CC BY-SA 3.0</span></div>
 <div class="col c1">
-<p>Namma Metro's elevated Pink Line stretch, 7.5 kilometres from Kalena Agrahara to Tavarekere, is to be inaugurated on Friday 13 November. Development Minister Krishna Byre Gowda has said it opens to the public from 6 am the next day.</p>
-<p>The Chief Minister, D K Shivakumar, and the Governor, Sudha Yadav, are expected at the ceremony. MP Tejasvi Surya has said the Prime Minister will ride from Tavarekere to IIM-Bilekahalli station.</p>
-<p class="pull">Inauguration Friday. Passengers Saturday.</p>
+<p>Prime Minister Narendra Modi inaugurated Namma Metro's elevated Pink Line stretch on Friday 13 November and rode a train with Chief Minister D K Shivakumar, Deccan Herald and News24 report. The 7.5-kilometre stretch has six stations, from Kalena Agrahara to Tavarekere.</p>
+<p>Public service began the next morning, Saturday 14 November, as Minister Krishna Byre Gowda had said it would.</p>
+<p class="pull">33,409 riders on the first day.</p>
 </div>
 <div class="col c2">
-<p>The six stations are Kalena Agrahara, Hulimavu, IIM-B, JP Nagar 4th Phase, Jayadeva Hospital and Tavarekere. The stretch takes the network past 100 kilometres and adds an interchange with the Yellow Line.</p>
-<p>Trains are reported to run every eight minutes at first, with five allocated to the line. Fares have not been announced.</p>
+<p>That is the first-day figure given by Inshorts and News Karnataka. Jayadeva Hospital, where the line meets the Yellow Line, saw the most people. A BMRCL official called the numbers encouraging and said the weekend would show more.</p>
+<p>The same reports expect ridership to settle towards the end of November.</p>
 </div>
 <div class="col c3">
-<p>The date has moved before: 15 August, then September, then 13 or 15 November in last week's reports. Page 09 sets them in order.</p>
-<p>One caution. The 13 November date rests on ministers' statements, and we found no official BMRCL notice for it.</p>
-<p class="src">Construction World · Deccan Herald · The Hans India · OneIndia · NewsBytes · Swarajya</p>
+<p>The Federal's first-day report found gaps. Riders on Bannerghatta Road said they save time, and asked for shorter waits between trains and for feeder buses before Monday's rush.</p>
+<p>One caution. We read several of these reports through search summaries, not whole articles, and found no fare. Check BMRCL for fares and timings.</p>
+<p class="src">Deccan Herald · News24 · Inshorts · News Karnataka · The Federal · The Week (PTI)</p>
 </div>
 </div>
 </div><div class="folio"><span>Feature</span><span>04</span></div></div>`),
@@ -310,21 +323,21 @@ export const CITY_EDITION: StudioSection = {
 <span class="lbl c" style="--c:var(--green)">City desk</span>
 <h3 class="hd">Around town</h3>
 <div class="grid">
-<div class="brief"><span class="where">Five corporations</span><b>A month for one ward each</b><p>The Greater Bengaluru Authority began a month-long Ward One campaign on 1 November. One ward from each division gets several departments working on roads, potholes and sanitation. We found no progress report yet.</p><span class="src">ThePrint (PTI), 28 Oct</span></div>
-<div class="brief"><span class="where">Football</span><b>The league takes a break</b><p>Khel Now reports no Indian Super League games between 7 and 20 November, for the international window. Bengaluru FC's next match is at home to Mumbai City. See page 11.</p><span class="src">Khel Now</span></div>
-<div class="brief"><span class="where">Tech</span><b>The summit, a week out</b><p>The 29th Bengaluru Tech Summit runs 17 to 19 November, themed "AI &amp; Beyond", with the Karnataka government as host. BioSpectrum and YourStory give the dates. Page 06 covers the venue.</p><span class="src">BioSpectrum · YourStory · South First</span></div>
-<div class="brief"><span class="where">Network</span><b>Past 100 kilometres</b><p>Once the Pink stretch opens, Namma Metro passes 100 km of line, NewsBytes reports. Pictured is KR Market, an existing station.</p><div class="shot"><img class="photo" src="%photo:blr-kr-market%" alt="Krishna Rajendra Market metro station entrance"><span class="cap">KR Market station · Gpkp, CC BY-SA 4.0</span></div><span class="src">NewsBytes</span></div>
+<div class="brief"><span class="where">Network</span><b>Past 100 kilometres</b><p>With the Pink stretch open, Namma Metro passes 100 km of line, NewsBytes reported ahead of the opening. Pictured is KR Market, an existing station.</p><div class="shot"><img class="photo" src="%photo:blr-kr-market%" alt="Krishna Rajendra Market metro station entrance"><span class="cap">KR Market station · Gpkp, CC BY-SA 4.0</span></div><span class="src">NewsBytes</span></div>
+<div class="brief"><span class="where">Buses</span><b>Feeders for the Pink Line</b><p>BMTC has proposed five dedicated feeder routes to Pink Line stations. Three existing feeder services already reach four of them: Jayadeva Hospital, IIMB, JP Nagar 4th Phase and Hulimavu. We could not confirm which have started.</p><span class="src">Swarajya</span></div>
+<div class="brief"><span class="where">Tech</span><b>The summit, a day away</b><p>The 29th Bengaluru Tech Summit runs 17 to 19 November, themed "AI &amp; Beyond", with the Karnataka government as host. Page 06 covers the venue.</p><span class="src">BioSpectrum · YourStory · South First</span></div>
+<div class="brief"><span class="where">Housing</span><b>A fee cut for unauthorised homes</b><p>A news page dated 9 November reports Chief Minister D K Shivakumar announcing a 50 per cent cut in the BDA's regularisation fees. We could not open the story, so no conditions are printed.</p><span class="src">NewKerala, 9 Nov</span></div>
 </div>
 </div><div class="folio"><span>City desk</span><span>05</span></div></div>`),
     page("06-two-reports", "Two Reports", `<div class="page two"><div class="pin">
 <div class="band"><img class="photo" src="%photo:blr-town-hall%" alt="Sir Puttanna Chetty Town Hall, Bengaluru"><span class="cap">Town Hall · Harvinder Chandigarh, CC BY 4.0</span></div>
 <h3 class="hd">A match day and a venue</h3>
 <div class="claim">
-<p class="what"><b>Bengaluru FC v Mumbai City FC.</b> Both outlets have it at the Sree Kanteerava Stadium, but they differ on the day. Khel Now's fixture table also gives a 7:30 pm start.</p>
+<p class="what"><b>Bengaluru FC v Mumbai City FC.</b> Everyone has it at the Sree Kanteerava Stadium, but not on the same day. District's listing gives 7:30 pm.</p>
 <div class="vs">
 <div class="side"><strong>19 Nov</strong><span>match day · Deccan Herald</span></div>
 <span class="or">or</span>
-<div class="side"><strong>20 Nov</strong><span>match day · Khel Now</span></div>
+<div class="side"><strong>20 Nov</strong><span>match day · Khel Now, District</span></div>
 </div>
 </div>
 <div class="claim">
@@ -339,7 +352,7 @@ export const CITY_EDITION: StudioSection = {
 </div><div class="folio"><span>Two reports</span><span>06</span></div></div>`),
     page("07-line", "The Line", `<div class="page line-pg"><div class="pin">
 <span class="lbl c" style="--c:var(--pink)">On the line</span>
-<h3 class="hd">Six stations, 7.5 km</h3>
+<h3 class="hd">Six stations, 7.5 km, now open</h3>
 <svg viewBox="0 0 400 96" role="img" aria-label="The elevated Pink Line, not to scale: Kalena Agrahara, Hulimavu, IIM-B, JP Nagar 4th Phase, Jayadeva Hospital and Tavarekere">
 <line x1="14" y1="44" x2="386" y2="44" stroke="#cf437d" stroke-width="7" stroke-linecap="round"/>
 <g fill="#fdfdfc" stroke="#cf437d" stroke-width="3.5">
@@ -356,73 +369,104 @@ export const CITY_EDITION: StudioSection = {
 <text x="200" y="92" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="8.5" fill="#6b6672">7.5 KM · 6 STATIONS · SPACING NOT TO SCALE</text>
 </svg>
 <div class="blk">
-<b>What opens, and what does not</b>
-<p>The elevated section comes first and takes the network past 100 kilometres, with an interchange with the Yellow Line. The underground Pink stretch, Dairy Circle to Nagawara, is a separate job. Swarajya reported a May 2027 target for it and for the Blue Line along the Outer Ring Road.</p>
+<b>What opened, and what has not</b>
+<p>The elevated section is the first part of the Pink Line to carry riders, and it takes the network past 100 kilometres. The underground stretch, Dairy Circle to Nagawara, is a separate job. Swarajya reported a May 2027 target for it and for the Blue Line along the Outer Ring Road.</p>
 </div>
 <div class="blk">
-<b>Three dates to watch</b>
+<b>Three dates, now kept</b>
 <div class="ahead">
-<div style="--c:var(--pink)"><strong>28 Oct</strong><span>Safety commissioner clears the elevated stretch</span></div>
-<div style="--c:var(--pink)"><strong>Fri 13 Nov</strong><span>Inauguration, with the Prime Minister expected</span></div>
-<div style="--c:var(--blue)"><strong>Sat 14 Nov</strong><span>Public service from 6 am, per Minister Gowda</span></div>
+<div style="--c:var(--pink)"><strong>Fri 13 Nov</strong><span>Inauguration, with a ride for the Prime Minister and Chief Minister</span></div>
+<div style="--c:var(--pink)"><strong>Sat 14 Nov</strong><span>Public service begins; 33,409 riders reported</span></div>
+<div style="--c:var(--blue)"><strong>Mon 16 Nov</strong><span>The first weekday rush, which riders were waiting to see</span></div>
 </div>
 </div>
 <div class="blk">
 <b>What the reports did not say</b>
-<p>Fares and the last train of the day were not in anything we found, so none are printed. We will add them when BMRCL publishes them.</p>
+<p>Fares and the last train of the day were not in anything we found, so none are printed. Riders asked for shorter waits between trains; BMRCL had not published new gaps in anything we could read.</p>
 </div>
-<p class="src">Swarajya · Construction World · NewsBytes · The Hans India · Deccan Herald</p>
+<p class="src">Deccan Herald · The Federal · Inshorts · News Karnataka · Swarajya · NewsBytes</p>
 </div><div class="folio"><span>On the line</span><span>07</span></div></div>`),
-    page("08-questions", "Questions & Answers", `<div class="page qa"><div class="pin">
-<span class="lbl c" style="--c:var(--pink)">Rider questions</span>
-<h3 class="hd">Six questions before the first ride</h3>
-<div class="list">
-<div class="item" style="--c:var(--pink)"><span class="q">1</span><div><b>When can I ride?</b><p>The inauguration is set for Friday 13 November. Minister Krishna Byre Gowda said passengers can board from 6 am on Saturday.</p><span class="who">The Hans India · Construction World</span></div></div>
-<div class="item" style="--c:var(--purple)"><span class="q">2</span><div><b>Where does it go?</b><p>Six elevated stations over 7.5 km: Kalena Agrahara, Hulimavu, IIM-B, JP Nagar 4th Phase, Jayadeva Hospital and Tavarekere.</p><span class="who">Construction World · OneIndia</span></div></div>
-<div class="item" style="--c:var(--green)"><span class="q">3</span><div><b>How often will trains run?</b><p>Every eight minutes at first, as reported, with five trains allocated: four running and one on standby.</p><span class="who">The Hans India</span></div></div>
-<div class="item" style="--c:var(--yellow)"><span class="q">4</span><div><b>What will it cost?</b><p>Not announced in anything we found, so no fare is printed. Check BMRCL's notices before you travel.</p><span class="who">Not yet published</span></div></div>
-<div class="item" style="--c:var(--blue)"><span class="q">5</span><div><b>Can I change to another line?</b><p>Reports say the stretch has an interchange with the Yellow Line. The station was not named in what we found.</p><span class="who">NewsBytes</span></div></div>
-<div class="item" style="--c:var(--pink)"><span class="q">6</span><div><b>What about the underground part?</b><p>Dairy Circle to Nagawara is a separate job. Swarajya reported a May 2027 target for it.</p><span class="who">Swarajya</span></div></div>
+    page("08-interchange", "Interchange Diagram", `<div class="page swap"><div class="pin">
+<span class="lbl c" style="--c:var(--yellow)">Where two lines meet</span>
+<h3 class="hd">Changing at Jayadeva Hospital</h3>
+<p class="stand">The new Pink Line crosses the Yellow Line at one station, and that station was the busiest of the six on Saturday.</p>
+<svg viewBox="0 0 400 232" role="img" aria-label="A diagram, not to scale, of the Yellow Line running across and the Pink Line running up, crossing at Jayadeva Hospital">
+<line x1="14" y1="96" x2="386" y2="96" stroke="#c99a06" stroke-width="7" stroke-linecap="round"/>
+<line x1="200" y1="24" x2="200" y2="206" stroke="#cf437d" stroke-width="7" stroke-linecap="round"/>
+<g fill="#fdfdfc" stroke="#c99a06" stroke-width="3.5"><circle cx="30" cy="96" r="6"/><circle cx="110" cy="96" r="6"/><circle cx="296" cy="96" r="6"/></g>
+<g fill="#fdfdfc" stroke="#cf437d" stroke-width="3.5"><circle cx="200" cy="24" r="6"/><circle cx="200" cy="130" r="6"/><circle cx="200" cy="156" r="6"/><circle cx="200" cy="182" r="6"/><circle cx="200" cy="206" r="6"/></g>
+<circle cx="200" cy="96" r="12" fill="#fdfdfc" stroke="#1b191e" stroke-width="3.5"/>
+<g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="600" fill="#1b191e">
+<text x="30" y="78" text-anchor="middle">RV Road</text>
+<text x="110" y="78" text-anchor="middle">Ragigudda</text>
+<text x="296" y="78" text-anchor="middle">BTM Layout</text>
+<text x="216" y="74">Jayadeva Hospital</text>
+<text x="214" y="28">Tavarekere</text>
+<text x="214" y="134">JP Nagar 4th Phase</text>
+<text x="214" y="160">IIM-B</text>
+<text x="214" y="186">Hulimavu</text>
+<text x="214" y="210">Kalena Agrahara</text>
+<text x="386" y="116" text-anchor="end">towards Electronic City</text>
+</g>
+<text x="14" y="228" font-family="ui-monospace, Menlo, monospace" font-size="8.5" fill="#6b6672">YELLOW ACROSS · PINK UP · SPACING AND DIRECTION NOT TO SCALE</text>
+</svg>
+<div class="facts">
+<div class="f" style="--c:var(--pink)"><span class="k">The station</span><b>Two lines, one stop</b><p>Jayadeva Hospital is a multi-tier elevated station shared by the Yellow and Pink lines, OneIndia and Swarajya reported.</p></div>
+<div class="f" style="--c:var(--purple)"><span class="k">The change</span><b>Towards Electronic City</b><p>Bannerghatta Road riders can switch here to the Yellow Line for Electronic City.</p></div>
+<div class="f" style="--c:var(--green)"><span class="k">The rank</span><b>The third of its kind</b><p>The Federal described it, before the opening, as the city's third interchange after Majestic and RV Road.</p></div>
+<div class="f" style="--c:var(--pink)"><span class="k">Day one</span><b>The most footfall</b><p>Jayadeva Hospital recorded the line's highest footfall on Saturday. The Federal found the station less ready than the crowd.</p></div>
 </div>
-</div><div class="folio"><span>Rider questions</span><span>08</span></div></div>`),
-    page("09-timeline", "Timeline", `<div class="page timeline"><div class="pin">
+<p class="src">OneIndia · Swarajya · The Federal · News Karnataka. Platform walking times were not in any report we found.</p>
+</div><div class="folio"><span>Interchange</span><span>08</span></div></div>`),
+    page("09-questions", "Questions & Answers", `<div class="page qa"><div class="pin">
+<span class="lbl c" style="--c:var(--pink)">Rider questions</span>
+<h3 class="hd">Six questions for the first week</h3>
+<div class="list">
+<div class="item" style="--c:var(--pink)"><span class="q">1</span><div><b>Is it open?</b><p>Yes. The line was inaugurated on Friday 13 November and public service began on Saturday 14 November.</p><span class="who">Deccan Herald · The Week (PTI)</span></div></div>
+<div class="item" style="--c:var(--purple)"><span class="q">2</span><div><b>Where does it go?</b><p>Six elevated stations over 7.5 km: Kalena Agrahara, Hulimavu, IIM-B, JP Nagar 4th Phase, Jayadeva Hospital and Tavarekere.</p><span class="who">Construction World · OneIndia</span></div></div>
+<div class="item" style="--c:var(--green)"><span class="q">3</span><div><b>How many people rode?</b><p>33,409 on the first day, as reported. A BMRCL official said the weekend would show more. Jayadeva Hospital was the busiest.</p><span class="who">Inshorts · News Karnataka</span></div></div>
+<div class="item" style="--c:var(--yellow)"><span class="q">4</span><div><b>What will it cost?</b><p>Not in anything we found, so no fare is printed. Check BMRCL's notices before you travel.</p><span class="who">Not yet published</span></div></div>
+<div class="item" style="--c:var(--blue)"><span class="q">5</span><div><b>Can I change to another line?</b><p>Yes, at Jayadeva Hospital, where the Pink Line meets the Yellow Line towards Electronic City. Page 08 draws it.</p><span class="who">OneIndia · Swarajya</span></div></div>
+<div class="item" style="--c:var(--pink)"><span class="q">6</span><div><b>How do I get to a station?</b><p>BMTC has proposed five feeder routes, and three existing ones already reach four stations. Riders asked for more.</p><span class="who">Swarajya · The Federal</span></div></div>
+</div>
+</div><div class="folio"><span>Rider questions</span><span>09</span></div></div>`),
+    page("10-timeline", "Timeline", `<div class="page timeline"><div class="pin">
 <span class="lbl c" style="--c:var(--pink)">Timeline</span>
 <h3 class="hd">Seven dates for one line</h3>
-<p class="stand">Each date below was reported for the Pink Line. Three were missed and one was met. Two are announced and one is a target.</p>
+<p class="stand">Each date below was reported for the Pink Line. Three were missed, three were kept, and one is a target.</p>
 <ol class="tl">
 <li class="miss"><time>Mar 2026</time><i class="nd"></i><div><span class="st">Missed</span><b>The first target</b><span>Deccan Herald reported the elevated stretch to open in March 2026 and the underground stretch in September.</span></div></li>
 <li class="miss"><time>15 Aug 2026</time><i class="nd"></i><div><span class="st">Missed</span><b>An Independence Day launch</b><span>Business Today reported the line aiming for 15 August, in a piece dated 10 August.</span></div></li>
 <li class="miss"><time>Sep 2026</time><i class="nd"></i><div><span class="st">Missed</span><b>A September opening</b><span>Swarajya and Construction World reported the 7.5-kilometre stretch ready for a September launch.</span></div></li>
 <li class="done"><time>28 Oct 2026</time><i class="nd"></i><div><span class="st">Done</span><b>Safety clearance</b><span>The Commissioner of Metro Railway Safety cleared the elevated stretch. Passengers still waited.</span></div></li>
-<li class="next"><time>13 Nov 2026</time><i class="nd"></i><div><span class="st">Announced</span><b>Inauguration day</b><span>A Friday. Construction World, The Hans India and Deccan Herald name it, replacing the 15 November reported earlier.</span></div></li>
-<li class="next"><time>14 Nov 2026</time><i class="nd"></i><div><span class="st">Announced</span><b>Public service</b><span>A Saturday. Minister Gowda said passengers can board from 6 am. We found no BMRCL notice yet.</span></div></li>
+<li class="done"><time>13 Nov 2026</time><i class="nd"></i><div><span class="st">Done</span><b>Inauguration day</b><span>A Friday. The Prime Minister rode with the Chief Minister, Deccan Herald reports. An earlier 15 November was dropped.</span></div></li>
+<li class="done"><time>14 Nov 2026</time><i class="nd"></i><div><span class="st">Done</span><b>Public service</b><span>A Saturday. Inshorts and News Karnataka report 33,409 riders on the first day.</span></div></li>
 <li class="far"><time>May 2027</time><i class="nd"></i><div><span class="st">Target</span><b>The underground stretch</b><span>Swarajya reports May 2027 for the underground Pink Line and the Blue Line on the Outer Ring Road.</span></div></li>
 </ol>
-<p class="src">Dates are as reported, not an official timetable. Deccan Herald · Business Today · Swarajya · Construction World · The Hans India</p>
-</div><div class="folio"><span>Timeline</span><span>09</span></div></div>`),
-    page("10-ledger", "Ledger Table", `<div class="page ledger-pg"><div class="pin">
+<p class="src">Dates are as reported, not an official timetable. Deccan Herald · Business Today · Swarajya · Construction World · Inshorts · News Karnataka</p>
+</div><div class="folio"><span>Timeline</span><span>10</span></div></div>`),
+    page("11-ledger", "Ledger Table", `<div class="page ledger-pg"><div class="pin">
 <span class="lbl c" style="--c:var(--blue)">The ledger</span>
-<h3 class="hd">Who raised, and how much</h3>
+<h3 class="hd">A quiet week for rounds</h3>
 <table>
 <thead><tr><th scope="col">Company</th><th scope="col">What happened</th><th scope="col">Amount</th></tr></thead>
 <tbody>
-<tr><td class="co"><b>Venomics AI</b><span>Biotech, IISc spin-out</span></td><td>Pre-seed round for a Bengaluru biotechnology startup spun out of the Indian Institute of Science, reported in YourStory's roundup of 5 November.</td><td class="amt">$2.7M<small>YourStory, 5 Nov</small></td></tr>
-<tr><td class="co"><b>ECOPATH</b><span>Climate tech</span></td><td>Seed round from Social Alpha and Gemcorp for a Bengaluru climate-tech startup, reported in YourStory's roundup of 3 November.</td><td class="amt">₹2.25 cr<small>YourStory, 3 Nov</small></td></tr>
-<tr><td class="co"><b>Bengaluru</b><span>Jan to Sep 2026</span></td><td>The city drew about $4.4 billion in startup funding in the first nine months of the year, as the Economic Times reported and Digg relayed.</td><td class="amt">$4.4B<small>Economic Times, via Digg</small></td></tr>
+<tr><td class="co"><b>Gnani.ai</b><span>Voice AI, Series B</span></td><td>The outlets give different sizes for the same round, led by Aavishkaar Capital. NewsBytes says ₹68 crore. Business Today, on 31 March, says $10 million. It is not new this week; we print it to show the gap.</td><td class="amt">₹68 cr or $10M<small>NewsBytes; Business Today</small></td></tr>
+<tr><td class="co"><b>Bengaluru</b><span>Jan to Sep 2026</span></td><td>The city drew about $4.4 billion in startup funding in the first nine months of the year, as the Economic Times reported and Digg relayed. Printed last edition, kept here as the running total.</td><td class="amt">$4.4B<small>Economic Times, via Digg</small></td></tr>
 </tbody>
 </table>
-<p class="foot">Left out: altM's $10.3M round, printed last week, and Ringg AI's $10M extension, which was reported in August. India-wide October funding, $581 million per YourStory Research, is not a Bengaluru figure.</p>
-</div><div class="folio"><span>The ledger</span><span>10</span></div></div>`),
-    page("11-scoreboard", "Scoreboard", `<div class="page score"><div class="pin">
+<p class="foot">We found no Bengaluru-based round dated 12 to 15 November that an outlet confirmed. PowerUp Money ($10M) and The Croffle Guys (₹14 crore) are in YourStory's 3 November roundup, but we could not confirm they are Bengaluru-based, so they are left out.</p>
+</div><div class="folio"><span>The ledger</span><span>11</span></div></div>`),
+    page("12-scoreboard", "Scoreboard", `<div class="page score"><div class="pin">
 <div class="ph"><img class="photo" src="%photo:blr-chinnaswamy%" alt="M. Chinnaswamy Stadium from the stands"><span class="cap">The Chinnaswamy, home ground of RCB · Visdaviva, CC BY-SA 3.0</span></div>
 <span class="lbl c" style="--c:var(--yellow)">Field &amp; ground</span>
-<h3 class="hd">Home after the break</h3>
+<h3 class="hd">Friday night at the Kanteerava</h3>
 <div class="card">
 <div class="top"><span>Indian Super League</span><span>Next match</span></div>
 <div class="rows">
 <div class="row"><span>Fixture</span><span>Bengaluru FC v Mumbai City FC</span></div>
 <div class="row"><span>Ground</span><span>Sree Kanteerava Stadium</span></div>
-<div class="row"><span>Day</span><span>19 or 20 Nov, the outlets differ</span></div>
+<div class="row"><span>Day</span><span>Fri 20 Nov, 7:30 pm, per District; Deccan Herald had 19 Nov</span></div>
 <div class="row"><span>The break</span><span>No league games 7 to 20 Nov, per Khel Now</span></div>
 </div>
 </div>
@@ -434,29 +478,29 @@ export const CITY_EDITION: StudioSection = {
 <div class="row"><span>6 Nov</span><span>Won 2–1 at FC Goa, in stoppage time</span></div>
 </div>
 </div>
-<p class="src">Khel Now · Devdiscourse · Mykhel. We left out a 17 October result from a fixtures page that mixed seasons.</p>
-</div><div class="folio"><span>Field &amp; ground</span><span>11</span></div></div>`),
-    page("12-week-ahead", "Week Ahead", `<div class="page week"><div class="pin">
+<p class="src">Khel Now · District · Deccan Herald · Devdiscourse · Mykhel. No match was played in this edition's window.</p>
+</div><div class="folio"><span>Field &amp; ground</span><span>12</span></div></div>`),
+    page("13-week-ahead", "Week Ahead", `<div class="page week"><div class="pin">
 <span class="lbl c" style="--c:var(--purple)">The week ahead</span>
-<h3 class="hd">Opening week, and after</h3>
+<h3 class="hd">The summit, and a home match</h3>
 <div class="days">
-<div class="day"><span class="dn">Thu</span><span class="dd">12</span><span class="ev" style="--c:var(--purple)">This edition</span></div>
-<div class="day"><span class="dn">Fri</span><span class="dd">13</span><span class="ev" style="--c:var(--pink)">Pink Line inaugurated</span></div>
-<div class="day"><span class="dn">Sat</span><span class="dd">14</span><span class="ev" style="--c:var(--pink)">Riders from 6 am</span></div>
-<div class="day"><span class="dn">Sun</span><span class="dd">15</span><span class="ev" style="--c:var(--purple)">Reader's page deadline</span></div>
-<div class="day"><span class="dn">Mon</span><span class="dd">16</span><span class="ev" style="--c:var(--purple)">Next edition</span></div>
+<div class="day"><span class="dn">Mon</span><span class="dd">16</span><span class="ev" style="--c:var(--pink)">First weekday on the Pink Line</span></div>
 <div class="day"><span class="dn">Tue</span><span class="dd">17</span><span class="ev" style="--c:var(--blue)">Tech Summit opens</span></div>
-<div class="day"><span class="dn">Wed</span><span class="dd">18</span><span class="ev" style="--c:var(--blue)">Summit, day two</span></div>
+<div class="day"><span class="dn">Wed</span><span class="dd">18</span><span class="ev" style="--c:var(--purple)">Reader's page deadline</span></div>
+<div class="day"><span class="dn">Thu</span><span class="dd">19</span><span class="ev" style="--c:var(--blue)">Summit's last day</span><span class="ev" style="--c:var(--purple)">Next edition</span></div>
+<div class="day"><span class="dn">Fri</span><span class="dd">20</span><span class="ev" style="--c:var(--green)">Bengaluru FC at home, 7:30 pm</span></div>
+<div class="day"><span class="dn">Sat</span><span class="dd">21</span><span class="ev" style="--c:var(--muted)">Nothing verified</span></div>
+<div class="day"><span class="dn">Sun</span><span class="dd">22</span><span class="ev" style="--c:var(--muted)">Nothing verified</span></div>
 </div>
 <div class="later">
 <div><em>17–19 Nov</em><span><b>Bengaluru Tech Summit</b>The 29th edition, themed "AI &amp; Beyond", at BIEC per BioSpectrum. TradeIndia names another venue</span></div>
-<div><em>19 or 20 Nov</em><span><b>Bengaluru FC v Mumbai City</b>At the Kanteerava; the outlets differ on the day</span></div>
-<div><em>Through Nov</em><span><b>Ward One campaign</b>The GBA's month-long drive in one ward per division</span></div>
-<div><em>12–18 Nov</em><span><b>Gigs and exhibitions</b>We found no verified listings for these days, so none are printed</span></div>
+<div><em>19 or 20 Nov</em><span><b>Bengaluru FC v Mumbai City</b>At the Kanteerava; most listings say Friday 20 November</span></div>
+<div><em>Through Nov</em><span><b>Ward One campaign</b>The GBA's month-long drive in one ward per division, begun on 1 November</span></div>
+<div><em>Late Nov or Dec</em><span><b>Kadalekai Parishe</b>The groundnut fair in Basavanagudi falls on the last Monday of Karthika masa. We found no confirmed 2026 dates</span></div>
 </div>
-<p class="src">The Hans India · Construction World · BioSpectrum · TradeIndia · Khel Now · Deccan Herald · ThePrint</p>
-</div><div class="folio"><span>The week ahead</span><span>12</span></div></div>`),
-    page("13-reader", "Reader's Page", `<div class="page reader"><div class="pin">
+<p class="src">BioSpectrum · TradeIndia · District · Khel Now · Deccan Herald · ThePrint · Karnataka tourism listings</p>
+</div><div class="folio"><span>The week ahead</span><span>13</span></div></div>`),
+    page("14-reader", "Reader's Page", `<div class="page reader"><div class="pin">
 <div class="top">
 <figure class="shot"><img class="photo" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><figcaption class="cap">Your photograph goes here. Sample: Vidhana Soudha at night · Sai23ganesh, CC BY-SA 4.0</figcaption></figure>
 <div class="head">
@@ -476,29 +520,30 @@ export const CITY_EDITION: StudioSection = {
 <p>End where it ended for you. It doesn't need a moral.</p>
 </div>
 <div class="send">
-<div><b>Send yours</b><span>About 300 words and up to three photographs you took, with your name and neighbourhood. In by Sunday 15 November for Week 47.</span></div>
+<div><b>Send yours</b><span>About 300 words and up to three photographs you took, with your name and neighbourhood. In by Wednesday 18 November for Issue 05.</span></div>
 <div><b>Before it prints</b><span>The desk checks names, places, dates and figures, and shows you the page first. Your words and your photographs stay yours.</span></div>
 </div>
-</div><div class="folio"><span>Reader's page</span><span>13</span></div></div>`),
-    page("14-credits", "Sources & Credits", `<div class="page credits"><div class="pin">
+</div><div class="folio"><span>Reader's page</span><span>14</span></div></div>`),
+    page("15-credits", "Sources & Credits", `<div class="page credits"><div class="pin">
 <span class="lbl">Sources &amp; credits</span>
 <h3 class="hd">Where this came from</h3>
 <div class="cols">
-<div><b>p. 03–04 · Friday, then Saturday</b>Construction World, Deccan Herald, The Hans India, OneIndia and NewsBytes, Nov 2026; Swarajya; ThePrint (PTI), 28 Oct; South First; YourStory, 5 Nov</div>
-<div><b>p. 05 · City desk</b>ThePrint (PTI), 28 Oct; Khel Now; BioSpectrum; YourStory; South First; NewsBytes</div>
-<div><b>p. 06 · Two reports</b>Deccan Herald and Khel Now (match day); BioSpectrum, YourStory and South First (BIEC); TradeIndia (another venue)</div>
-<div><b>p. 07 · On the line</b>Swarajya; Construction World; NewsBytes; The Hans India; Deccan Herald</div>
-<div><b>p. 08 · Rider questions</b>The Hans India; Construction World; OneIndia; NewsBytes; Swarajya</div>
-<div><b>p. 09 · Timeline</b>Deccan Herald; Business Today, 10 Aug; Swarajya; Construction World; The Hans India</div>
-<div><b>p. 10 · The ledger</b>YourStory, 3 and 5 Nov; Economic Times, relayed by Digg; YourStory Research</div>
-<div><b>p. 11 · Field &amp; ground</b>Khel Now; Devdiscourse; Mykhel</div>
-<div><b>p. 12 · The week ahead</b>The Hans India; Construction World; BioSpectrum; TradeIndia; Khel Now; Deccan Herald; ThePrint</div>
-<div><b>Photographs</b>Wikimedia Commons. Cover and p. 01 Jayadeva viaduct: Gpkp (CC BY-SA 4.0). p. 04 Pink Line map: Mallikarjunasj (CC BY-SA 3.0). p. 05 KR Market station: Gpkp (CC BY-SA 4.0). p. 06 Town Hall: Harvinder Chandigarh (CC BY 4.0). p. 11 Chinnaswamy: Visdaviva (CC BY-SA 3.0). p. 13 sample, Vidhana Soudha: Sai23ganesh (CC BY-SA 4.0).</div>
+<div><b>p. 03–04 · Friday, then Saturday</b>Deccan Herald and News24, Nov 2026 (inauguration); Inshorts and News Karnataka, 15 Nov (first-day riders); The Federal (first-day report); The Week (PTI), 11 Nov; Construction World; OneIndia; NewsBytes; ThePrint (PTI), 28 Oct; South First</div>
+<div><b>p. 05 · City desk</b>NewsBytes; Swarajya (BMTC feeders); BioSpectrum, YourStory and South First (summit); NewKerala, 9 Nov (BDA fee cut)</div>
+<div><b>p. 06 · Two reports</b>Deccan Herald, Khel Now and District (match day); BioSpectrum, YourStory and South First (BIEC); TradeIndia (another venue)</div>
+<div><b>p. 07 · On the line</b>Deccan Herald; The Federal; Inshorts; News Karnataka; Swarajya; NewsBytes</div>
+<div><b>p. 08 · Interchange</b>OneIndia; Swarajya; The Federal; News Karnataka</div>
+<div><b>p. 09 · Rider questions</b>Deccan Herald; The Week (PTI); Inshorts; News Karnataka; Construction World; OneIndia; Swarajya; The Federal</div>
+<div><b>p. 10 · Timeline</b>Deccan Herald; Business Today, 10 Aug; Swarajya; Construction World; Inshorts; News Karnataka</div>
+<div><b>p. 11 · The ledger</b>NewsBytes; Business Today, 31 Mar (Gnani.ai); Economic Times, relayed by Digg; YourStory, 3 Nov</div>
+<div><b>p. 12 · Field &amp; ground</b>District; Khel Now; Deccan Herald; Devdiscourse; Mykhel</div>
+<div><b>p. 13 · The week ahead</b>BioSpectrum; TradeIndia; District; Khel Now; Deccan Herald; ThePrint; Karnataka tourism listings (Kadalekai Parishe rule)</div>
+<div><b>Photographs</b>Wikimedia Commons. Cover and p. 01 Jayadeva viaduct: Gpkp (CC BY-SA 4.0). p. 04 Pink Line map: Mallikarjunasj (CC BY-SA 3.0). p. 05 KR Market station: Gpkp (CC BY-SA 4.0). p. 06 Town Hall: Harvinder Chandigarh (CC BY 4.0). p. 12 Chinnaswamy: Visdaviva (CC BY-SA 3.0). p. 14 sample, Vidhana Soudha: Sai23ganesh (CC BY-SA 4.0).</div>
 </div>
 <div class="made">
-<span><b>How this was made.</b> Gathered from a free news index and checked against at least one report for each item. Summarised in our own words; no article text or press photographs were reused.</span>
-<span>Atlas Bengaluru · a sample city edition · Week 46, 2026</span>
+<span><b>How this was made.</b> Gathered through a news search and checked against at least one report for each item; several reports were read as headlines and summaries only. Summarised in our own words; no article text or press photographs were reused.</span>
+<span>Atlas Bengaluru · a sample city edition · Week 47, 2026</span>
 </div>
-</div><div class="folio"><span>Colophon</span><span>14</span></div></div>`),
+</div><div class="folio"><span>Colophon</span><span>15</span></div></div>`),
   ],
 };
