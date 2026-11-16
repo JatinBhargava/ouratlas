@@ -4,6 +4,21 @@ import type { PostMeta } from "./types";
 /** Every published post, newest first. */
 export const POSTS: PostMeta[] = [
   {
+    "slug": "design-magazine-pages-by-hand",
+    "title": "Lay out a whole magazine by hand in Editor in Chief",
+    "description": "Place every photo, headline and shape yourself, page after page, then turn through the bound proof and download a PDF that matches the screen.",
+    "kind": "spotlight",
+    "date": "2026-11-16",
+    "tags": [
+      "photo albums",
+      "typography",
+      "print"
+    ],
+    "keyword": "design magazine pages by hand",
+    "feature": "0.3.0",
+    "minutes": 7
+  },
+  {
     "slug": "voice-note-to-written-story",
     "title": "Tell your story out loud and Atlas writes it down",
     "description": "The Speak tab turns your voice, live or from a voice note you already have, into the written story of your magazine. How to use it, and what to know.",
@@ -80,6 +95,7 @@ export const POSTS: PostMeta[] = [
 
 /** Each post's rendered HTML, a chunk of its own so only the post being read is fetched. */
 export const BODIES: Record<string, () => Promise<{ default: string }>> = {
+  "design-magazine-pages-by-hand": () => import("./bodies/design-magazine-pages-by-hand"),
   "voice-note-to-written-story": () => import("./bodies/voice-note-to-written-story"),
   "google-photos-data-for-ads": () => import("./bodies/google-photos-data-for-ads"),
   "apple-music-new-logo-made-by-sound": () => import("./bodies/apple-music-new-logo-made-by-sound"),
