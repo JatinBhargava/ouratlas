@@ -66,7 +66,7 @@ const CSS = `.page {
 /* 02 Section Index */
 .index .route { position: relative; display: grid; gap: 0; margin-top: 1cqw; }
 .index .route::before { content: ""; position: absolute; left: 2.85cqw; top: 3cqw; bottom: 3cqw; width: 0.9cqw; background: linear-gradient(var(--purple) 0 16%, var(--green) 16% 32%, var(--pink) 32% 48%, var(--blue) 48% 64%, var(--yellow) 64% 80%, var(--purple) 80% 100%); border-radius: 1cqw; }
-.stop { position: relative; display: grid; grid-template-columns: 6.6cqw minmax(0, 1fr) auto; gap: 2.2cqw; align-items: center; padding: 0.5cqw 0; }
+.stop { position: relative; display: grid; grid-template-columns: 6.6cqw minmax(0, 1fr) auto; gap: 2.2cqw; align-items: center; padding: 0.1cqw 0; }
 .stop .dot { width: 6.6cqw; height: 6.6cqw; border-radius: 50%; background: var(--paper); border: 0.9cqw solid var(--c); display: grid; place-items: center; font-family: var(--mono); font-size: 1.9cqw; font-weight: 500; position: relative; z-index: 1; }
 .stop b { font-family: var(--display); font-weight: 400; font-size: 4.1cqw; line-height: 1; display: block; }
 .stop span { font-size: 1.95cqw; color: var(--muted); }
@@ -119,7 +119,7 @@ const CSS = `.page {
 .track .note { margin-top: auto; border-top: 0.15cqw solid var(--rule); padding-top: 1.4cqw; font-size: 1.85cqw; line-height: 1.4; color: var(--muted); display: grid; gap: 0.8cqw; }
 
 /* 07 Two Reports */
-.two .band { height: 30%; flex: none; position: relative; }
+.two .band { height: 27%; flex: none; position: relative; }
 .two .band .cap { position: absolute; right: 1.2cqw; bottom: 1cqw; color: #fff; text-shadow: 0 0 0.6cqw rgba(0,0,0,0.75); font-size: 1.4cqw; }
 .two h3 { font-size: 7cqw; }
 .claim { display: grid; gap: 1.2cqw; border-top: 0.25cqw solid var(--ink); padding-top: 1.6cqw; }
@@ -202,7 +202,7 @@ const CSS = `.page {
 .ledger-pg .foot { margin-top: auto; font-size: 1.8cqw; color: var(--muted); border-top: 0.15cqw solid var(--rule); padding-top: 1.4cqw; }
 
 /* 13 Scoreboard */
-.score .ph { height: 40%; flex: none; position: relative; }
+.score .ph { height: 35%; flex: none; position: relative; }
 .score .ph .cap { position: absolute; left: 1.2cqw; bottom: 1cqw; color: #fff; text-shadow: 0 0 0.6cqw rgba(0,0,0,0.75); font-size: 1.4cqw; }
 .score h3 { font-size: 7cqw; }
 .card { border: 0.2cqw solid var(--ink); display: grid; }
@@ -302,11 +302,11 @@ export const CITY_EDITION: StudioSection = {
 <h3 class="hd" style="font-size:7.4cqw">The edition, counted</h3>
 <div class="grid">
 <div class="n" style="--c:var(--blue)"><strong>10,000+</strong><p>Delegates at the 29th Bengaluru Tech Summit, which opened on Tuesday 17 November.</p><span class="src">Communications Today</span></div>
-<div class="n" style="--c:var(--blue)"><strong>1,000</strong><p>Startups at the summit, with 700 speakers and delegates from 65 countries, one outlet reports.</p><span class="src">The Bengaluru Live</span></div>
-<div class="n" style="--c:var(--pink)"><strong>33,409</strong><p>People reported riding the Pink Line on its first day of service, Saturday 14 November. Deccan Herald says "over 33,000".</p><span class="src">Inshorts; Deccan Herald</span></div>
-<div class="n" style="--c:var(--green)"><strong>145</strong><p>Potholes repaired in Bengaluru North's first week of the Ward One campaign, the corporation said on 7 November.</p><span class="src">The Bengaluru Live, 7 Nov</span></div>
+<div class="n" style="--c:var(--blue)"><strong>1,000</strong><p>Startups at the summit, which also has 700 speakers, one outlet reports.</p><span class="src">The Bengaluru Live</span></div>
+<div class="n" style="--c:var(--pink)"><strong>33,409</strong><p>Reported riders on the Pink Line's first day, Saturday 14 November. Deccan Herald says "over 33,000".</p><span class="src">Inshorts; Deccan Herald</span></div>
+<div class="n" style="--c:var(--green)"><strong>145</strong><p>Potholes repaired in Bengaluru North's first week of the Ward One campaign.</p><span class="src">The Bengaluru Live, 7 Nov</span></div>
 <div class="n" style="--c:var(--yellow)"><strong>18 mo</strong><p>How long Ballari Road traffic curbs are due to run from 6 November while BDA builds an elevated corridor.</p><span class="src">The News Minute; OneIndia</span></div>
-<div class="n" style="--c:var(--pink)"><strong>₹3,470 cr</strong><p>The reported cost of the elevated Pink Line, which opened to riders on 14 November.</p><span class="src">IBTimes India</span></div>
+<div class="n" style="--c:var(--pink)"><strong style="font-size:8.4cqw">₹3,470 cr</strong><p>The reported cost of the elevated Pink Line, which opened to riders on 14 November.</p><span class="src">IBTimes India</span></div>
 </div>
 </div><div class="folio"><span>By the numbers</span><span>03</span></div></div>`),
     page("04-lead", "Broadsheet Lead", `<div class="page lead-pg"><div class="pin">
@@ -314,7 +314,7 @@ export const CITY_EDITION: StudioSection = {
 <h3 class="hd">AI &amp; Beyond opens at the BIEC</h3>
 <p class="stand">The summit began on Tuesday and ends on Thursday. Here is what the opening reports say, and what they leave out.</p>
 <div class="body">
-<div class="ph"><img class="photo" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><span class="cap">Vidhana Soudha, seat of the state government that hosts the summit · Sai23ganesh, CC BY-SA 4.0</span></div>
+<div class="ph"><img class="photo" style="object-position:50% 18%" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><span class="cap">Vidhana Soudha, seat of the state government that hosts the summit · Sai23ganesh, CC BY-SA 4.0</span></div>
 <div class="col c1">
 <p>Karnataka Chief Minister D K Shivakumar inaugurated the 29th Bengaluru Tech Summit on Tuesday 17 November, at the Bangalore International Exhibition Centre. The theme is "AI &amp; Beyond", and the three days end on Thursday 19 November, CXOToday and Country &amp; Politics report.</p>
 <p>Last edition we printed a second venue, taken from a TradeIndia listing. Several outlets now put the summit at the BIEC, so we have dropped it.</p>
@@ -373,7 +373,7 @@ export const CITY_EDITION: StudioSection = {
 <span class="or">or</span>
 <div class="side"><strong>Service road</strong><span>for two-wheelers · Siasat</span></div>
 </div>
-<p class="what">The first two say goods vehicles and buses are barred, while cars, two-wheelers and school buses may stay. Siasat describes two-wheelers pushed to the service road, but its report may be about the earlier flyover rules. A further report says only heavy goods vehicles are restricted; we could not name it. Check the traffic police advisory.</p>
+<p class="what">The first two say goods vehicles and buses are barred. Siasat describes two-wheelers pushed to the service road, but may mean the earlier flyover rules. One further report limits the curbs to heavy goods vehicles; we could not name it. Check the police advisory.</p>
 </div>
 <div class="claim">
 <p class="what"><b>What is the Pink Line's last stop called?</b> The station is Tavarekere.</p>
