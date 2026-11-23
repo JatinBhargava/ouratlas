@@ -4,6 +4,21 @@ import type { PostMeta } from "./types";
 /** Every published post, newest first. */
 export const POSTS: PostMeta[] = [
   {
+    "slug": "share-photo-magazine-link-privately",
+    "title": "Share your photo magazine by a private, sealed link",
+    "description": "How Save & share turns your Atlas issue into a private link for family, why the key never reaches our server, and how to invite people to read or edit.",
+    "kind": "spotlight",
+    "date": "2026-11-23",
+    "tags": [
+      "privacy",
+      "weddings",
+      "photo albums"
+    ],
+    "keyword": "share photo magazine link privately",
+    "feature": "0.1.0",
+    "minutes": 6
+  },
+  {
     "slug": "design-magazine-pages-by-hand",
     "title": "Lay out a whole magazine by hand in Editor in Chief",
     "description": "Place every photo, headline and shape yourself, page after page, then turn through the bound proof and download a PDF that matches the screen.",
@@ -95,6 +110,7 @@ export const POSTS: PostMeta[] = [
 
 /** Each post's rendered HTML, a chunk of its own so only the post being read is fetched. */
 export const BODIES: Record<string, () => Promise<{ default: string }>> = {
+  "share-photo-magazine-link-privately": () => import("./bodies/share-photo-magazine-link-privately"),
   "design-magazine-pages-by-hand": () => import("./bodies/design-magazine-pages-by-hand"),
   "voice-note-to-written-story": () => import("./bodies/voice-note-to-written-story"),
   "google-photos-data-for-ads": () => import("./bodies/google-photos-data-for-ads"),
