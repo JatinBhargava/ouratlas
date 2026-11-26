@@ -1,6 +1,6 @@
 /**
  * The City Edition: sixteen pages for a weekly issue about one city, set with a
- * sample edition of Bengaluru news (19–22 November 2026).
+ * sample edition of Bengaluru news (23–25 November 2026).
  *
  * Written here rather than drawn on the design canvas, so it is not in
  * `pages.json` (which only `scripts/studio.ts` writes). `loadStudio` adds it to
@@ -9,7 +9,7 @@
  * The other complete issues tell one story; a city edition carries many short
  * ones, so its pages are built for that: a front page with teasers, contents by
  * section, big figures, a then-and-now pair, briefs, a ward tracker with bars, two readings of a story side by side,
- * a transit route, rider questions answered, a timeline of dates, a funding table,
+ * a transit route, rider questions answered, a long read with a rail of dates, a funding table,
  * scorecards, a week of dates, a reader's page and a sources page. Every page is sized in container units (`cqw`) against its own
  * 780px width, so it draws the same at any scale the studio shows it.
  *
@@ -17,9 +17,11 @@
  * system stacks, like the rest of the studio. The route diagram is inline SVG,
  * which the editor leaves alone (`fill-in.tsx` skips anything inside `svg`),
  * so its station names are part of the drawing, not text to retype. This
- * edition's new layout, the then-and-now pair on page 05, replaced the
- * interchange diagram: with no new Pink Line news the diagram repeated
- * what the rider questions already say, and the issue is capped at sixteen pages.
+ * edition's new layout, the long read on page 11, replaced the Pink Line
+ * timeline: its dates were already on page 09 and nothing new was reported in
+ * a fortnight, and the issue is capped at sixteen pages. A quiet week is
+ * printed as one: a section with nothing verifiable carries its older counts
+ * with their dates, or says it found none, rather than padding.
  *
  * The photographs are openly licensed (Wikimedia Commons), credited on the
  * last page, and named `blr-*` in `src/lib/studio.ts`.
@@ -177,24 +179,17 @@ const CSS = `.page {
 .qa .item p { font-size: 1.9cqw; line-height: 1.38; }
 .qa .who { font-family: var(--mono); font-size: 1.4cqw; color: var(--muted); }
 
-/* 11 Timeline */
-.timeline h3 { font-size: 7.4cqw; }
-.timeline .stand { font-size: 2.2cqw; color: var(--muted); max-width: 88%; }
-.tl { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); position: relative; border-top: 0.25cqw solid var(--ink); }
-.tl::before { content: ""; position: absolute; left: 20.55cqw; top: 0; bottom: 0; width: 0.5cqw; background: var(--rule); }
-.tl li { display: grid; grid-template-columns: 17cqw 4.4cqw minmax(0, 1fr); gap: 0 1.6cqw; align-items: start; padding-top: 1.5cqw; min-height: 0; }
-.tl time { font-family: var(--mono); font-size: 1.9cqw; text-align: right; padding-top: 0.7cqw; }
-.tl .nd { display: block; width: 3.6cqw; height: 3.6cqw; border-radius: 50%; background: var(--paper); border: 0.7cqw solid var(--pink); justify-self: center; margin-top: 0.3cqw; position: relative; z-index: 1; }
-.tl .miss .nd { border-color: var(--muted); }
-.tl .done .nd { background: var(--green); border-color: var(--green); }
-.tl .next .nd { background: color-mix(in srgb, var(--pink) 25%, var(--paper)); }
-.tl .far .nd { border-style: dotted; }
-.tl li > div { display: grid; gap: 0.35cqw; align-content: start; }
-.tl .st { font-family: var(--mono); font-size: 1.35cqw; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pink); }
-.tl .miss .st { color: var(--muted); }
-.tl .done .st { color: var(--green); }
-.tl b { font-family: var(--display); font-weight: 400; font-size: 3.5cqw; line-height: 1; }
-.tl li > div > span:last-child { font-size: 1.85cqw; line-height: 1.32; color: var(--muted); }
+/* 11 Long Read */
+.longread h3 { font-size: 7.4cqw; }
+.longread .stand { font-size: 2.2cqw; color: var(--muted); max-width: 92%; }
+.longread .rd { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 25cqw; gap: 3.4cqw; border-top: 0.25cqw solid var(--ink); padding-top: 1.8cqw; }
+.longread .txt { font-size: 2cqw; line-height: 1.46; display: grid; gap: 1.1cqw; align-content: start; min-height: 0; }
+.longread .txt > p:first-child::first-letter { font-family: var(--display); float: left; font-size: 7.2cqw; line-height: 0.8; padding: 0.6cqw 0.8cqw 0 0; color: var(--yellow); }
+.longread .txt h5 { font-family: var(--display); font-weight: 400; font-size: 3.4cqw; line-height: 1; margin: 0.8cqw 0 0; }
+.longread .rail { border-left: 0.15cqw solid var(--rule); padding-left: 2.2cqw; display: grid; gap: 1.6cqw; align-content: start; min-height: 0; }
+.longread .rail div { display: grid; gap: 0.3cqw; border-top: 0.5cqw solid var(--yellow); padding-top: 0.9cqw; }
+.longread .rail em { font-style: normal; font-family: var(--mono); font-size: 1.5cqw; letter-spacing: 0.06em; text-transform: uppercase; color: var(--yellow); }
+.longread .rail div span { font-size: 1.8cqw; line-height: 1.32; }
 
 /* 12 Ledger Table */
 .ledger-pg h3 { font-size: 7.4cqw; }
@@ -269,37 +264,37 @@ export const CITY_EDITION: StudioSection = {
   id: "city-edition",
   group: "issues",
   name: "City Edition · Bengaluru",
-  blurb: "An edition of one city on sixteen pages: front page, contents by section, the numbers, the summit week and its conclave a year on, a ward tracker, two readings of a road, the metro line, rider questions answered, a timeline of dates, the ledger, the scoreboard and the week ahead",
+  blurb: "An edition of one city on sixteen pages: front page, contents by section, the numbers, a festival a week out, a match from preview to result, a ward tracker, two readings of the city vote, the metro line, rider questions answered, a long read with a rail of dates, the ledger, the scoreboard and the week ahead",
   pages: [
     page("01-front", "City Front", `<div class="page front"><div class="pin">
-<div class="mast"><h3 class="hd">Atlas <i>Bengaluru</i></h3><div class="date">Week 47<br>19–22 Nov 2026<br>Issue 06</div></div>
+<div class="mast"><h3 class="hd">Atlas <i>Bengaluru</i></h3><div class="date">Week 48<br>23–25 Nov 2026<br>Issue 07</div></div>
 <div class="lines" aria-hidden="true"><i style="background:var(--purple)"></i><i style="background:var(--green)"></i><i style="background:var(--yellow)"></i><i style="background:var(--pink)"></i><i style="background:var(--blue)"></i></div>
-<div class="hero"><img class="photo" src="%photo:blr-town-hall%" alt="Sir Puttanna Chetty Town Hall, Bengaluru"><span class="cap">Town Hall, a Bengaluru landmark · Harvinder Chandigarh, CC BY 4.0</span></div>
+<div class="hero"><img class="photo" style="object-position:50% 18%" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><span class="cap">Vidhana Soudha, seat of the Karnataka government · Sai23ganesh, CC BY-SA 4.0</span></div>
 <div class="lead">
-<h4 class="hd">The summit closes on ₹1,050 crore</h4>
-<p>The Bengaluru Tech Summit ended on Thursday 19 November. Its startup conclave drew about ₹1,050 crore in pledges from 24 venture firms.</p>
+<h4 class="hd">The city vote, moved twice</h4>
+<p>The Supreme Court's deadline for the five city corporation elections is 31 December. The State Election Commission has asked for a month more.</p>
 </div>
 <div class="teasers">
-<div style="--c:var(--blue)"><b>The conclave, a year on</b><span>p. 05</span></div>
-<div style="--c:var(--green)"><b>Ward One, counted</b><span>p. 07</span></div>
-<div style="--c:var(--yellow)"><b>Ballari Road, two lengths</b><span>p. 08</span></div>
+<div style="--c:var(--blue)"><b>Jatre, a week away</b><span>p. 04</span></div>
+<div style="--c:var(--green)"><b>December, or January?</b><span>p. 08</span></div>
+<div style="--c:var(--yellow)"><b>Top of the table</b><span>p. 13</span></div>
 </div>
 </div><div class="folio"><span>Atlas Bengaluru</span><span>01</span></div></div>`),
     page("02-index", "Section Index", `<div class="page index"><div class="pin">
 <span class="lbl">In this issue</span>
 <div class="route">
 <div class="stop" style="--c:var(--purple)"><span class="dot">03</span><div><b>By the numbers</b><span>The edition in six figures</span></div><span class="pg">p. 03</span></div>
-<div class="stop" style="--c:var(--blue)"><span class="dot">04</span><div><b>Summit week</b><span>AI &amp; Beyond, and what it closed on</span></div><span class="pg">p. 04</span></div>
-<div class="stop" style="--c:var(--blue)"><span class="dot">05</span><div><b>Then and now</b><span>The startup conclave, a year on</span></div><span class="pg">p. 05</span></div>
-<div class="stop" style="--c:var(--green)"><span class="dot">06</span><div><b>City desk</b><span>A festival, a food show, a junction</span></div><span class="pg">p. 06</span></div>
-<div class="stop" style="--c:var(--green)"><span class="dot">07</span><div><b>Ward One, counted</b><span>Potholes, banners and debris</span></div><span class="pg">p. 07</span></div>
-<div class="stop" style="--c:var(--yellow)"><span class="dot">08</span><div><b>Two readings</b><span>Ballari Road: how long, and who is curbed</span></div><span class="pg">p. 08</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">09</span><div><b>On the line</b><span>Six stations, 7.5 km, week two</span></div><span class="pg">p. 09</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">10</span><div><b>Rider questions</b><span>Six answers for the first weeks</span></div><span class="pg">p. 10</span></div>
-<div class="stop" style="--c:var(--pink)"><span class="dot">11</span><div><b>Timeline</b><span>Seven dates for one line</span></div><span class="pg">p. 11</span></div>
-<div class="stop" style="--c:var(--blue)"><span class="dot">12</span><div><b>The ledger</b><span>Small rounds, and a quiet week</span></div><span class="pg">p. 12</span></div>
-<div class="stop" style="--c:var(--green)"><span class="dot">13</span><div><b>Field &amp; ground</b><span>Bengaluru FC, a Friday fixture</span></div><span class="pg">p. 13</span></div>
-<div class="stop" style="--c:var(--purple)"><span class="dot">14</span><div><b>The week ahead</b><span>A food show, a concert and a deadline</span></div><span class="pg">p. 14</span></div>
+<div class="stop" style="--c:var(--blue)"><span class="dot">04</span><div><b>The festival</b><span>Bengaluru Jatre, and two numbers that differ</span></div><span class="pg">p. 04</span></div>
+<div class="stop" style="--c:var(--blue)"><span class="dot">05</span><div><b>Then and now</b><span>A preview, and then the result</span></div><span class="pg">p. 05</span></div>
+<div class="stop" style="--c:var(--green)"><span class="dot">06</span><div><b>City desk</b><span>A metro count, power cuts, jetting machines</span></div><span class="pg">p. 06</span></div>
+<div class="stop" style="--c:var(--green)"><span class="dot">07</span><div><b>Ward One, counted</b><span>A directive, and older counts</span></div><span class="pg">p. 07</span></div>
+<div class="stop" style="--c:var(--yellow)"><span class="dot">08</span><div><b>Two readings</b><span>The city vote: December, or January?</span></div><span class="pg">p. 08</span></div>
+<div class="stop" style="--c:var(--pink)"><span class="dot">09</span><div><b>On the line</b><span>Six stations, 7.5 km, two weeks in</span></div><span class="pg">p. 09</span></div>
+<div class="stop" style="--c:var(--pink)"><span class="dot">10</span><div><b>Rider questions</b><span>Six answers, one still open</span></div><span class="pg">p. 10</span></div>
+<div class="stop" style="--c:var(--yellow)"><span class="dot">11</span><div><b>The long read</b><span>Why the city's vote keeps moving</span></div><span class="pg">p. 11</span></div>
+<div class="stop" style="--c:var(--blue)"><span class="dot">12</span><div><b>The ledger</b><span>A quiet week for rounds</span></div><span class="pg">p. 12</span></div>
+<div class="stop" style="--c:var(--green)"><span class="dot">13</span><div><b>Field &amp; ground</b><span>Bengaluru FC go top</span></div><span class="pg">p. 13</span></div>
+<div class="stop" style="--c:var(--purple)"><span class="dot">14</span><div><b>The week ahead</b><span>Indusfood, a concert, then Jatre</span></div><span class="pg">p. 14</span></div>
 <div class="stop" style="--c:var(--purple)"><span class="dot">15</span><div><b>Reader's page</b><span>Your Bengaluru, in your words</span></div><span class="pg">p. 15</span></div>
 </div>
 <div class="how"><span>Every item ends with its source. <span class="flag">2 readings</span> marks a name, date or figure the papers don't agree on.</span></div>
@@ -308,108 +303,107 @@ export const CITY_EDITION: StudioSection = {
 <span class="lbl">By the numbers</span>
 <h3 class="hd" style="font-size:7.4cqw">The edition, counted</h3>
 <div class="grid">
-<div class="n" style="--c:var(--blue)"><strong style="font-size:9cqw">₹1,050 cr</strong><p>Deep-tech investment announced by 24 venture firms at the summit's Future Makers Conclave. Pledges, not payments.</p><span class="src">Analytics India Magazine; The South First, Nov 2026</span></div>
-<div class="n" style="--c:var(--purple)"><strong>63,200</strong><p>Young people the state says it will train in AI, announced on the summit's first day.</p><span class="src">CXOToday, Nov 2026</span></div>
-<div class="n" style="--c:var(--pink)"><strong>33,409</strong><p>Reported riders on the Pink Line's first day, Saturday 14 November. The only count we found.</p><span class="src">Inshorts; Deccan Herald</span></div>
-<div class="n" style="--c:var(--yellow)"><strong>18 mo</strong><p>How long Ballari Road traffic curbs are due to run from 6 November while BDA builds an elevated corridor.</p><span class="src">The News Minute; OneIndia</span></div>
-<div class="n" style="--c:var(--green)"><strong>10 days</strong><p>Bengaluru Jatre, a city-wide festival the GBA is organising, planned for 4 to 13 December.</p><span class="src">The South First; Asianet Newsable</span></div>
-<div class="n" style="--c:var(--blue)"><strong style="font-size:9cqw">$4.4 bn</strong><p>Startup funding Bengaluru reportedly drew in the first nine months of 2026. Our running total.</p><span class="src">Economic Times, via Digg</span></div>
+<div class="n" style="--c:var(--yellow)"><strong style="font-size:9cqw">31 Dec</strong><p>The Supreme Court's current deadline for the five city corporation elections. The Election Commission has asked for 31 January 2027.</p><span class="src">Siasat; The South First; The Hans India</span></div>
+<div class="n" style="--c:var(--purple)"><strong>127+</strong><p>Areas listed for BESCOM maintenance outages across 23 and 24 November.</p><span class="src">Goodreturns; Asianet Newsable, Nov 2026</span></div>
+<div class="n" style="--c:var(--green)"><strong>13 pts</strong><p>Bengaluru FC's tally after five games, enough for top of the ISL table after the 2–0 over Mumbai City.</p><span class="src">ESPN India; IANS, 20 Nov 2026</span></div>
+<div class="n" style="--c:var(--pink)"><strong>33,409</strong><p>Reported riders on the Pink Line's first day, Saturday 14 November. Still the only count we found.</p><span class="src">newskarnataka; Deccan Herald</span></div>
+<div class="n" style="--c:var(--blue)"><strong>10 days</strong><p>Bengaluru Jatre, a city-wide festival run through the GBA, from 4 to 13 December.</p><span class="src">The South First; Deccan Herald</span></div>
+<div class="n" style="--c:var(--blue)"><strong style="font-size:9cqw">$25.2M</strong><p>All Indian startups raised in the week to 13 November, down 90.1% on the week before. A national figure, not Bengaluru's.</p><span class="src">Inc42, Nov 2026</span></div>
 </div>
 </div><div class="folio"><span>By the numbers</span><span>03</span></div></div>`),
     page("04-lead", "Broadsheet Lead", `<div class="page lead-pg"><div class="pin">
-<span class="lbl c" style="--c:var(--blue)">Summit week</span>
-<h3 class="hd">AI &amp; Beyond closes on a ₹1,050 crore headline</h3>
-<p class="stand">The summit ran from 17 to 19 November. The big number came on the last day. Here is what it counts, and what it does not.</p>
+<span class="lbl c" style="--c:var(--blue)">The festival</span>
+<h3 class="hd">Bengaluru Jatre opens on 4 December</h3>
+<p class="stand">The ten-day festival is a week and a day away. Here is what the reports agree on, and the numbers they don't.</p>
 <div class="body">
-<div class="ph"><img class="photo" style="object-position:50% 18%" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><span class="cap">Vidhana Soudha, seat of the Karnataka government · Sai23ganesh, CC BY-SA 4.0</span></div>
+<div class="ph"><img class="photo" src="%photo:blr-town-hall%" alt="Sir Puttanna Chetty Town Hall, Bengaluru"><span class="cap">Town Hall, a Bengaluru landmark; not a named Jatre venue · Harvinder Chandigarh, CC BY 4.0</span></div>
 <div class="col c1">
-<p>The 29th Bengaluru Tech Summit ended on Thursday 19 November at the BIEC, after three days under the theme "AI &amp; Beyond", CXOToday reports. Its startup showcase, the Future Makers Conclave, drew about ₹1,050 crore in deep-tech investment announcements from 24 venture capital firms, as The South First and Analytics India Magazine report.</p>
-<p class="pull">₹1,050 crore, in announcements.</p>
+<p>The Greater Bengaluru Authority is the nodal agency for Bengaluru Jatre, which runs from 4 to 13 December and is billed by The South First as a city-wide celebration of art, culture, literature and communities. It is spread across the five city corporations. The Hans India reports parks, roads, government offices and schools among the venues.</p>
+<p class="pull">Ten days, five corporations.</p>
 </div>
 <div class="col c2">
-<p>That is a pledge. We found no report of how much has been paid out. The summit's first day brought a ₹100 crore robotics hub and AI training for 63,200 young people, CXOToday says.</p>
-<p>The South First's headline also says the state signed international MoUs. We did not find a total for them.</p>
+<p>Krishna Byre Gowda, the minister who announced it, also floated music and performance on Metro concourses, subject to BMRCL. newskarnataka reported on 12 October that more than 300 organisations and over 80 artists had shown interest.</p>
+<p>Size is where reports differ: The South First counted more than 300 programmes, while Deccan Herald's headline says 200 venues.</p>
 </div>
 <div class="col c3">
-<p>A CXOToday day-two headline says Bengaluru holds 71% of India's recent AI unicorns. We read the headline, not the study behind it.</p>
-<p>Page 05 sets this year's conclave against last year's, which is harder than it looks.</p>
-<p class="src">CXOToday · The South First · Analytics India Magazine · Deccan Herald · Devdiscourse</p>
+<p>Cost differs more. Asianet Newsable gave the state's figure as ₹15 to 20 crore; The Hans India's headline has the JDS questioning a ₹200 crore spend. One is an estimate and the other an opposition figure. We found no budget paper.</p>
+<p class="src">The South First · The Hans India · Deccan Herald · newskarnataka · Asianet Newsable</p>
 </div>
 </div>
 </div><div class="folio"><span>Feature</span><span>04</span></div></div>`),
     page("05-then-now", "Then and Now", `<div class="page then"><div class="pin">
-<span class="lbl c" style="--c:var(--blue)">Then and now</span>
-<h3 class="hd">The startup conclave, a year on</h3>
-<p class="stand">Both years' conclaves closed the Bengaluru Tech Summit with a sum for deep-tech startups. The sums are not counted the same way, so we set each beside the other.</p>
+<span class="lbl c" style="--c:var(--green)">Then and now</span>
+<h3 class="hd">From preview to 2–0</h3>
+<p class="stand">Issue 06 printed a Friday fixture and no score. The match has since been reported, so we set the preview beside the result.</p>
 <div class="pair">
-<div class="yr" style="--c:var(--muted)"><span class="y">November 2025</span><strong>₹400 cr</strong><p>Deccan Herald and Devdiscourse put the year's close at ₹400 crore for deep-tech startups, from the state and venture firms.</p></div>
+<div class="yr" style="--c:var(--muted)"><span class="y">Thu 19 Nov · preview</span><strong>10 pts</strong><p>Khel Now's preview had Bengaluru FC on three wins and a draw from four, facing a Mumbai City side still seeking a first win.</p></div>
 <span class="arrow" aria-hidden="true">→</span>
-<div class="yr" style="--c:var(--blue)"><span class="y">November 2026</span><strong>₹1,050 cr</strong><p>The South First and Analytics India Magazine report about ₹1,050 crore announced by 24 venture firms.</p></div>
+<div class="yr" style="--c:var(--green)"><span class="y">Fri 20 Nov · result</span><strong>2–0</strong><p>Borja Martínez scored from the spot in the 57th minute and substitute Ryan Williams added a second in the 85th, IANS reports.</p></div>
 </div>
 <div class="cmp">
-<div><span class="k">Firms</span><span>16 venture funds, in a pre-event plan for ₹430 crore (Deccan Herald)</span><span>24 venture firms, as reported after the conclave</span></div>
-<div><span class="k">Wording</span><span>"Distribute" and "boost" in the closing headlines of Deccan Herald and Devdiscourse</span><span>"Announcements" of "investment"; no report of money paid out</span></div>
-<div><span class="k">Also said</span><span>A joint fund of over ₹1,000 crore, in The Week's (PTI) 18 Nov 2025 headline</span><span>A ₹100 crore robotics hub and 63,200 young people to be trained, on day one (CXOToday)</span></div>
+<div><span class="k">Points</span><span>10 from four games, by the preview's record</span><span>13 from five, one clear of Mohun Bagan, says ESPN India</span></div>
+<div><span class="k">Mumbai City</span><span>Still looking for a first win</span><span>The wait goes on, in new head coach Ashvir Singh Johal's first match, IANS says</span></div>
+<div><span class="k">Also noted</span><span>A 7:30 pm kick-off at the Kanteerava, per the preview</span><span>Sunil Chhetri's 200th ISL appearance, per the reports</span></div>
 </div>
-<p class="note">So is it two and a half times last year's? Only against the ₹400 crore, and 2025's own reports also carried ₹430 crore and "over ₹1,000 crore". We read these as headlines and summaries.</p>
+<p class="note">Reports differ slightly on the penalty and on Bengaluru's home-win count. The scorers and minutes above are the ones reported most consistently. We read these as summaries.</p>
 </div><div class="folio"><span>Then and now</span><span>05</span></div></div>`),
     page("06-briefs", "Desk Briefs", `<div class="page briefs-pg"><div class="pin">
 <span class="lbl c" style="--c:var(--green)">City desk</span>
 <h3 class="hd">Around town</h3>
 <div class="grid">
-<div class="brief"><span class="where">Metro</span><b>Day one is still the figure</b><p>We found no Pink Line count for a weekday. A BMRCL official expects the pattern to steady toward the end of November, newskarnataka reports. Pictured is KR Market, an existing station.</p><div class="shot"><img class="photo" src="%photo:blr-kr-market%" alt="Krishna Rajendra Market metro station entrance"><span class="cap">KR Market station · Gpkp, CC BY-SA 4.0</span></div><span class="src">newskarnataka; Swarajya</span></div>
-<div class="brief"><span class="where">Festival</span><b>Bengaluru Jatre, from 4 December</b><p>The GBA is the nodal agency for a ten-day festival from 4 to 13 December, with no central venue and more than 300 programmes planned, The South First reports. The state puts the cost at ₹15 to 20 crore.</p><span class="src">The South First; Asianet Newsable</span></div>
-<div class="brief"><span class="where">Junction</span><b>Konanakunte Cross to be reworked</b><p>A minister's review told the South city corporation to improve Konanakunte Cross to ease traffic, Deccan Chronicle reports. The same review looked ahead to the next Ward One round, set for 21 November.</p><span class="src">Deccan Chronicle</span></div>
-<div class="brief"><span class="where">Trade</span><b>Indusfood, 25 to 27 November</b><p>A food and drink sourcing show at the BIEC, run by the Trade Promotion Council of India, open from 9 am. Its conference programme was still to be published in the listings we saw.</p><span class="src">Indusfood Bengaluru site; Expomap</span></div>
+<div class="brief"><span class="where">Metro</span><b>Two weeks, one count</b><p>Still no Pink Line weekday figure in anything we found. A BMRCL official expects the pattern to steady toward the end of November, newskarnataka reports. Pictured is KR Market, an existing station.</p><div class="shot"><img class="photo" src="%photo:blr-kr-market%" alt="Krishna Rajendra Market metro station entrance"><span class="cap">KR Market station · Gpkp, CC BY-SA 4.0</span></div><span class="src">newskarnataka; Swarajya</span></div>
+<div class="brief"><span class="where">Power</span><b>Outages on 23 and 24 Nov</b><p>BESCOM listed maintenance cuts across more than 127 areas over the two days. For Monday, the area around the Pottery Road 66/11 kV substation was to be dark from 9 am to 7:30 pm, the listings say.</p><span class="src">Goodreturns; Asianet Newsable</span></div>
+<div class="brief"><span class="where">Ward One</span><b>Jetting machines for public spaces</b><p>Each of the five corporations is to use high-pressure jetting machines on junctions, footpaths, bus shelters and flyover pillars, under the Ward One drive. The listings we saw carried no date.</p><span class="src">Deccan Chronicle; The Hans India</span></div>
+<div class="brief"><span class="where">Trade</span><b>Indusfood ends on Friday</b><p>The food and drink sourcing show at the BIEC runs to Friday 27 November, from 9 am, run by the Trade Promotion Council of India. We saw no conference programme in the listings.</p><span class="src">Indusfood Bengaluru site; Expomap</span></div>
 </div>
 </div><div class="folio"><span>City desk</span><span>06</span></div></div>`),
     page("07-tracker", "Ward Tracker", `<div class="page track"><div class="pin">
 <span class="lbl c" style="--c:var(--green)">Ward One, counted</span>
 <h3 class="hd">A month-long clean-up, and what we could count</h3>
-<p class="stand">The GBA's Ward One campaign works one ward per division through November. We found one new count this week, on banners. The pothole and debris bars are last edition's figures from The Bengaluru Live, with their dates, because nothing newer turned up.</p>
-<div class="meter" style="--c:var(--green)"><b>Potholes repaired (last edition's counts)</b>
+<p class="stand">The GBA's Ward One campaign works one ward per division through November. This week brought a directive on jetting machines, not a count. The bars below are earlier counts, with their dates, because nothing newer turned up.</p>
+<div class="meter" style="--c:var(--green)"><b>Potholes repaired (counts from Issue 05)</b>
 <div class="bar"><span>North, first week to 7 Nov</span><div class="rail"><i style="width:100%"></i></div><em>145</em></div>
 <div class="bar"><span>Central, 13 Nov only</span><div class="rail"><i style="width:7.6%"></i></div><em>11</em></div>
 <div class="bar"><span>North, 13 Nov only</span><div class="rail"><i style="width:6.9%"></i></div><em>10</em></div>
 </div>
-<div class="meter" style="--c:var(--yellow)"><b>Unauthorised banners removed (new)</b>
+<div class="meter" style="--c:var(--yellow)"><b>Unauthorised banners removed (from Issue 06)</b>
 <div class="bar"><span>Central corporation, campaign</span><div class="rail"><i style="width:100%"></i></div><em>273</em></div>
 <div class="bar"><span>Chickpet division, of those</span><div class="rail"><i style="width:30%"></i></div><em>82</em></div>
 </div>
-<div class="meter" style="--c:var(--blue)"><b>Debris cleared, tonnes (last edition's counts)</b>
+<div class="meter" style="--c:var(--blue)"><b>Debris cleared, tonnes (counts from Issue 05)</b>
 <div class="bar"><span>North, first week to 7 Nov</span><div class="rail"><i style="width:100%"></i></div><em>797</em></div>
 <div class="bar"><span>Central, 13 Nov only</span><div class="rail"><i style="width:10.5%"></i></div><em>83.5</em></div>
 </div>
 <div class="note">
-<span>Deccan Chronicle gave the banner counts without a date we could confirm. A minister's review set the next Ward One round for 21 November; we found no tally from it.</span>
-<span class="src">Deccan Chronicle (Central, banners; review) · The Bengaluru Live (North, 7 Nov and 13 Nov; Central, 13 Nov)</span>
+<span>A minister's review set the next Ward One round for 21 November; we found no tally from it, and no new count of potholes, banners or debris this week.</span>
+<span class="src">Deccan Chronicle (Central, banners; jetting machines) · The Bengaluru Live (North, 7 Nov and 13 Nov; Central, 13 Nov)</span>
 </div>
 </div><div class="folio"><span>Ward tracker</span><span>07</span></div></div>`),
     page("08-two-reports", "Two Reports", `<div class="page two"><div class="pin">
-<div class="band"><img class="photo" src="%photo:blr-viaduct%" alt="Traffic under the Namma Metro viaduct near Jayadeva Hospital"><span class="cap">Under the metro viaduct at Jayadeva Hospital, not on Ballari Road · Gpkp, CC BY-SA 4.0</span></div>
-<h3 class="hd">Ballari Road: how long, and who is curbed</h3>
+<div class="band"><img class="photo" src="%photo:blr-viaduct%" alt="Traffic under the Namma Metro viaduct near Jayadeva Hospital"><span class="cap">Illustration only: traffic under the metro viaduct at Jayadeva Hospital · Gpkp, CC BY-SA 4.0</span></div>
+<h3 class="hd">The city vote: December, or January?</h3>
 <div class="claim">
-<p class="what"><b>How long is the elevated corridor?</b> BDA began work on 6 November, with curbs for about 18 months, on a corridor from the UAS staff quarters towards Mehkri Circle.</p>
+<p class="what"><b>When must the five corporations vote?</b> The Supreme Court set 31 December 2026 on 17 July, and warned against asking again. The State Election Commission has since asked it for one more month.</p>
 <div class="vs">
-<div class="side"><strong>1.6 km</strong><span>four lanes · The News Minute, Construction World</span></div>
+<div class="side"><strong>31 Dec 2026</strong><span>the Court's deadline · Siasat, Free Press Journal</span></div>
 <span class="or">or</span>
-<div class="side"><strong>1.74 km</strong><span>four lanes · Swarajya, Dynamite News</span></div>
+<div class="side"><strong>31 Jan 2027</strong><span>the Commission's request · Siasat, The Hans India</span></div>
 </div>
-<p class="what">Deccan Herald's report of the cabinet approval lists a 1.70 km corridor costing ₹725 crore, inside a ₹2,215 crore Hebbal project. The lengths may count ramps and the rotary differently; no report says.</p>
+<p class="what">These are an order and a request, not two accounts of one fact. We found no report that the Court has ruled on the request, and could not date when it was filed.</p>
 </div>
 <div class="claim">
-<p class="what"><b>Who is kept off the road?</b> Goods vehicles of every weight, and KSRTC and private buses, according to the Traffic Police advisory as reported by The News Minute and OneIndia. Cars, bikes and school buses go on.</p>
+<p class="what"><b>Which voter list?</b> The Court tied the December date to the revision of Karnataka's electoral rolls. The Commission wants to use the roll of 18 April, which already exists.</p>
 <div class="vs">
-<div class="side"><strong>All goods vehicles</strong><span>and buses · The News Minute, OneIndia</span></div>
+<div class="side"><strong>Wait for the revision</strong><span>the Court's reason · Verdictum, Lawbeat</span></div>
 <span class="or">or</span>
-<div class="side"><strong>Heavy goods only</strong><span>one report we could not trace to an outlet</span></div>
+<div class="side"><strong>Use the April roll</strong><span>the Commission's plan · Siasat</span></div>
 </div>
 </div>
-<p class="rule-note">We print both and say who said what. The police advisory is the one to check before you drive.</p>
+<p class="rule-note">We print both and say who said what. Page 11 tells how the date got here.</p>
 </div><div class="folio"><span>Two readings</span><span>08</span></div></div>`),
     page("09-line", "The Line", `<div class="page line-pg"><div class="pin">
 <span class="lbl c" style="--c:var(--pink)">On the line</span>
-<h3 class="hd">Six stations, 7.5 km, week two</h3>
+<h3 class="hd">Six stations, 7.5 km, two weeks in</h3>
 <svg viewBox="0 0 400 96" role="img" aria-label="The elevated Pink Line, not to scale: Kalena Agrahara, Hulimavu, IIM-B, JP Nagar 4th Phase, Jayadeva Hospital and Tavarekere">
 <line x1="14" y1="44" x2="386" y2="44" stroke="#cf437d" stroke-width="7" stroke-linecap="round"/>
 <g fill="#fdfdfc" stroke="#cf437d" stroke-width="3.5">
@@ -439,62 +433,72 @@ export const CITY_EDITION: StudioSection = {
 </div>
 <div class="blk">
 <b>What the reports did not say</b>
-<p>Swarajya puts average weekday ridership across the network at about 9.16 lakh, and expects it to pass 10 lakh once the Pink Line opens. That is a network figure, not the Pink Line's. No Pink Line weekday count, fare or last train was in anything we found, so none is printed.</p>
+<p>Swarajya puts average weekday ridership across the network at about 9.16 lakh, and expects it to pass 10 lakh once the Pink Line opens. That is a network figure, not the Pink Line's. Two weeks on, we found no Pink Line weekday count, fare or last train, so none is printed.</p>
 </div>
 <p class="src">Deccan Herald · IBTimes India · OneIndia · newskarnataka · Swarajya</p>
 </div><div class="folio"><span>On the line</span><span>09</span></div></div>`),
     page("10-questions", "Questions & Answers", `<div class="page qa"><div class="pin">
 <span class="lbl c" style="--c:var(--pink)">Rider questions</span>
-<h3 class="hd">Six questions for the first weeks</h3>
+<h3 class="hd">Six questions, one still open</h3>
 <div class="list">
 <div class="item" style="--c:var(--pink)"><span class="q">1</span><div><b>Is it open?</b><p>Yes. Public service began on Saturday 14 November, a day after the inauguration. The first weekday was Monday 16 November.</p><span class="who">Deccan Herald · The Week (PTI)</span></div></div>
 <div class="item" style="--c:var(--purple)"><span class="q">2</span><div><b>Where does it go?</b><p>Six elevated stations over 7.5 km: Kalena Agrahara, Hulimavu, IIM-B, JP Nagar 4th Phase, Jayadeva Hospital and Tavarekere (also called Suddagunte Palya).</p><span class="who">Construction World · IBTimes India</span></div></div>
 <div class="item" style="--c:var(--green)"><span class="q">3</span><div><b>How often do trains run?</b><p>Every 8 minutes at weekday peak and every 10 off-peak. The first train on Monday left Kalena Agrahara at 4:55 am.</p><span class="who">OneIndia · IBTimes India</span></div></div>
-<div class="item" style="--c:var(--yellow)"><span class="q">4</span><div><b>How many people rode?</b><p>33,409 on the first day, as reported. A BMRCL official expects the pattern to steady toward the end of November. We found no weekday figure.</p><span class="who">Inshorts · newskarnataka</span></div></div>
+<div class="item" style="--c:var(--yellow)"><span class="q">4</span><div><b>How many people rode?</b><p>33,409 on the first day, as reported. A BMRCL official expects the pattern to steady toward the end of November. Two weeks in, we found no weekday figure.</p><span class="who">newskarnataka · Inshorts</span></div></div>
 <div class="item" style="--c:var(--blue)"><span class="q">5</span><div><b>What will it cost?</b><p>A Goodreturns explainer lists the fare in its headline, but we read only the headline, so no fare is printed. Check BMRCL's notices before you travel.</p><span class="who">Goodreturns, headline only</span></div></div>
 <div class="item" style="--c:var(--pink)"><span class="q">6</span><div><b>Can I change to another line?</b><p>Yes, at Jayadeva Hospital, a multi-tier station where the Pink Line meets the Yellow Line towards Electronic City.</p><span class="who">OneIndia · Swarajya</span></div></div>
 </div>
 </div><div class="folio"><span>Rider questions</span><span>10</span></div></div>`),
-    page("11-timeline", "Timeline", `<div class="page timeline"><div class="pin">
-<span class="lbl c" style="--c:var(--pink)">Timeline</span>
-<h3 class="hd">Seven dates for one line</h3>
-<p class="stand">Each date below was reported for the Pink Line. Two were missed, three were kept, one is still unmeasured and one is a target.</p>
-<ol class="tl">
-<li class="miss"><time>15 Aug 2026</time><i class="nd"></i><div><span class="st">Missed</span><b>An Independence Day launch</b><span>Business Today reported the line aiming for 15 August, in a piece dated 10 August.</span></div></li>
-<li class="miss"><time>Sep 2026</time><i class="nd"></i><div><span class="st">Missed</span><b>A September opening</b><span>Swarajya and Construction World reported the 7.5-kilometre stretch ready for a September launch.</span></div></li>
-<li class="done"><time>28 Oct 2026</time><i class="nd"></i><div><span class="st">Done</span><b>Safety clearance</b><span>The Commissioner of Metro Railway Safety cleared the elevated stretch. Passengers still waited.</span></div></li>
-<li class="done"><time>13 Nov 2026</time><i class="nd"></i><div><span class="st">Done</span><b>Inauguration day</b><span>A Friday. The Prime Minister rode with the Chief Minister, Deccan Herald reports.</span></div></li>
-<li class="done"><time>14 Nov 2026</time><i class="nd"></i><div><span class="st">Done</span><b>Public service</b><span>A Saturday. Inshorts reports 33,409 riders on the first day.</span></div></li>
-<li class="next"><time>16 Nov 2026</time><i class="nd"></i><div><span class="st">Unmeasured</span><b>The first weekday</b><span>A BMRCL official said the effect would show from Monday. A week on, we still found no figure.</span></div></li>
-<li class="far"><time>May 2027</time><i class="nd"></i><div><span class="st">Target</span><b>The underground stretch</b><span>Swarajya reports May 2027 for the underground Pink Line and the Blue Line on the Outer Ring Road.</span></div></li>
-</ol>
-<p class="src">Dates are as reported, not an official timetable. Deccan Herald · Business Today · Swarajya · Construction World · Inshorts</p>
-</div><div class="folio"><span>Timeline</span><span>11</span></div></div>`),
+    page("11-longread", "Long Read", `<div class="page longread"><div class="pin">
+<span class="lbl c" style="--c:var(--yellow)">The long read</span>
+<h3 class="hd">Why the city's vote keeps moving</h3>
+<p class="stand">Five city corporations were meant to elect their councils by mid-2026. The date is now a Supreme Court deadline and a request to move it.</p>
+<div class="rd">
+<div class="txt">
+<p>The Greater Bengaluru Authority replaced the BBMP in September 2025, and the city's civic body became five corporations. Councils for them have not been elected, so the Supreme Court has been setting the date.</p>
+<h5>Three dates</h5>
+<p>In January the Court asked for the polls by 30 June. In May it moved the date to 31 August, refusing the state's request for September and calling it the last extension. On 17 July it moved it again, to 31 December, citing the revision of Karnataka's electoral rolls. The Chief Justice warned it would hear no more excuses after that.</p>
+<p class="pull">Two extensions, and a third asked for.</p>
+<h5>The new request</h5>
+<p>The State Election Commission has asked for one more month, to 31 January 2027, and for leave to use the roll of 18 April rather than wait for the revision, Siasat reports. We found no report of a ruling.</p>
+<h5>What stays open</h5>
+<p>The Hans India's headline says the polls face further delay; we read the headline only. Until the Court rules, the date on page 08 is the order, not the plan.</p>
+</div>
+<div class="rail">
+<span class="lbl">The dates</span>
+<div><em>Jan 2026</em><span>The Court asks for polls by 30 June</span></div>
+<div><em>May 2026</em><span>Moved to 31 August, called the last extension</span></div>
+<div><em>17 Jul 2026</em><span>Moved to 31 December</span></div>
+<div><em>Undated</em><span>The Commission asks for 31 January 2027</span></div>
+</div>
+</div>
+<p class="src">Siasat · Free Press Journal · The South First · Verdictum · Lawbeat · The Hans India (headline) · Deccan Herald (the GBA's start)</p>
+</div><div class="folio"><span>The long read</span><span>11</span></div></div>`),
     page("12-ledger", "Ledger Table", `<div class="page ledger-pg"><div class="pin">
 <span class="lbl c" style="--c:var(--blue)">The ledger</span>
-<h3 class="hd">Small rounds, and a quiet week</h3>
+<h3 class="hd">A quiet week for rounds</h3>
 <table>
 <thead><tr><th scope="col">Company</th><th scope="col">What happened</th><th scope="col">Amount</th></tr></thead>
 <tbody>
-<tr><td class="co"><b>Soket AI Labs</b><span>Frontier AI research, seed</span></td><td>Finvolve and India Accelerator announced an investment in the Bengaluru lab. The size was not disclosed.</td><td class="amt">Undisclosed<small>OneIndia, Nov 2026</small></td></tr>
-<tr><td class="co"><b>ECOPATH</b><span>Climate tech, seed</span></td><td>Social Alpha and Gemcorp backed the Bengaluru startup's zero-cement construction technology. Older than this edition's window; it was in YourStory's 3 November roundup.</td><td class="amt">₹2.25 cr<small>YourStory, 3 Nov</small></td></tr>
-<tr><td class="co"><b>Humyn Labs</b><span>Data for physical AI, Series A</span></td><td>Last edition's lead round: TechCrunch's headline of 18 November puts it at $47 million, with Accel backing. We read the headline only.</td><td class="amt">$47M<small>TechCrunch, 18 Nov</small></td></tr>
+<tr><td class="co"><b>Gnani.ai</b><span>Voice AI, Series B</span></td><td>NewsBytes calls it a Bengaluru company and says Aavishkaar Capital led the round. We could not date the report, so we cannot place it in this window.</td><td class="amt">₹68 cr<small>NewsBytes, undated</small></td></tr>
+<tr><td class="co"><b>Humyn Labs</b><span>Data for physical AI, Series A</span></td><td>Carried from Issue 06: TechCrunch's headline of 18 November puts the round at $47 million, with Accel backing. We read the headline only.</td><td class="amt">$47M<small>TechCrunch, 18 Nov</small></td></tr>
+<tr><td class="co"><b>All of India</b><span>Week to 13 Nov</span></td><td>Indian startups raised $25.2 million in the week, down 90.1% on the week before, Inc42 reports. A national figure, not a Bengaluru one.</td><td class="amt">$25.2M<small>Inc42, Nov 2026</small></td></tr>
 <tr><td class="co"><b>Bengaluru</b><span>Jan to Sep 2026</span></td><td>The city drew about $4.4 billion in startup funding in the first nine months of the year, as the Economic Times reported and Digg relayed. Kept as the running total.</td><td class="amt">$4.4B<small>Economic Times, via Digg</small></td></tr>
 </tbody>
 </table>
-<p class="foot">We found no Bengaluru round we could confirm and date between 19 and 22 November. PlatinumRx's reported talks to raise about $32 million are not printed: a round in talks is not a round closed.</p>
+<p class="foot">We found no Bengaluru round we could confirm and date between 23 and 25 November. PlatinumRx's reported talks to raise about $32 million are not printed: a round in talks is not a round closed.</p>
 </div><div class="folio"><span>The ledger</span><span>12</span></div></div>`),
     page("13-scoreboard", "Scoreboard", `<div class="page score"><div class="pin">
-<div class="ph"><img class="photo" src="%photo:blr-chinnaswamy%" alt="M. Chinnaswamy Stadium from the stands"><span class="cap">The Chinnaswamy, home ground of RCB · Visdaviva, CC BY-SA 3.0</span></div>
+<div class="ph"><img class="photo" src="%photo:blr-chinnaswamy%" alt="M. Chinnaswamy Stadium from the stands"><span class="cap">The Chinnaswamy, home ground of RCB; Bengaluru FC play at the Kanteerava · Visdaviva, CC BY-SA 3.0</span></div>
 <span class="lbl c" style="--c:var(--yellow)">Field &amp; ground</span>
-<h3 class="hd">A Friday fixture, and no score</h3>
+<h3 class="hd">Top of the table, away next</h3>
 <div class="card">
 <div class="top"><span>Indian Super League</span><span>Home match</span></div>
 <div class="rows">
-<div class="row"><span>Fixture</span><span>Bengaluru FC v Mumbai City FC</span></div>
-<div class="row"><span>Ground</span><span>Sree Kanteerava Stadium</span></div>
-<div class="row"><span>Day</span><span>Fri 20 Nov, 7:30 pm, as Khel Now's preview of 19 November has it</span></div>
-<div class="row"><span>The result</span><span>We found no match report, so no score is printed. Check the club or the ISL site.</span></div>
+<div class="row"><span>Result</span><span>Bengaluru FC 2–0 Mumbai City FC</span></div>
+<div class="row"><span>Ground</span><span>Sree Kanteerava Stadium, Fri 20 Nov</span></div>
+<div class="row"><span>Goals</span><span>Borja Martínez, penalty, 57'; Ryan Williams, 85' (IANS)</span></div>
+<div class="row"><span>The table</span><span>13 points from five games, top, one clear of Mohun Bagan (ESPN India)</span></div>
 </div>
 </div>
 <div class="card">
@@ -503,30 +507,31 @@ export const CITY_EDITION: StudioSection = {
 <div class="row"><span>10 Oct</span><span>Won 3–2 v SC Delhi</span></div>
 <div class="row"><span>30 Oct</span><span>Drew 1–1 v NorthEast United</span></div>
 <div class="row"><span>6 Nov</span><span>Won 2–1 at FC Goa, in stoppage time</span></div>
-<div class="row"><span>Before Friday</span><span>Three wins and a draw from four, and Mumbai City still looking for a first win, Khel Now's preview says</span></div>
+<div class="row"><span>Next</span><span>Away at Odisha FC on Fri 4 December, The Morning Voice says</span></div>
 </div>
 </div>
-<p class="src">Khel Now · Mykhel · Devdiscourse · Fotmob</p>
+<p class="src">IANS · Khel Now · myKhel · ESPN India · The Morning Voice · Fotmob</p>
 </div><div class="folio"><span>Field &amp; ground</span><span>13</span></div></div>`),
     page("14-week-ahead", "Week Ahead", `<div class="page week"><div class="pin">
 <span class="lbl c" style="--c:var(--purple)">The week ahead</span>
-<h3 class="hd">A food show, a concert and a deadline</h3>
+<h3 class="hd">Indusfood, a concert, then Jatre</h3>
 <div class="days">
-<div class="day"><span class="dn">Mon</span><span class="dd">23</span><span class="ev" style="--c:var(--purple)">This edition</span></div>
-<div class="day"><span class="dn">Tue</span><span class="dd">24</span><span class="ev" style="--c:var(--muted)">Nothing verified</span></div>
-<div class="day"><span class="dn">Wed</span><span class="dd">25</span><span class="ev" style="--c:var(--green)">Indusfood opens, BIEC</span><span class="ev" style="--c:var(--purple)">Reader's page deadline</span></div>
-<div class="day"><span class="dn">Thu</span><span class="dd">26</span><span class="ev" style="--c:var(--green)">Indusfood, day two</span><span class="ev" style="--c:var(--purple)">Next edition</span></div>
+<div class="day"><span class="dn">Thu</span><span class="dd">26</span><span class="ev" style="--c:var(--green)">Indusfood, day two</span></div>
 <div class="day"><span class="dn">Fri</span><span class="dd">27</span><span class="ev" style="--c:var(--green)">Indusfood, last day</span></div>
 <div class="day"><span class="dn">Sat</span><span class="dd">28</span><span class="ev" style="--c:var(--muted)">Nothing verified</span></div>
-<div class="day"><span class="dn">Sun</span><span class="dd">29</span><span class="ev" style="--c:var(--pink)">Diljit Dosanjh, NICE Grounds</span></div>
+<div class="day"><span class="dn">Sun</span><span class="dd">29</span><span class="ev" style="--c:var(--pink)">Diljit Dosanjh, NICE Grounds</span><span class="ev" style="--c:var(--purple)">Reader's page deadline</span></div>
+<div class="day"><span class="dn">Mon</span><span class="dd">30</span><span class="ev" style="--c:var(--purple)">Next edition</span></div>
+<div class="day"><span class="dn">Tue</span><span class="dd">1</span><span class="ev" style="--c:var(--muted)">Nothing verified</span></div>
+<div class="day"><span class="dn">Wed</span><span class="dd">2</span><span class="ev" style="--c:var(--muted)">Nothing verified</span></div>
 </div>
 <div class="later">
-<div><em>Wed 25 to Fri 27 Nov</em><span><b>Indusfood Bengaluru</b>From 9 am at the BIEC on Tumkur Road, organised by the Trade Promotion Council of India, per the show's own site and Expomap</span></div>
+<div><em>Fri 27 Nov</em><span><b>Indusfood, last day</b>From 9 am at the BIEC on Tumkur Road, organised by the Trade Promotion Council of India, per the show's own site and Expomap</span></div>
 <div><em>Sun 29 Nov</em><span><b>Diljit Dosanjh, AURA India tour</b>At NICE Grounds, Madavara, partly seated per BookMyShow. One aggregator gives a 4 pm start; prices differ by listing, so confirm</span></div>
-<div><em>4 to 13 Dec</em><span><b>Bengaluru Jatre</b>A city-wide festival run through the GBA, with no central stage and more than 300 programmes planned, The South First reports</span></div>
-<div><em>To about May 2028</em><span><b>Ballari Road corridor work</b>BDA's elevated corridor, 18 months from 6 November, with curbs on some vehicles</span></div>
+<div><em>Fri 4 Dec</em><span><b>Bengaluru FC at Odisha FC</b>An away fixture in the ISL, per The Morning Voice. The same day, Bengaluru Jatre opens and runs to 13 December</span></div>
+<div><em>Sat 5 Dec</em><span><b>Bengaluru Midnight Marathon</b>Listed as the 19th edition by running-calendar sites; confirm the start and route with the organisers</span></div>
+<div><em>By 31 Dec</em><span><b>The city corporation elections</b>The Supreme Court's current deadline; the Election Commission has asked for 31 January 2027</span></div>
 </div>
-<p class="src">Indusfood Bengaluru · Expomap · BookMyShow · NewsX · The South First · The News Minute · OneIndia</p>
+<p class="src">Indusfood Bengaluru · Expomap · BookMyShow · NewsX · The South First · The Morning Voice · Finishers · Siasat</p>
 </div><div class="folio"><span>The week ahead</span><span>14</span></div></div>`),
     page("15-reader", "Reader's Page", `<div class="page reader"><div class="pin">
 <div class="top">
@@ -548,7 +553,7 @@ export const CITY_EDITION: StudioSection = {
 <p>End where it ended for you. It doesn't need a moral.</p>
 </div>
 <div class="send">
-<div><b>Send yours</b><span>About 300 words and up to three photographs you took, with your name and neighbourhood. In by Wednesday 25 November for Issue 07.</span></div>
+<div><b>Send yours</b><span>About 300 words and up to three photographs you took, with your name and neighbourhood. In by Sunday 29 November for Issue 08.</span></div>
 <div><b>Before it prints</b><span>The desk checks names, places, dates and figures, and shows you the page first. Your words and your photographs stay yours.</span></div>
 </div>
 </div><div class="folio"><span>Reader's page</span><span>15</span></div></div>`),
@@ -556,21 +561,21 @@ export const CITY_EDITION: StudioSection = {
 <span class="lbl">Sources &amp; credits</span>
 <h3 class="hd">Where this came from</h3>
 <div class="cols">
-<div><b>p. 03–05 · Summit week</b>CXOToday (summit close, day-one announcements, day-two headline); The South First and Analytics India Magazine (₹1,050 crore, 24 firms), Nov 2026; Deccan Herald and Devdiscourse, Nov 2025 (₹400 crore; 16 firms and ₹430 crore before the event); The Week (PTI), 18 Nov 2025 (headline)</div>
-<div><b>p. 06 · City desk</b>newskarnataka and Swarajya (Pink Line); The South First and Asianet Newsable (Bengaluru Jatre); Deccan Chronicle (Konanakunte Cross); Indusfood Bengaluru site and Expomap</div>
-<div><b>p. 07 · Ward tracker</b>Deccan Chronicle (Central banners; the minister's review); The Bengaluru Live (North, 7 Nov and 13 Nov; Central, 13 Nov), carried from Issue 05</div>
-<div><b>p. 08 · Two readings</b>The News Minute, OneIndia and Construction World (Ballari Road curbs, length); Swarajya and Dynamite News (1.74 km); Deccan Herald (cabinet approval, 1.70 km)</div>
-<div><b>p. 09 · On the line</b>IBTimes India (cost, first train); OneIndia (timetable); Deccan Herald; Inshorts; newskarnataka; Swarajya</div>
-<div><b>p. 10 · Rider questions</b>Deccan Herald; The Week (PTI); Construction World; IBTimes India; OneIndia; Inshorts; newskarnataka; Goodreturns (headline); Swarajya</div>
-<div><b>p. 11 · Timeline</b>Business Today, 10 Aug; Swarajya; Construction World; Deccan Herald; Inshorts</div>
-<div><b>p. 12 · The ledger</b>OneIndia (Soket AI Labs); YourStory, 3 Nov (ECOPATH); TechCrunch, 18 Nov (headline only); Economic Times, relayed by Digg</div>
-<div><b>p. 13 · Field &amp; ground</b>Khel Now, 19 Nov (preview); Mykhel; Devdiscourse; Fotmob</div>
-<div><b>p. 14 · The week ahead</b>Indusfood Bengaluru; Expomap; BookMyShow; NewsX; The South First; The News Minute; OneIndia</div>
-<div><b>Photographs</b>Wikimedia Commons. p. 01 Town Hall: Harvinder Chandigarh (CC BY 4.0). p. 04 Vidhana Soudha: Sai23ganesh (CC BY-SA 4.0). p. 06 KR Market station: Gpkp (CC BY-SA 4.0). p. 08 Jayadeva viaduct: Gpkp (CC BY-SA 4.0). p. 13 Chinnaswamy: Visdaviva (CC BY-SA 3.0). p. 15 sample, Pink Line map: Mallikarjunasj (CC BY-SA 3.0).</div>
+<div><b>p. 03 · By the numbers</b>Siasat; The South First; The Hans India (headline); Goodreturns and Asianet Newsable (outages); ESPN India and IANS (BFC); newskarnataka and Deccan Herald (Pink Line); Inc42 (week to 13 Nov)</div>
+<div><b>p. 04 · The festival</b>The South First; The Hans India (venues; the JDS headline); Deccan Herald (headline, 200 venues); newskarnataka, 12 Oct; Asianet Newsable (₹15 to 20 crore), carried from Issue 06</div>
+<div><b>p. 05 · Then and now</b>Khel Now (preview, 19 Nov); IANS (goals; Mumbai City's coach); ESPN India (the table); myKhel</div>
+<div><b>p. 06 · City desk</b>newskarnataka and Swarajya (Pink Line); Goodreturns and Asianet Newsable (BESCOM outages, 23 and 24 Nov); Deccan Chronicle and The Hans India (jetting machines); Indusfood Bengaluru site and Expomap</div>
+<div><b>p. 07 · Ward tracker</b>Deccan Chronicle (Central banners; jetting machines); The Bengaluru Live (North, 7 Nov and 13 Nov; Central, 13 Nov), carried from Issues 05 and 06</div>
+<div><b>p. 08 and 11 · The city vote</b>Siasat; Free Press Journal; The South First; Verdictum; Lawbeat; The Hans India (headline); Deccan Herald (the GBA's start, 2025)</div>
+<div><b>p. 09–10 · The line</b>IBTimes India (cost, first train); OneIndia (timetable); Deccan Herald; The Week (PTI); Construction World; Inshorts; newskarnataka; Swarajya; Goodreturns (headline)</div>
+<div><b>p. 12 · The ledger</b>NewsBytes (Gnani.ai); TechCrunch, 18 Nov (headline only); Inc42; Economic Times, relayed by Digg</div>
+<div><b>p. 13 · Field &amp; ground</b>IANS; Khel Now; myKhel; ESPN India; The Morning Voice; Fotmob</div>
+<div><b>p. 14 · The week ahead</b>Indusfood Bengaluru; Expomap; BookMyShow; NewsX; The South First; The Morning Voice; Finishers; Siasat</div>
+<div><b>Photographs</b>Wikimedia Commons. p. 01 Vidhana Soudha: Sai23ganesh (CC BY-SA 4.0). p. 04 Town Hall: Harvinder Chandigarh (CC BY 4.0). p. 06 KR Market station: Gpkp (CC BY-SA 4.0). p. 08 Jayadeva viaduct: Gpkp (CC BY-SA 4.0). p. 13 Chinnaswamy: Visdaviva (CC BY-SA 3.0). p. 15 sample, Pink Line map: Mallikarjunasj (CC BY-SA 3.0).</div>
 </div>
 <div class="made">
 <span><b>How this was made.</b> Gathered through a news search and checked against at least one report for each item; most reports were read as headlines and summaries only. Summarised in our own words; no article text or press photographs were reused.</span>
-<span>Atlas Bengaluru · a sample city edition · Week 47, 2026</span>
+<span>Atlas Bengaluru · a sample city edition · Week 48, 2026</span>
 </div>
 </div><div class="folio"><span>Colophon</span><span>16</span></div></div>`),
   ],
