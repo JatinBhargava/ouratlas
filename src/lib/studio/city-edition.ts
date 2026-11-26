@@ -269,7 +269,7 @@ export const CITY_EDITION: StudioSection = {
     page("01-front", "City Front", `<div class="page front"><div class="pin">
 <div class="mast"><h3 class="hd">Atlas <i>Bengaluru</i></h3><div class="date">Week 48<br>23–25 Nov 2026<br>Issue 07</div></div>
 <div class="lines" aria-hidden="true"><i style="background:var(--purple)"></i><i style="background:var(--green)"></i><i style="background:var(--yellow)"></i><i style="background:var(--pink)"></i><i style="background:var(--blue)"></i></div>
-<div class="hero"><img class="photo" style="object-position:50% 18%" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><span class="cap">Vidhana Soudha, seat of the Karnataka government · Sai23ganesh, CC BY-SA 4.0</span></div>
+<div class="hero"><img class="photo" src="%photo:blr-town-hall%" alt="Sir Puttanna Chetty Town Hall, Bengaluru"><span class="cap">Town Hall, a Bengaluru landmark · Harvinder Chandigarh, CC BY 4.0</span></div>
 <div class="lead">
 <h4 class="hd">The city vote, moved twice</h4>
 <p>The Supreme Court's deadline for the five city corporation elections is 31 December. The State Election Commission has asked for a month more.</p>
@@ -316,14 +316,14 @@ export const CITY_EDITION: StudioSection = {
 <h3 class="hd">Bengaluru Jatre opens on 4 December</h3>
 <p class="stand">The ten-day festival is a week and a day away. Here is what the reports agree on, and the numbers they don't.</p>
 <div class="body">
-<div class="ph"><img class="photo" src="%photo:blr-town-hall%" alt="Sir Puttanna Chetty Town Hall, Bengaluru"><span class="cap">Town Hall, a Bengaluru landmark; not a named Jatre venue · Harvinder Chandigarh, CC BY 4.0</span></div>
+<div class="ph"><img class="photo" style="object-position:50% 18%" src="%photo:blr-vidhana-soudha%" alt="Vidhana Soudha lit up at night"><span class="cap">Illustration only: Vidhana Soudha at night, not a named Jatre venue · Sai23ganesh, CC BY-SA 4.0</span></div>
 <div class="col c1">
 <p>The Greater Bengaluru Authority is the nodal agency for Bengaluru Jatre, which runs from 4 to 13 December and is billed by The South First as a city-wide celebration of art, culture, literature and communities. It is spread across the five city corporations. The Hans India reports parks, roads, government offices and schools among the venues.</p>
 <p class="pull">Ten days, five corporations.</p>
 </div>
 <div class="col c2">
-<p>Krishna Byre Gowda, the minister who announced it, also floated music and performance on Metro concourses, subject to BMRCL. newskarnataka reported on 12 October that more than 300 organisations and over 80 artists had shown interest.</p>
-<p>Size is where reports differ: The South First counted more than 300 programmes, while Deccan Herald's headline says 200 venues.</p>
+<p>Krishna Byre Gowda, who announced it, also floated music on Metro concourses. newskarnataka reported on 12 October that over 300 organisations and 80 artists had shown interest.</p>
+<p>On size, The South First counted over 300 programmes; Deccan Herald's headline says 200 venues.</p>
 </div>
 <div class="col c3">
 <p>Cost differs more. Asianet Newsable gave the state's figure as ₹15 to 20 crore; The Hans India's headline has the JDS questioning a ₹200 crore spend. One is an estimate and the other an opposition figure. We found no budget paper.</p>
@@ -571,7 +571,7 @@ export const CITY_EDITION: StudioSection = {
 <div><b>p. 12 · The ledger</b>NewsBytes (Gnani.ai); TechCrunch, 18 Nov (headline only); Inc42; Economic Times, relayed by Digg</div>
 <div><b>p. 13 · Field &amp; ground</b>IANS; Khel Now; myKhel; ESPN India; The Morning Voice; Fotmob</div>
 <div><b>p. 14 · The week ahead</b>Indusfood Bengaluru; Expomap; BookMyShow; NewsX; The South First; The Morning Voice; Finishers; Siasat</div>
-<div><b>Photographs</b>Wikimedia Commons. p. 01 Vidhana Soudha: Sai23ganesh (CC BY-SA 4.0). p. 04 Town Hall: Harvinder Chandigarh (CC BY 4.0). p. 06 KR Market station: Gpkp (CC BY-SA 4.0). p. 08 Jayadeva viaduct: Gpkp (CC BY-SA 4.0). p. 13 Chinnaswamy: Visdaviva (CC BY-SA 3.0). p. 15 sample, Pink Line map: Mallikarjunasj (CC BY-SA 3.0).</div>
+<div><b>Photographs</b>Wikimedia Commons. p. 01 Town Hall: Harvinder Chandigarh (CC BY 4.0). p. 04 Vidhana Soudha: Sai23ganesh (CC BY-SA 4.0). p. 06 KR Market station: Gpkp (CC BY-SA 4.0). p. 08 Jayadeva viaduct: Gpkp (CC BY-SA 4.0). p. 13 Chinnaswamy: Visdaviva (CC BY-SA 3.0). p. 15 sample, Pink Line map: Mallikarjunasj (CC BY-SA 3.0).</div>
 </div>
 <div class="made">
 <span><b>How this was made.</b> Gathered through a news search and checked against at least one report for each item; most reports were read as headlines and summaries only. Summarised in our own words; no article text or press photographs were reused.</span>
