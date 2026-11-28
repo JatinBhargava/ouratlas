@@ -2,7 +2,6 @@ import beachPalms from "@/assets/studio/beach-palms.jpg";
 import blrChinnaswamy from "@/assets/studio/blr-chinnaswamy.jpg";
 import blrKrMarket from "@/assets/studio/blr-kr-market.jpg";
 import blrPinkLine from "@/assets/studio/blr-pink-line.jpg";
-import blrPuja from "@/assets/studio/blr-puja.jpg";
 import blrTownHall from "@/assets/studio/blr-town-hall.jpg";
 import blrVidhanaSoudha from "@/assets/studio/blr-vidhana-soudha.jpg";
 import blrViaduct from "@/assets/studio/blr-viaduct.jpg";
@@ -88,7 +87,6 @@ const PHOTOS: Record<string, string> = {
   "blr-chinnaswamy": blrChinnaswamy,
   "blr-kr-market": blrKrMarket,
   "blr-pink-line": blrPinkLine,
-  "blr-puja": blrPuja,
   "blr-town-hall": blrTownHall,
   "blr-viaduct": blrViaduct,
   "blr-vidhana-soudha": blrVidhanaSoudha,
